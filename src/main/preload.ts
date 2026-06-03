@@ -6,6 +6,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { ChromeProfile, AppSettings, ProcessInfo, ProfileFolder } from '../types';
 
 interface ElectronAPI {
+  platform: 'darwin' | 'win32' | 'linux';
   profiles: {
     getAll: () => Promise<ChromeProfile[]>;
     create: (name: string, color?: string, icon?: string, xAccount?: string, folderId?: string) => Promise<ChromeProfile>;
@@ -61,7 +62,8 @@ const unwrapResponse = async <T>(promise: Promise<any>): Promise<T> => {
 };
 
 const electronAPI: ElectronAPI = {
-   profiles: {
+   platform: process.platform as 'darwin' | 'win32' | 'linux',
+    profiles: {
      getAll: () => unwrapResponse(ipcRenderer.invoke('profiles:getAll')),
      create: (name, color, icon, xAccount, folderId) =>
        unwrapResponse(ipcRenderer.invoke('profiles:create', name, color, icon, xAccount, folderId)),
