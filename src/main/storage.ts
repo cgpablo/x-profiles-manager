@@ -418,9 +418,9 @@ export class StorageManager {
         // Extract Chrome profiles
         const profilesDir = path.join(this.appDataDir, '..', 'profiles');
         
-        // Clear existing profiles directory
+        // Clear existing profiles directory with retry logic for Windows
         if (fs.existsSync(profilesDir)) {
-          fs.rmSync(profilesDir, { recursive: true, force: true });
+          await this.removeDirectoryWithRetry(profilesDir);
         }
         fs.mkdirSync(profilesDir, { recursive: true });
 
@@ -450,6 +450,21 @@ export class StorageManager {
     } catch (error) {
       console.error('Error restoring backup:', error);
       throw error;
+    }
+  }
+
+  private async removeDirectoryWithRetry(dirPath: string, maxRetries: number = 3, delayMs: number = 100): Promise<void> {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        return;
+      } catch (error: any) {
+        if (i === maxRetries - 1) {
+          throw error; // Throw on last retry
+        }
+        // Wait before retrying (Windows file locks may release)
+        await new Promise(resolve => setTimeout(resolve, delayMs * (i + 1)));
+      }
     }
   }
 }
