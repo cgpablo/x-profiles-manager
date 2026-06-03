@@ -447,6 +447,23 @@ if (\\$found) {
   }
 
   /**
+   * Cierra todos los perfiles activos (usado al cerrar la app)
+   */
+  closeAllProfiles(): void {
+    const activeProfiles = this.getActiveProfiles();
+    console.log(`Closing ${activeProfiles.length} active Chrome profiles...`);
+    for (const profileId of activeProfiles) {
+      try {
+        this.closeProfile(profileId);
+        console.log(`✓ Closed profile ${profileId}`);
+      } catch (error) {
+        console.error(`✗ Error closing profile ${profileId}:`, error);
+      }
+    }
+    console.log('All profiles closed');
+  }
+
+  /**
    * Limpia los procesos que ya no existen - se ejecuta periodicamente
    */
   private cleanupDeadProcesses(): void {

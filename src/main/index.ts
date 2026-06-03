@@ -58,14 +58,16 @@ app.on('ready', () => {
 
 app.on('window-all-closed', () => {
   // Close all Chrome profiles before quitting
-  const activeProfiles = chromeLauncher.getActiveProfiles();
-  for (const profileId of activeProfiles) {
-    chromeLauncher.closeProfile(profileId);
-  }
+  chromeLauncher.closeAllProfiles();
   
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  // Safety check: ensure all Chrome profiles are closed
+  chromeLauncher.closeAllProfiles();
 });
 
 app.on('activate', () => {
