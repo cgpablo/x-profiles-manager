@@ -6,6 +6,8 @@ import React, { useEffect, useState } from 'react';
 import { AppSettings, ChromeProfile, ProfileFolder } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
+import CreateProfileModal from './CreateProfileModal';
+import CreateFolderModal from './CreateFolderModal';
 import './Settings.css';
 
 interface SettingsProps {
@@ -38,6 +40,9 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
   const [isClearing, setIsClearing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
+  const [creatingFolderId, setCreatingFolderId] = useState<string | undefined>(undefined);
 
   const isDirty = settings && originalSettings
     ? JSON.stringify(settings) !== JSON.stringify(originalSettings)
@@ -159,11 +164,28 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
       }
     };
 
-    // Handlers for sidebar that do nothing in Settings view
+    // Handlers for sidebar
     const handleLaunchProfile = () => {};
     const handleCloseProfile = () => {};
     const handleOpenAllInBrowser = () => {};
     const handleCloseAll = () => {};
+
+    const handleCreateFolder = () => {
+      setShowCreateFolderModal(true);
+    };
+
+    const handleCreateProfile = (folderId?: string) => {
+      setCreatingFolderId(folderId);
+      setShowCreateModal(true);
+    };
+
+    const handleEditFolder = (folder: ProfileFolder) => {
+      // No edit functionality in Settings view, but function needed for Sidebar interface
+    };
+
+    const handleDeleteFolder = (folderId: string) => {
+      // No delete functionality in Settings view, but function needed for Sidebar interface
+    };
 
   if (loading || !settings) {
     return <div className="loading">Loading settings...</div>;
@@ -180,10 +202,10 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
              onSelectFolder={onSelectFolder}
              onToggleFolder={onToggleFolder}
              onToggleOthers={onToggleOthers}
-             onCreateFolder={() => {}}
-             onCreateProfile={() => {}}
-             onEditFolder={() => {}}
-             onDeleteFolder={() => {}}
+             onCreateFolder={handleCreateFolder}
+             onCreateProfile={handleCreateProfile}
+             onEditFolder={handleEditFolder}
+             onDeleteFolder={handleDeleteFolder}
              profileCountByFolder={profileCountByFolder}
              onLaunchProfile={handleLaunchProfile}
              onCloseProfile={handleCloseProfile}
@@ -364,6 +386,24 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
           </div>
         )}
       </div>
+
+      {showCreateModal && (
+        <CreateProfileModal
+          onClose={() => {
+            setShowCreateModal(false);
+            setCreatingFolderId(undefined);
+          }}
+          onSettingsChange={onSettingsChange}
+          folderId={creatingFolderId}
+        />
+      )}
+
+      {showCreateFolderModal && (
+        <CreateFolderModal
+          onClose={() => setShowCreateFolderModal(false)}
+          onSettingsChange={onSettingsChange}
+        />
+      )}
     </div>
   );
 }
