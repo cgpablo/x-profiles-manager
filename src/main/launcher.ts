@@ -184,6 +184,142 @@ export class ChromeLauncher {
       return false;
     }
 
+    const profile = storageManager.getProfile(profileId);
+    if (!profile) {
+      console.warn(`✗ Profile ${profileId} not found`);
+      return false;
+    }
+
+    try {
+      if (process.platform === 'darwin') {
+        // macOS: Use AppleScript to find and activate the Chrome window for this profile
+        const { execSync } = require('child_process');
+        try {
+          // Use the data directory path to identify the specific Chrome window
+          const dataDir = profile.dataDir.replace(/'/g, "'\\''");
+          const script = `tell application "System Events"
+    set allWindows to (windows of application "Google Chrome")
+    repeat with w in allWindows
+        if (name of w) contains "${profile.name}" then
+            set frontmost of (application processes whose bundle identifier is "com.google.Chrome") to true
+            perform action "AXRaise" of w
+            return true
+        end if
+    end repeat
+end tell`;
+          execSync(`osascript -e '${script.replace(/'/g, "'\\''")}'`, {
+            stdio: 'ignore',
+            timeout: 5000,
+          });
+          console.log(`✓ Focus window succeeded for profile ${profileId} on macOS`);
+          return true;
+        } catch (error) {
+          console.error(`✗ Error focusing Chrome on macOS for profile ${profileId}:`, error);
+          return false;
+        }
+      } else if (process.platform === 'win32') {
+        // Windows: Use PowerShell to focus the window by PID
+        const { execSync } = require('child_process');
+        const fs = require('fs');
+        const path = require('path');
+        const os = require('os');
+        
+        try {
+          const ps1Script = `
+Add-Type @"
+  using System;
+  using System.Runtime.InteropServices;
+  
+  public class WindowHelper {
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+    
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+    
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+    
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+    
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+  }
+"@
+
+\\$targetPID = ${processInfo.pid}
+\\$found = \\$false
+
+[WindowHelper]::EnumWindows({
+  param([IntPtr]\\$hWnd, [IntPtr]\\$lParam)
+  \\$pid = 0
+  [WindowHelper]::GetWindowThreadProcessId(\\$hWnd, [ref]\\$pid)
+  
+  if (\\$pid -eq \\$targetPID -and [WindowHelper]::IsWindowVisible(\\$hWnd)) {
+    [WindowHelper]::ShowWindow(\\$hWnd, 5) | Out-Null  # SW_SHOW = 5
+    [WindowHelper]::SetForegroundWindow(\\$hWnd) | Out-Null
+    \\$script:found = \\$true
+    return \\$false
+  }
+  return \\$true
+}, 0)
+
+if (\\$found) {
+  exit 0
+} else {
+  exit 1
+}
+`;
+          
+          const scriptPath = path.join(os.tmpdir(), `focus-${Date.now()}.ps1`);
+          fs.writeFileSync(scriptPath, ps1Script);
+          
+          try {
+            execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, {
+              stdio: 'ignore',
+              timeout: 5000,
+            });
+            console.log(`✓ Focus window succeeded for profile ${profileId} on Windows (PID: ${processInfo.pid})`);
+            return true;
+          } catch (e: any) {
+            if (e.status === 1) {
+              console.warn(`⚠ Could not find visible Chrome window for profile ${profileId}`);
+            } else {
+              console.error(`✗ PowerShell focus error:`, e.message);
+            }
+            return false;
+          } finally {
+            try {
+              fs.unlinkSync(scriptPath);
+            } catch {}
+          }
+        } catch (error) {
+          console.error(`✗ Error focusing Chrome on Windows:`, error);
+          return false;
+        }
+      } else {
+        // Linux: use xdotool to focus by PID
+        try {
+          const { execSync } = require('child_process');
+          execSync(`xdotool search --pid ${processInfo.pid} windowactivate 2>/dev/null`, {
+            stdio: 'ignore',
+          });
+          console.log(`✓ Focus window succeeded for profile ${profileId} on Linux`);
+          return true;
+        } catch (error) {
+          console.error(`✗ Error focusing Chrome window on Linux:`, error);
+          return false;
+        }
+      }
+    } catch (error) {
+      console.error(`✗ Error focusing window for profile ${profileId}:`, error);
+      return false;
+    }
+  }
+
     try {
       if (process.platform === 'darwin') {
         // macOS: Activate Google Chrome and bring to foreground
