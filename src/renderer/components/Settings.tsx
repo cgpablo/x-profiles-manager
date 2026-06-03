@@ -71,9 +71,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
       await electronAPI.settings.update(settings);
       setOriginalSettings(settings);
       onSettingsSaved?.();
-      setMessage('');
     } catch (error) {
-      setMessage('Error saving settings');
       console.error(error);
     }
   };
@@ -428,15 +426,23 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
             setShowCreateModal(false);
             setCreatingFolderId(undefined);
           }}
-          onSettingsChange={onSettingsChange}
-          folderId={creatingFolderId}
+          onCreated={() => {
+            setShowCreateModal(false);
+            setCreatingFolderId(undefined);
+            onSettingsChange();
+          }}
+          selectedFolderId={creatingFolderId}
+          folders={folders}
         />
       )}
 
       {showCreateFolderModal && (
         <CreateFolderModal
           onClose={() => setShowCreateFolderModal(false)}
-          onSettingsChange={onSettingsChange}
+          onCreated={() => {
+            setShowCreateFolderModal(false);
+            onSettingsChange();
+          }}
         />
       )}
     </div>
