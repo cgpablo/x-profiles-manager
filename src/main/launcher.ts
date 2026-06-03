@@ -246,116 +246,80 @@ end tell`;
       console.log(`[Windows Focus] Starting focus for profile ${profileId}`);
       console.log(`[Windows Focus] dataDir: ${profile.dataDir}`);
       
-      // Escape dataDir for both file system and PowerShell
-      const dataDirForPowerShell = profile.dataDir.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      // Escape dataDir for PowerShell (double backslashes)
+      const dataDirForPS = profile.dataDir.replace(/\\/g, '\\\\');
       
-      // Simple PowerShell script without complex lambdas
-      const ps1Script = `$ErrorActionPreference = 'SilentlyContinue'
-
-# Load Windows API
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-
-public class WindowHelper {
-    [DllImport("user32.dll")]
-    public static extern bool SetForegroundWindow(IntPtr hWnd);
-    
-    [DllImport("user32.dll")]
-    public static extern bool IsWindowVisible(IntPtr hWnd);
-    
-    [DllImport("user32.dll")]
-    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-    
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-    
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-    
-    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-}
-"@
-
-$dataDir = "${dataDirForPowerShell}"
-Write-Output "[DEBUG] Looking for Chrome with dataDir: $dataDir"
-
-# Get all Chrome processes
-$chromeProcesses = @(Get-Process chrome -ErrorAction SilentlyContinue)
-Write-Output "[DEBUG] Found $($chromeProcesses.Count) Chrome processes"
-
-$found = $false
-
-foreach ($proc in $chromeProcesses) {
-    try {
-        # Get WMI process info to check command line
-        $wmiProc = Get-WmiObject Win32_Process -Filter "ProcessId = $($proc.Id)" -ErrorAction SilentlyContinue
-        $cmdLine = $wmiProc.CommandLine
-        
-        if ($cmdLine) {
-            Write-Output "[DEBUG] Process $($proc.Id): $cmdLine"
-            
-            if ($cmdLine -match [regex]::Escape($dataDir)) {
-                Write-Output "[DEBUG] MATCH! Process $($proc.Id) has our dataDir"
-                
-                # Found the right process, now enumerate windows to find its window
-                # We'll use a simpler approach: just activate this process
-                $hwnd = $proc.MainWindowHandle
-                
-                if ($hwnd -ne 0 -and [WindowHelper]::IsWindowVisible($hwnd)) {
-                    Write-Output "[DEBUG] Found window handle: $hwnd"
-                    [WindowHelper]::ShowWindow($hwnd, 5) | Out-Null
-                    [WindowHelper]::SetForegroundWindow($hwnd) | Out-Null
-                    Write-Output "[SUCCESS] Window brought to front"
-                    $found = $true
-                    break
-                } else {
-                    Write-Output "[DEBUG] Window not visible yet, trying EnumWindows..."
-                    
-                    # Fallback: enumerate all windows for this process
-                    $script:windowFound = $false
-                    $pidToFind = $proc.Id
-                    
-                    [WindowHelper]::EnumWindows([ScriptBlock]{
-                        param([IntPtr]$hWnd)
-                        
-                        $pid = 0
-                        [WindowHelper]::GetWindowThreadProcessId($hWnd, [ref]$pid)
-                        
-                        if ($pid -eq $pidToFind -and [WindowHelper]::IsWindowVisible($hWnd)) {
-                            Write-Output "[DEBUG] Found window via EnumWindows"
-                            [WindowHelper]::ShowWindow($hWnd, 5) | Out-Null
-                            [WindowHelper]::SetForegroundWindow($hWnd) | Out-Null
-                            $script:windowFound = $true
-                            return $false
-                        }
-                        
-                        return $true
-                    }.GetNewClosure(), [IntPtr]::Zero)
-                    
-                    if ($script:windowFound) {
-                        Write-Output "[SUCCESS] Window brought to front"
-                        $found = $true
-                        break
-                    }
-                }
-            }
-        }
-    } catch {
-        Write-Output "[ERROR] Failed to process $($proc.Id): $_"
-    }
-}
-
-if ($found) {
-    exit 0
-} else {
-    Write-Output "[FAIL] Could not find or focus Chrome window with this dataDir"
-    exit 1
-}
-`;
+      // Build PowerShell script using array join to avoid template literal $ issues
+      const lines = [
+        '$ErrorActionPreference = "SilentlyContinue"',
+        '',
+        'Add-Type @"',
+        'using System;',
+        'using System.Runtime.InteropServices;',
+        '',
+        'public class WindowHelper {',
+        '    [DllImport("user32.dll")]',
+        '    public static extern bool SetForegroundWindow(IntPtr hWnd);',
+        '    ',
+        '    [DllImport("user32.dll")]',
+        '    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);',
+        '}',
+        '"@',
+        '',
+        '$dataDir = "' + dataDirForPS + '"',
+        'Write-Output "[DEBUG] Looking for Chrome with dataDir: $dataDir"',
+        '',
+        '# Get all Chrome processes and their command lines via WMI',
+        '$wmiProcesses = Get-WmiObject Win32_Process -Filter "Name = \'chrome.exe\'" -ErrorAction SilentlyContinue',
+        'Write-Output "[DEBUG] Found $($wmiProcesses.Count) Chrome WMI processes"',
+        '',
+        '$found = $false',
+        '',
+        'foreach ($wmiProc in $wmiProcesses) {',
+        '    $cmdLine = $wmiProc.CommandLine',
+        '    if ($cmdLine -and $cmdLine.Contains($dataDir)) {',
+        '        Write-Output "[DEBUG] MATCH! Process $($wmiProc.ProcessId) has our dataDir"',
+        '        ',
+        '        # Get the .NET process object to access MainWindowHandle',
+        '        $proc = Get-Process -Id $wmiProc.ProcessId -ErrorAction SilentlyContinue',
+        '        if ($proc -and $proc.MainWindowHandle -ne 0) {',
+        '            Write-Output "[DEBUG] Found MainWindowHandle: $($proc.MainWindowHandle)"',
+        '            [WindowHelper]::ShowWindow($proc.MainWindowHandle, 9) | Out-Null',
+        '            [WindowHelper]::SetForegroundWindow($proc.MainWindowHandle) | Out-Null',
+        '            Write-Output "[SUCCESS] Window brought to front via MainWindowHandle"',
+        '            $found = $true',
+        '            break',
+        '        } else {',
+        '            Write-Output "[DEBUG] No MainWindowHandle for PID $($wmiProc.ProcessId)"',
+        '        }',
+        '    }',
+        '}',
+        '',
+        '# Fallback: if no match found by dataDir, try MainWindowHandle of any chrome with a window',
+        'if (-not $found) {',
+        '    Write-Output "[DEBUG] Trying fallback: find any Chrome with a visible window"',
+        '    $chromeWithWindow = Get-Process chrome -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1',
+        '    if ($chromeWithWindow) {',
+        '        Write-Output "[DEBUG] Fallback: using PID $($chromeWithWindow.Id) with handle $($chromeWithWindow.MainWindowHandle)"',
+        '        [WindowHelper]::ShowWindow($chromeWithWindow.MainWindowHandle, 9) | Out-Null',
+        '        [WindowHelper]::SetForegroundWindow($chromeWithWindow.MainWindowHandle) | Out-Null',
+        '        Write-Output "[SUCCESS] Window brought to front via fallback"',
+        '        $found = $true',
+        '    }',
+        '}',
+        '',
+        'if ($found) {',
+        '    exit 0',
+        '} else {',
+        '    Write-Output "[FAIL] Could not find or focus Chrome window"',
+        '    exit 1',
+        '}',
+      ];
+      
+      const ps1Script = lines.join('\r\n');
       
       const scriptPath = path.join(os.tmpdir(), `focus-${profileId}-${Date.now()}.ps1`);
-      fs.writeFileSync(scriptPath, ps1Script);
+      fs.writeFileSync(scriptPath, ps1Script, 'utf8');
       console.log(`[Windows Focus] Created script at: ${scriptPath}`);
       
       try {
@@ -369,7 +333,7 @@ if ($found) {
         return true;
       } catch (e: any) {
         const errorOutput = e.stdout || e.stderr || e.message;
-        console.log(`[Windows Focus] PowerShell stderr:\n${errorOutput}`);
+        console.log(`[Windows Focus] PowerShell output:\n${errorOutput}`);
         console.log(`[Windows Focus] PowerShell exit code: ${e.status}`);
         
         if (e.status === 1) {
@@ -379,7 +343,6 @@ if ($found) {
       } finally {
         try {
           fs.unlinkSync(scriptPath);
-          console.log(`[Windows Focus] Cleaned up script`);
         } catch {}
       }
     } catch (error) {
