@@ -178,16 +178,17 @@ export class ChromeLauncher {
 
     try {
       if (process.platform === 'darwin') {
-        // macOS: Simply activate Google Chrome application
-        // This brings all Chrome windows to front, which is the best we can do
+        // macOS: Activate Google Chrome and bring to foreground
         const { execSync } = require('child_process');
         try {
-          execSync(`open -a "Google Chrome"`, {
+          // Use AppleScript to activate Chrome
+          const script = `tell application "Google Chrome" to activate`;
+          execSync(`osascript -e '${script.replace(/'/g, "'\\''")}'`, {
             stdio: 'ignore',
           });
           return true;
         } catch (error) {
-          console.error('Error focusing Chrome:', error);
+          console.error('Error focusing Chrome on macOS:', error);
           return false;
         }
       } else if (process.platform === 'win32') {
@@ -365,17 +366,20 @@ if (\\$found) {
             encoding: 'utf8',
             stdio: ['pipe', 'pipe', 'ignore'],
           });
-          // If tasklist returns output, the process exists
-          if (output.trim().length > 0) {
+          // tasklist returns output even if nothing matches; check for actual process info
+          const lines = output.trim().split('\n').filter(l => l.trim().length > 0);
+          
+          if (lines.length > 0 && lines[0].includes('chrome')) {
+            console.log(`✓ Process ${profileId} (PID ${processInfo.pid}) is still alive`);
             return true;
           } else {
-            console.log(`Process ${profileId} (PID ${processInfo.pid}) no longer exists`);
+            console.log(`✗ Process ${profileId} (PID ${processInfo.pid}) no longer exists (tasklist returned: "${output.trim()}")`);
             this.runningProcesses.delete(profileId);
             return false;
           }
-        } catch (error) {
+        } catch (error: any) {
           // tasklist command failed, assume process is dead
-          console.log(`Could not verify process ${profileId}, assuming dead`);
+          console.log(`✗ Could not verify process ${profileId}, assuming dead:`, error.message);
           this.runningProcesses.delete(profileId);
           return false;
         }
