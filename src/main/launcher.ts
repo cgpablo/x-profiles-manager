@@ -242,17 +242,23 @@ if (\\$found) {
   exit 1
 }
 `;
-          
+           
           // Write script to temp file
           const scriptPath = path.join(os.tmpdir(), `focus-window-${Date.now()}.ps1`);
           fs.writeFileSync(scriptPath, script);
           
           try {
-            execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, {
-              stdio: 'ignore',
+            const output = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, {
+              encoding: 'utf8',
+              stdio: ['pipe', 'pipe', 'pipe'],
               timeout: 5000,
             });
+            console.log(`Focus window script output:`, output);
             return true;
+          } catch (execError: any) {
+            // Focus may have failed but that's not critical - Chrome is still running
+            console.log(`Focus window script exited with code ${execError.status}, ignoring...`);
+            return true; // Return true anyway since focus is non-critical
           } finally {
             // Clean up temp file
             try {
@@ -262,7 +268,7 @@ if (\\$found) {
             }
           }
         } catch (error) {
-          console.error('Error focusing Chrome window on Windows:', error);
+          console.error('Error in focus window setup:', error);
           return false;
         }
       } else {

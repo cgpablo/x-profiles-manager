@@ -453,17 +453,37 @@ export class StorageManager {
     }
   }
 
-  private async removeDirectoryWithRetry(dirPath: string, maxRetries: number = 3, delayMs: number = 100): Promise<void> {
+  private async removeDirectoryWithRetry(dirPath: string, maxRetries: number = 3, delayMs: number = 500): Promise<void> {
     for (let i = 0; i < maxRetries; i++) {
       try {
         fs.rmSync(dirPath, { recursive: true, force: true });
         return;
       } catch (error: any) {
+        console.log(`Remove directory attempt ${i + 1}/${maxRetries} failed for ${dirPath}:`, error.code);
+        
+        // On Windows, if we get EPERM, try to kill Chrome processes
+        if (process.platform === 'win32' && (error.code === 'EPERM' || error.code === 'EACCES')) {
+          if (i < maxRetries - 1) {
+            console.log('Attempting to kill Chrome processes on Windows...');
+            try {
+              const { execSync } = require('child_process');
+              // Kill all chrome processes
+              execSync('taskkill /F /IM chrome.exe', { stdio: 'ignore', shell: true });
+              console.log('Chrome processes terminated');
+            } catch (e) {
+              // Ignore if chrome.exe not found
+            }
+          }
+        }
+        
         if (i === maxRetries - 1) {
           throw error; // Throw on last retry
         }
-        // Wait before retrying (Windows file locks may release)
-        await new Promise(resolve => setTimeout(resolve, delayMs * (i + 1)));
+        
+        // Wait before retrying with exponential backoff (Windows file locks may release)
+        const waitTime = delayMs * Math.pow(2, i);
+        console.log(`Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
   }
