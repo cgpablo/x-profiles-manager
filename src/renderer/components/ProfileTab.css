@@ -14,8 +14,9 @@
   transition: all 0.3s;
   cursor: pointer;
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .profile-tab::before {
@@ -125,6 +126,7 @@
   flex-direction: column;
   justify-content: flex-start;
   gap: 0.25rem;
+  min-width: 0;
 }
 
 .profile-header-row {

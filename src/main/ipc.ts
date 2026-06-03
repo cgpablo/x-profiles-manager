@@ -276,4 +276,56 @@ export function setupIpcHandlers(): void {
     }
   });
 
+  // ====== BACKUP/RESTORE HANDLERS ======
+
+  ipcMain.handle('backup:export', async (): Promise<IpcResponse<boolean>> => {
+    try {
+      const result = await dialog.showSaveDialog({
+        title: 'Export X Profiles Backup',
+        defaultPath: `x-profiles-backup-${new Date().toISOString().split('T')[0]}.zip`,
+        filters: [
+          { name: 'Backup Files', extensions: ['zip'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      });
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, error: 'Export canceled' };
+      }
+
+      // Create backup
+      await storageManager.createBackup(result.filePath);
+      return { success: true, data: true };
+    } catch (error) {
+      console.error('Export error:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('backup:import', async (): Promise<IpcResponse<boolean>> => {
+    try {
+      const result = await dialog.showOpenDialog({
+        title: 'Import X Profiles Backup',
+        properties: ['openFile'],
+        filters: [
+          { name: 'Backup Files', extensions: ['zip'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      });
+
+      if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+        return { success: false, error: 'Import canceled' };
+      }
+
+      const backupPath = result.filePaths[0];
+
+      // Restore backup
+      await storageManager.restoreBackup(backupPath);
+      return { success: true, data: true };
+    } catch (error) {
+      console.error('Import error:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
 }

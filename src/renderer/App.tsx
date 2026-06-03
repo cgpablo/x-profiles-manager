@@ -38,6 +38,9 @@ function App() {
   const [hasPendingOrder, setHasPendingOrder] = useState(false);
   const [orderSavedMessage, setOrderSavedMessage] = useState(false);
   const [settingsSavedMessage, setSettingsSavedMessage] = useState(false);
+  const [backupMessage, setBackupMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [backupOperation, setBackupOperation] = useState<'export' | 'import' | null>(null);
   const [dashboardKey, setDashboardKey] = useState(0); // Force Dashboard remount on undo
   const settingsSaveRef = useRef<() => void>(() => {});
   const [settingsIsDirty, setSettingsIsDirty] = useState(false);
@@ -231,9 +234,19 @@ function App() {
          {orderSavedMessage && (
            <div className="nav-saved-banner">Order saved!</div>
          )}
-         {settingsSavedMessage && (
-           <div className="nav-saved-banner">Settings saved!</div>
-         )}
+           {settingsSavedMessage && (
+            <div className="nav-saved-banner">Settings saved!</div>
+          )}
+          {isBackingUp && (
+            <div className="nav-backing-up-banner">
+              {backupOperation === 'export' ? '⏳ Exporting backup, this may take a while...' : '⏳ Importing backup, this may take a while...'}
+            </div>
+          )}
+          {backupMessage && (
+            <div className={`nav-saved-banner nav-${backupMessage.type}-banner`}>
+              {backupMessage.text}
+            </div>
+          )}
          <div className="nav-actions">
             {activeProfilesCount > 0 && (
               <Tooltip text="Close all profiles" position="bottom">
@@ -347,6 +360,22 @@ function App() {
                   setSettingsSavedMessage(true);
                   setSettingsIsDirty(false);
                   setTimeout(() => setSettingsSavedMessage(false), 3000);
+                }}
+                onBackupSuccess={(message) => {
+                  setIsBackingUp(false);
+                  setBackupOperation(null);
+                  setBackupMessage({ type: 'success', text: message });
+                  setTimeout(() => setBackupMessage(null), 3000);
+                }}
+                onBackupError={(error) => {
+                  setIsBackingUp(false);
+                  setBackupOperation(null);
+                  setBackupMessage({ type: 'error', text: error });
+                  setTimeout(() => setBackupMessage(null), 3000);
+                }}
+                onBackupStart={(operation) => {
+                  setIsBackingUp(true);
+                  setBackupOperation(operation);
                 }}
                 saveRef={settingsSaveRef}
                 onDirtyChange={setSettingsIsDirty}

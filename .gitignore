@@ -15,6 +15,7 @@ dist/
 .npmrc
 venv/
 .python-version
+.tool-versions
 
 # IDEs & Editors
 .vscode/

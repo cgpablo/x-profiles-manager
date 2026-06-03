@@ -22,18 +22,22 @@ interface SettingsProps {
   onGoToFolders?: () => void;
   activeStatuses?: Map<string, boolean>;
   onSettingsSaved?: () => void;
+  onBackupStart?: (operation: 'export' | 'import') => void;
+  onBackupSuccess?: (message: string) => void;
+  onBackupError?: (error: string) => void;
   saveRef?: React.MutableRefObject<() => void>;
   onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export default function Settings({ folders, profiles, selectedFolderId, onSelectFolder, onSettingsChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToFolders, activeStatuses = new Map(), onSettingsSaved, saveRef, onDirtyChange }: SettingsProps) {
+export default function Settings({ folders, profiles, selectedFolderId, onSelectFolder, onSettingsChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToFolders, activeStatuses = new Map(), onSettingsSaved, onBackupStart, onBackupSuccess, onBackupError, saveRef, onDirtyChange }: SettingsProps) {
   const electronAPI = useElectronAPI();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [originalSettings, setOriginalSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const isDirty = settings && originalSettings
     ? JSON.stringify(settings) !== JSON.stringify(originalSettings)
@@ -84,20 +88,58 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
     try {
       const success = await electronAPI.system.clearAllData();
       if (success) {
-        setMessage('All data has been cleared. The app will now restart.');
+        onBackupSuccess?.('All data has been cleared. The app will now restart.');
         setTimeout(() => {
-          // Reload the page to reinitialize with default settings
           window.location.reload();
         }, 2000);
       } else {
-        setMessage('Failed to clear data');
+        onBackupError?.('Failed to clear data');
       }
     } catch (error) {
-      setMessage('Error clearing data');
+      onBackupError?.(error instanceof Error ? error.message : 'Error clearing data');
       console.error(error);
     } finally {
       setIsClearing(false);
       setShowClearConfirm(false);
+    }
+  };
+
+  const handleExport = async () => {
+    onBackupStart?.('export');
+    setIsExporting(true);
+    try {
+      const success = await electronAPI.backup.export();
+      if (success) {
+        onBackupSuccess?.('Backup exported successfully!');
+      } else {
+        onBackupError?.('Backup export was cancelled');
+      }
+    } catch (error) {
+      onBackupError?.(error instanceof Error ? error.message : 'Error exporting backup');
+      console.error(error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImport = async () => {
+    onBackupStart?.('import');
+    setIsImporting(true);
+    try {
+      const success = await electronAPI.backup.import();
+      if (success) {
+        onBackupSuccess?.('Backup imported successfully! The app will now restart.');
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        onBackupError?.('Backup import was cancelled');
+      }
+    } catch (error) {
+      onBackupError?.(error instanceof Error ? error.message : 'Error importing backup');
+      console.error(error);
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -240,6 +282,29 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
             </div>
           </div>
 
+          <div className="settings-section">
+            <h3>Backup & Restore</h3>
+            <p className="section-description">
+              Export all your profiles, extensions, and settings to a backup file. Import a previously exported backup to restore everything.
+            </p>
+            <div className="backup-buttons">
+              <button
+                className="btn-primary"
+                onClick={handleExport}
+                disabled={isExporting}
+              >
+                {isExporting ? 'Exporting...' : '📦 Export Backup'}
+              </button>
+              <button
+                className="btn-secondary"
+                onClick={handleImport}
+                disabled={isImporting}
+              >
+                {isImporting ? 'Importing...' : '📂 Import Backup'}
+              </button>
+            </div>
+          </div>
+
           <div className="settings-section danger-zone">
             <h3>Danger Zone</h3>
             <p className="danger-description">
@@ -253,9 +318,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
               {isClearing ? 'Clearing...' : 'Clear All Data'}
             </button>
           </div>
-        </div>
-
-        {message && <div className="message">{message}</div>}
+         </div>
 
         <div className="settings-actions" style={{ display: 'none' }}>
           <button className="btn-save-settings" onClick={handleSave} title="Save settings">

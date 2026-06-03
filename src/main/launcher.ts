@@ -174,38 +174,80 @@ export class ChromeLauncher {
    */
   focusWindow(profileId: string): boolean {
     const processInfo = this.runningProcesses.get(profileId);
-    if (!processInfo) return false;
+    if (!processInfo || !processInfo.pid) return false;
 
     try {
       if (process.platform === 'darwin') {
-        // macOS: use AppleScript to focus Chrome
-        const { execSync } = require('child_process');
-        const script = `tell application "Google Chrome" to activate`;
-        execSync(`osascript -e '${script.replace(/'/g, "'\\''")}'`, {
-          stdio: 'ignore',
-        });
-        return true;
-      } else if (process.platform === 'win32') {
-        // Windows: try to bring window to focus
+        // macOS: Simply activate Google Chrome application
+        // This brings all Chrome windows to front, which is the best we can do
         const { execSync } = require('child_process');
         try {
-          execSync(`powershell -Command "Get-Process | Where-Object {$_.Id -eq ${processInfo.pid}} | % { $_.MainWindowHandle }" 2>$null`, {
-            encoding: 'utf8',
-            timeout: 1000,
-          });
-          return true;
-        } catch {
-          return false;
-        }
-      } else {
-        // Linux: use wmctrl or xdotool if available
-        try {
-          const { execSync } = require('child_process');
-          execSync(`wmctrl -p -b add,maximized_vert,maximized_horz -i -a $(wmctrl -l | grep "chrome" | awk '{print $1}' | head -1)`, {
+          execSync(`open -a "Google Chrome"`, {
             stdio: 'ignore',
           });
           return true;
-        } catch {
+        } catch (error) {
+          console.error('Error focusing Chrome:', error);
+          return false;
+        }
+      } else if (process.platform === 'win32') {
+        // Windows: Find and focus window by PID
+        const { execSync } = require('child_process');
+        try {
+          const script = `
+            Add-Type @"
+              using System;
+              using System.Runtime.InteropServices;
+              
+              public class WindowHelper {
+                [DllImport("user32.dll")]
+                public static extern bool SetForegroundWindow(IntPtr hWnd);
+                
+                [DllImport("user32.dll")]
+                public static extern bool IsWindowVisible(IntPtr hWnd);
+                
+                [DllImport("user32.dll")]
+                private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+                
+                [DllImport("user32.dll", SetLastError = true)]
+                public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+                
+                public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+              }
+"@
+            
+            \$targetPID = ${processInfo.pid}
+            
+            [WindowHelper]::EnumWindows({
+              param(\$hWnd, \$lParam)
+              \$pid = 0
+              [WindowHelper]::GetWindowThreadProcessId(\$hWnd, [ref]\$pid)
+              
+              if (\$pid -eq \$targetPID -and [WindowHelper]::IsWindowVisible(\$hWnd)) {
+                [WindowHelper]::SetForegroundWindow(\$hWnd) | Out-Null
+                return \$false
+              }
+              return \$true
+            }, 0)
+          `;
+          execSync(`powershell -Command "${script}"`, {
+            stdio: 'ignore',
+          });
+          return true;
+        } catch (error) {
+          console.error('Error focusing Chrome window on Windows:', error);
+          return false;
+        }
+      } else {
+        // Linux: use xdotool to focus by PID
+        try {
+          const { execSync } = require('child_process');
+          execSync(`xdotool search --pid ${processInfo.pid} windowactivate 2>/dev/null`, {
+            stdio: 'ignore',
+          });
+          return true;
+        } catch (error) {
+          console.error('Error focusing Chrome window on Linux:', error);
           return false;
         }
       }

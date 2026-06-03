@@ -40,6 +40,10 @@ interface ElectronAPI {
     openFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<string[]>;
     fileToDataUrl: (filePath: string) => Promise<string>;
   };
+  backup: {
+    export: () => Promise<boolean>;
+    import: () => Promise<boolean>;
+  };
 }
 
 /**
@@ -101,12 +105,18 @@ const electronAPI: ElectronAPI = {
      getInfo: () => unwrapResponse(ipcRenderer.invoke('system:getInfo')),
      clearAllData: () => unwrapResponse(ipcRenderer.invoke('system:clearAllData')),
    },
-    dialog: {
-      openFile: (options?) =>
-        unwrapResponse(ipcRenderer.invoke('dialog:openFile', options)),
-      fileToDataUrl: (filePath: string) =>
-        unwrapResponse(ipcRenderer.invoke('dialog:fileToDataUrl', filePath)),
-    },
+     dialog: {
+       openFile: (options?) =>
+         unwrapResponse(ipcRenderer.invoke('dialog:openFile', options)),
+       fileToDataUrl: (filePath: string) =>
+         unwrapResponse(ipcRenderer.invoke('dialog:fileToDataUrl', filePath)),
+     },
+     backup: {
+       export: () =>
+         unwrapResponse(ipcRenderer.invoke('backup:export')),
+       import: () =>
+         unwrapResponse(ipcRenderer.invoke('backup:import')),
+     },
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

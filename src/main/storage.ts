@@ -321,6 +321,137 @@ export class StorageManager {
       return false;
     }
   }
+
+  // ====== BACKUP/RESTORE ======
+
+  async createBackup(outputPath: string): Promise<string> {
+    const AdmZip = require('adm-zip');
+    
+    try {
+      if (!outputPath || typeof outputPath !== 'string') {
+        throw new Error('Invalid output path for backup');
+      }
+
+      const zip = new AdmZip();
+
+      // Add metadata JSON files
+      zip.addFile('profiles.json', Buffer.from(fs.readFileSync(this.profilesFile)));
+      zip.addFile('folders.json', Buffer.from(fs.readFileSync(this.foldersFile)));
+      zip.addFile('settings.json', Buffer.from(fs.readFileSync(this.settingsFile)));
+
+      // Add Chrome profiles directories
+      const profilesDir = path.join(this.appDataDir, '..', 'profiles');
+      if (fs.existsSync(profilesDir)) {
+        const addDirToZip = (dirPath: string, zipPath: string) => {
+          try {
+            const files = fs.readdirSync(dirPath);
+            for (const file of files) {
+              const filePath = path.join(dirPath, file);
+              try {
+                const stat = fs.statSync(filePath);
+                if (stat.isDirectory()) {
+                  addDirToZip(filePath, path.join(zipPath, file));
+                } else if (stat.isFile()) {
+                  const fileData = fs.readFileSync(filePath);
+                  zip.addFile(path.join(zipPath, file), fileData);
+                }
+                // Ignore symlinks and other special files silently
+              } catch (fileError) {
+                // Silently skip files that can't be read (broken symlinks, etc)
+              }
+            }
+          } catch (dirError) {
+            // Silently skip directories that can't be read
+          }
+        };
+        addDirToZip(profilesDir, 'profiles');
+      }
+
+      // Ensure output directory exists
+      const outputDir = path.dirname(outputPath);
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+
+      // Write ZIP file
+      zip.writeZip(outputPath);
+      console.log(`Backup created at: ${outputPath}`);
+      return outputPath;
+    } catch (error) {
+      console.error('Error creating backup:', error);
+      throw error;
+    }
+  }
+
+  async restoreBackup(backupPath: string): Promise<void> {
+    const AdmZip = require('adm-zip');
+    
+    try {
+      // Verify backup file exists
+      if (!fs.existsSync(backupPath)) {
+        throw new Error('Backup file not found');
+      }
+
+      const zip = new AdmZip(backupPath);
+      const zipEntries = zip.getEntries();
+
+      // Extract metadata files
+      const profilesEntry = zipEntries.find((e: any) => e.entryName === 'profiles.json');
+      const foldersEntry = zipEntries.find((e: any) => e.entryName === 'folders.json');
+      const settingsEntry = zipEntries.find((e: any) => e.entryName === 'settings.json');
+
+      if (!profilesEntry || !foldersEntry || !settingsEntry) {
+        throw new Error('Invalid backup file: missing metadata');
+      }
+
+      // Backup current data (in case restore fails) — only if files exist
+      const currentProfilesData = fs.existsSync(this.profilesFile) ? fs.readFileSync(this.profilesFile, 'utf-8') : null;
+      const currentFoldersData = fs.existsSync(this.foldersFile) ? fs.readFileSync(this.foldersFile, 'utf-8') : null;
+      const currentSettingsData = fs.existsSync(this.settingsFile) ? fs.readFileSync(this.settingsFile, 'utf-8') : null;
+
+      try {
+        // Extract metadata files
+        fs.writeFileSync(this.profilesFile, profilesEntry.getData().toString());
+        fs.writeFileSync(this.foldersFile, foldersEntry.getData().toString());
+        fs.writeFileSync(this.settingsFile, settingsEntry.getData().toString());
+
+        // Extract Chrome profiles
+        const profilesDir = path.join(this.appDataDir, '..', 'profiles');
+        
+        // Clear existing profiles directory
+        if (fs.existsSync(profilesDir)) {
+          fs.rmSync(profilesDir, { recursive: true, force: true });
+        }
+        fs.mkdirSync(profilesDir, { recursive: true });
+
+        // Extract all profile directories
+        const profileEntries = zipEntries.filter((e: any) => e.entryName.startsWith('profiles/'));
+        for (const entry of profileEntries) {
+          if (entry.isDirectory) {
+            const targetDir = path.join(this.appDataDir, '..', entry.entryName);
+            fs.mkdirSync(targetDir, { recursive: true });
+          } else {
+            const targetPath = path.join(this.appDataDir, '..', entry.entryName);
+            const targetDir = path.dirname(targetPath);
+            fs.mkdirSync(targetDir, { recursive: true });
+            fs.writeFileSync(targetPath, entry.getData());
+          }
+        }
+
+        console.log('Backup restored successfully');
+      } catch (error) {
+        // Restore backup on error (only if we have backups)
+        console.error('Error during restore, rolling back:', error);
+        if (currentProfilesData) fs.writeFileSync(this.profilesFile, currentProfilesData);
+        if (currentFoldersData) fs.writeFileSync(this.foldersFile, currentFoldersData);
+        if (currentSettingsData) fs.writeFileSync(this.settingsFile, currentSettingsData);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error restoring backup:', error);
+      throw error;
+    }
+  }
 }
 
 export const storageManager = new StorageManager();

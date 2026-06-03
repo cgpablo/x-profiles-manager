@@ -25,6 +25,7 @@ interface ProfileTabProps {
   onDragOver?: (e: React.DragEvent) => void;
   onDrop?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
+  disableContextMenu?: boolean;
 }
 
 export default function ProfileTab({
@@ -44,6 +45,7 @@ export default function ProfileTab({
   onDragOver,
   onDrop,
   onDragEnd,
+  disableContextMenu = false,
 }: ProfileTabProps) {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
@@ -84,22 +86,39 @@ export default function ProfileTab({
     }
   }, [showContextMenu]);
 
-  // Close context menu on click outside
+  // Close context menu if mouse leaves the menu area
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        contextMenuRef.current &&
-        !contextMenuRef.current.contains(e.target as Node) &&
-        cardRef.current &&
-        !cardRef.current.contains(e.target as Node)
-      ) {
-        setShowContextMenu(false);
+    const handleMouseLeave = () => {
+      if (showContextMenu && contextMenuRef.current) {
+        contextMenuRef.current.addEventListener('mouseleave', () => {
+          setShowContextMenu(false);
+        });
       }
     };
 
     if (showContextMenu) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
+      handleMouseLeave();
+    }
+  }, [showContextMenu]);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenuRef.current && cardRef.current) {
+        const clickedOutsideMenu = !contextMenuRef.current.contains(e.target as Node);
+        const clickedOutsideCard = !cardRef.current.contains(e.target as Node);
+        
+        // Close if clicked outside both the card and menu
+        if (clickedOutsideMenu && clickedOutsideCard) {
+          setShowContextMenu(false);
+        }
+      }
+    };
+
+    if (showContextMenu) {
+      // Use capturing phase to ensure it fires
+      document.addEventListener('click', handleClickOutside, true);
+      return () => document.removeEventListener('click', handleClickOutside, true);
     }
   }, [showContextMenu]);
 
@@ -122,34 +141,37 @@ export default function ProfileTab({
           // No automatic action on card click; use buttons instead
         }}
        onContextMenu={(e) => {
-         e.preventDefault();
-         e.stopPropagation();
-         
-         // Calculate position with viewport boundaries
-         let x = e.clientX;
-         let y = e.clientY;
-         
-         // Reserve space for menu (approximate width: 180px, height: 200px)
-         const menuWidth = 180;
-         const menuHeight = 200;
-         const padding = 10;
-         
-         // Adjust x if menu would go off-screen to the right
-         if (x + menuWidth + padding > window.innerWidth) {
-           x = window.innerWidth - menuWidth - padding;
-         }
-         
-         // Open menu UPWARDS from the click point (bottom of menu at click point)
-         y = e.clientY - menuHeight;
-         
-         // If menu would go off-screen to the top, open downwards instead
-         if (y < padding) {
-           y = e.clientY;
-         }
-         
-         setContextMenuPos({ x, y });
-         setShowContextMenu(true);
-       }}
+          if (disableContextMenu) {
+            return;
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Calculate position with viewport boundaries
+          let x = e.clientX;
+          let y = e.clientY;
+          
+          // Reserve space for menu (approximate width: 180px, height: 200px)
+          const menuWidth = 180;
+          const menuHeight = 200;
+          const padding = 10;
+          
+          // Adjust x if menu would go off-screen to the right
+          if (x + menuWidth + padding > window.innerWidth) {
+            x = window.innerWidth - menuWidth - padding;
+          }
+          
+          // Open menu UPWARDS from the click point (bottom of menu at click point)
+          y = e.clientY - menuHeight;
+          
+          // If menu would go off-screen to the top, open downwards instead
+          if (y < padding) {
+            y = e.clientY;
+          }
+          
+          setContextMenuPos({ x, y });
+          setShowContextMenu(true);
+        }}
      >
       {/* Left section: Profile icon and info + buttons */}
       <div className="profile-content">
@@ -242,7 +264,7 @@ export default function ProfileTab({
       </div>
 
       {/* Context Menu */}
-      {showContextMenu && (
+      {!disableContextMenu && showContextMenu && (
         <div
           className="profile-context-menu"
           ref={contextMenuRef}

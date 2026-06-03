@@ -460,25 +460,26 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
               </div>
              ) : (
                  <div className="profiles-list">
-                     {selectedFolderProfiles.map((profile) => (
-                       <ProfileTab
-                         key={`${profile.id}-${profile.imagePath || 'no-image'}`}
-                         profile={profile}
-                         isActive={activeStatuses.get(profile.id) || false}
-                         isSelected={false}
-                         isDragging={draggedProfileId === profile.id}
-                         onLaunch={() => handleLaunchProfile(profile.id)}
-                         onClose={() => handleCloseProfile(profile.id)}
-                         onDelete={() => handleDeleteProfile(profile.id)}
-                         onEdit={() => handleEditProfile(profile)}
-                         onMoveToFolder={handleMoveProfileToFolder}
-                         folders={folders}
-                         onDragStart={(e) => handleProfileDragStart(e, profile.id)}
-                         onDragOver={handleProfileDragOver}
-                         onDrop={(e) => handleProfileDrop(e, profile.id)}
-                         onDragEnd={handleProfileDragEnd}
-                       />
-                     ))}
+                      {selectedFolderProfiles.map((profile) => (
+                        <ProfileTab
+                          key={`${profile.id}-${profile.imagePath || 'no-image'}`}
+                          profile={profile}
+                          isActive={activeStatuses.get(profile.id) || false}
+                          isSelected={false}
+                          isDragging={draggedProfileId === profile.id}
+                          onLaunch={() => handleLaunchProfile(profile.id)}
+                          onClose={() => handleCloseProfile(profile.id)}
+                          onDelete={() => handleDeleteProfile(profile.id)}
+                          onEdit={() => handleEditProfile(profile)}
+                          onMoveToFolder={handleMoveProfileToFolder}
+                          folders={folders}
+                          onDragStart={(e) => handleProfileDragStart(e, profile.id)}
+                          onDragOver={handleProfileDragOver}
+                          onDrop={(e) => handleProfileDrop(e, profile.id)}
+                          onDragEnd={handleProfileDragEnd}
+                          disableContextMenu={true}
+                        />
+                      ))}
                 </div>
              )}
           </div>
