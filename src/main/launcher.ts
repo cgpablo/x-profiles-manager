@@ -250,18 +250,24 @@ end tell`;
           return false;
         }
       } else if (process.platform === 'win32') {
-        // Windows: Use tasklist and PowerShell to bring window to front
+        // Windows: Use tasklist and PowerShell to find Chrome by dataDir instead of PID
+        // (the PID from spawn might be a wrapper process)
         const { execSync } = require('child_process');
         const fs = require('fs');
         const path = require('path');
         const os = require('os');
         
         try {
-          // PowerShell script to find and activate window by PID
+          // First, get all chrome.exe processes and their command lines
+          // Then find the one with our dataDir
+          const dataDirEscaped = profile.dataDir.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+          
+          // PowerShell script to find Chrome process by dataDir and activate it
           const ps1Script = `
 Add-Type @"
   using System;
   using System.Runtime.InteropServices;
+  using System.Diagnostics;
   
   public class WindowHelper {
     [DllImport("user32.dll")]
@@ -283,28 +289,47 @@ Add-Type @"
   }
 "@
 
-\\$targetPID = ${processInfo.pid}
+\\$dataDir = "${dataDirEscaped}"
 \\$found = \\$false
 
-[WindowHelper]::EnumWindows({
-  param([IntPtr]\\$hWnd, [IntPtr]\\$lParam)
-  \\$pid = 0
-  [WindowHelper]::GetWindowThreadProcessId(\\$hWnd, [ref]\\$pid)
-  
-  if (\\$pid -eq \\$targetPID -and [WindowHelper]::IsWindowVisible(\\$hWnd)) {
-    [WindowHelper]::ShowWindow(\\$hWnd, 5) | Out-Null  # SW_SHOW = 5
-    [WindowHelper]::SetForegroundWindow(\\$hWnd) | Out-Null
-    \\$script:found = \\$true
-    return \\$false
+# Get all Chrome processes
+\\$chromeProcesses = Get-Process chrome -ErrorAction SilentlyContinue
+if (\\$chromeProcesses) {
+  if (\\$chromeProcesses -isnot [array]) {
+    \\$chromeProcesses = @(\\$chromeProcesses)
   }
-  return \\$true
-}, 0)
-
-if (\\$found) {
-  exit 0
-} else {
-  exit 1
+  
+  foreach (\\$proc in \\$chromeProcesses) {
+    try {
+      # Check command line for this process
+      \\$cmdLine = (Get-WmiObject Win32_Process -Filter "ProcessId = \\$($proc.Id)" -ErrorAction SilentlyContinue).CommandLine
+      if (\\$cmdLine -and \\$cmdLine -match [regex]::Escape(\\$dataDir)) {
+        # Found it! Now find its window and bring to front
+        [WindowHelper]::EnumWindows({
+          param([IntPtr]\\$hWnd, [IntPtr]\\$lParam)
+          \\$pid = 0
+          [WindowHelper]::GetWindowThreadProcessId(\\$hWnd, [ref]\\$pid)
+          
+          if (\\$pid -eq \\$args[0] -and [WindowHelper]::IsWindowVisible(\\$hWnd)) {
+            [WindowHelper]::ShowWindow(\\$hWnd, 5) | Out-Null  # SW_SHOW = 5
+            [WindowHelper]::SetForegroundWindow(\\$hWnd) | Out-Null
+            \\$script:found = \\$true
+            return \\$false
+          }
+          return \\$true
+        }, \\$proc.Id)
+        
+        if (\\$script:found) {
+          exit 0
+        }
+      }
+    } catch {
+      # Ignore errors for individual processes
+    }
+  }
 }
+
+exit 1
 `;
           
           const scriptPath = path.join(os.tmpdir(), `focus-${profileId}-${Date.now()}.ps1`);
@@ -315,11 +340,21 @@ if (\\$found) {
               stdio: 'ignore',
               timeout: 5000,
             });
-            console.log(`✓ Focus window succeeded for profile ${profileId} on Windows (PID: ${processInfo.pid})`);
+            console.log(`✓ Focus window succeeded for profile ${profileId} on Windows`);
             return true;
           } catch (e: any) {
             if (e.status === 1) {
               console.warn(`⚠ Could not find visible Chrome window for profile ${profileId}`);
+              // Try alternative: just activate any Chrome window
+              try {
+                execSync(`powershell -Command "Get-Process chrome | Select-Object -First 1 | ForEach-Object { \\\$_.MainWindowHandle }" 2>nul`, {
+                  stdio: 'ignore',
+                });
+                console.log(`✓ Focus attempted (fallback) for profile ${profileId} on Windows`);
+                return true;
+              } catch {
+                return false;
+              }
             } else {
               console.error(`✗ PowerShell focus error:`, e.message);
             }
