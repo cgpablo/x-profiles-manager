@@ -230,7 +230,7 @@ Add-Type @"
 \\$found = \\$false
 
 [WindowHelper]::EnumWindows({
-  param(\\$hWnd, \\$lParam)
+  param([IntPtr]\\$hWnd, [IntPtr]\\$lParam)
   \\$pid = 0
   [WindowHelper]::GetWindowThreadProcessId(\\$hWnd, [ref]\\$pid)
   
