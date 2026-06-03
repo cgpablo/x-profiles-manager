@@ -32,6 +32,11 @@ export interface AppSettings {
   profilesDir: string;
   windowLayout?: 'floating' | 'tiled';
   autoLaunchOnStartup?: boolean;
+  platformPreferences?: {
+    enableFocusWindows?: boolean; // Enable/disable focus window feature
+    focusMethod?: 'auto' | 'datadir' | 'pid'; // Windows: which method to use
+    debugMode?: boolean; // Enable extra logging
+  };
 }
 
 export interface ProcessInfo {

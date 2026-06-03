@@ -335,6 +335,104 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
               <strong>Storage Location</strong>
               <span className="mono">{settings.profilesDir}</span>
             </div>
+            <div className="info-item">
+              <strong>Platform</strong>
+              <span className="mono">{window.electronAPI.platform}</span>
+            </div>
+          </div>
+
+          <div className="settings-section">
+            <h3>Platform Preferences</h3>
+            
+            <div className="setting-item">
+              <label>Enable Focus Windows</label>
+              <div className="checkbox-group">
+                <input
+                  type="checkbox"
+                  id="enableFocus"
+                  checked={settings.platformPreferences?.enableFocusWindows !== false}
+                  onChange={(e) => {
+                    const prefs = settings.platformPreferences || {};
+                    const newSettings = {
+                      ...settings,
+                      platformPreferences: {
+                        ...prefs,
+                        enableFocusWindows: e.target.checked,
+                      },
+                    };
+                    setSettings(newSettings);
+                  }}
+                />
+                <label htmlFor="enableFocus" style={{ marginLeft: '8px' }}>
+                  Allow clicking "Focus" to bring Chrome window to front
+                </label>
+              </div>
+              <small>When disabled, focus button will be hidden</small>
+            </div>
+
+            {window.electronAPI.platform === 'win32' && (
+              <div className="setting-item">
+                <label>Windows Focus Method</label>
+                <select
+                  value={settings.platformPreferences?.focusMethod || 'auto'}
+                  onChange={(e) => {
+                    const prefs = settings.platformPreferences || {};
+                    const newSettings = {
+                      ...settings,
+                      platformPreferences: {
+                        ...prefs,
+                        focusMethod: e.target.value as 'auto' | 'datadir' | 'pid',
+                      },
+                    };
+                    setSettings(newSettings);
+                  }}
+                  className="input-field"
+                >
+                  <option value="auto">Auto (recommended)</option>
+                  <option value="datadir">Search by Profile Directory</option>
+                  <option value="pid">Search by Process ID</option>
+                </select>
+                <small>How to identify and focus the Chrome window</small>
+              </div>
+            )}
+
+            <div className="setting-item">
+              <label>Debug Mode</label>
+              <div className="checkbox-group">
+                <input
+                  type="checkbox"
+                  id="debugMode"
+                  checked={settings.platformPreferences?.debugMode || false}
+                  onChange={(e) => {
+                    const prefs = settings.platformPreferences || {};
+                    const newSettings = {
+                      ...settings,
+                      platformPreferences: {
+                        ...prefs,
+                        debugMode: e.target.checked,
+                      },
+                    };
+                    setSettings(newSettings);
+                  }}
+                />
+                <label htmlFor="debugMode" style={{ marginLeft: '8px' }}>
+                  Enable verbose logging in console
+                </label>
+              </div>
+              <small>Useful for troubleshooting focus and process issues</small>
+            </div>
+          </div>
+
+          <div className="settings-section info">
+            <h3>About</h3>
+            <div className="info-item">
+              <strong>App Version</strong>
+              <span>0.1.0</span>
+            </div>
+            <div className="info-item">
+              <strong>Storage Location</strong>
+              <span className="mono">{settings.profilesDir}</span>
+            </div>
           </div>
 
           <div className="settings-section">
