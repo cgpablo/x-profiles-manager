@@ -10,6 +10,9 @@ import { chromeLauncher } from './launcher';
 import { ChromeProfile, AppSettings, IpcResponse, ProfileFolder } from '../types';
 
 export function setupIpcHandlers(): void {
+  // Start process monitoring to detect when Chrome windows close
+  chromeLauncher.startProcessMonitoring();
+
   // ====== PROFILE HANDLERS ======
 
   ipcMain.handle('profiles:getAll', async (): Promise<IpcResponse<ChromeProfile[]>> => {

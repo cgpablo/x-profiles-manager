@@ -371,7 +371,7 @@ if (\\$found) {
         // Use pgrep to check if Chrome is running with this profile's data dir.
         const profile = storageManager.getProfile(profileId);
         if (!profile) {
-          this.runningProcesses.delete(profileId);
+          this.cleanupProfile(profileId, processInfo);
           return false;
         }
         const { execSync } = require('child_process');
@@ -382,7 +382,7 @@ if (\\$found) {
           });
           return true;
         } catch {
-          this.runningProcesses.delete(profileId);
+          this.cleanupProfile(profileId, processInfo);
           return false;
         }
       } else if (process.platform === 'win32') {
@@ -398,29 +398,44 @@ if (\\$found) {
           const lines = output.trim().split('\n').filter((l: string) => l.trim().length > 0);
           
           if (lines.length > 0 && lines[0].includes('chrome')) {
-            console.log(`✓ Process ${profileId} (PID ${processInfo.pid}) is still alive`);
             return true;
           } else {
-            console.log(`✗ Process ${profileId} (PID ${processInfo.pid}) no longer exists (tasklist returned: "${output.trim()}")`);
-            this.runningProcesses.delete(profileId);
+            console.log(`✗ Process ${profileId} (PID ${processInfo.pid}) no longer exists`);
+            this.cleanupProfile(profileId, processInfo);
             return false;
           }
         } catch (error: any) {
           // tasklist command failed, assume process is dead
-          console.log(`✗ Could not verify process ${profileId}, assuming dead:`, error.message);
-          this.runningProcesses.delete(profileId);
+          console.log(`✗ Could not verify process ${profileId}, assuming dead`);
+          this.cleanupProfile(profileId, processInfo);
           return false;
         }
       } else {
-        // macOS & Linux: use kill with signal 0 to check without killing
-        process.kill(processInfo.pid, 0);
-        return true;
+        // Linux: use kill with signal 0 to check without killing
+        try {
+          process.kill(processInfo.pid, 0);
+          return true;
+        } catch {
+          this.cleanupProfile(profileId, processInfo);
+          return false;
+        }
       }
     } catch (error) {
       // Process is dead
       console.log(`Process ${profileId} is no longer alive, removing from tracking`);
-      this.runningProcesses.delete(profileId);
+      this.cleanupProfile(profileId, processInfo);
       return false;
+    }
+  }
+
+  /**
+   * Limpia un perfil de ambos mapas cuando se detecta que está muerto
+   */
+  private cleanupProfile(profileId: string, processInfo: ProcessInfo): void {
+    this.runningProcesses.delete(profileId);
+    if (processInfo.pid > 0) {
+      this.browserWindowMap.delete(processInfo.pid);
+      console.log(`✓ Cleaned up profile ${profileId} (PID ${processInfo.pid}) from tracking`);
     }
   }
 
@@ -432,21 +447,25 @@ if (\\$found) {
   }
 
   /**
-   * Limpia los procesos que ya no existen
+   * Limpia los procesos que ya no existen - se ejecuta periodicamente
    */
   private cleanupDeadProcesses(): void {
-    for (const [profileId, processInfo] of this.runningProcesses.entries()) {
-      try {
-        if (process.platform === 'win32') {
-          // On Windows, we can't easily check, so we keep it in the map
-          // This is a limitation - in production, use process monitoring
-        } else {
-          process.kill(processInfo.pid, 0);
-        }
-      } catch {
-        this.runningProcesses.delete(profileId);
+    for (const [profileId, processInfo] of Array.from(this.runningProcesses.entries())) {
+      // Use getProfileStatus which handles cleanup properly
+      if (!this.getProfileStatus(profileId)) {
+        console.log(`Detected dead process during cleanup: ${profileId}`);
       }
     }
+  }
+
+  /**
+   * Inicia un interval para limpiar procesos muertos cada 2 segundos
+   */
+  startProcessMonitoring(): void {
+    setInterval(() => {
+      this.cleanupDeadProcesses();
+    }, 2000);
+  }
   }
 }
 
