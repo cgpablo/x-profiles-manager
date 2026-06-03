@@ -1,0 +1,453 @@
+/**
+ * SidebarFolders CSS
+ */
+
+.sidebar-folders {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar-section-header-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  text-align: left;
+}
+
+.sidebar-section-header-btn:hover {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.sidebar-section-header-btn:active {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.sidebar-section-header-btn h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.sidebar-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.5rem 0.75rem 0.75rem;
+  flex-shrink: 0;
+}
+
+.sidebar-section-header h3 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.folder-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.btn-add-folder {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-section-header .btn-add-folder {
+  margin-right: 3px;
+}
+
+.btn-add-folder:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--primary);
+}
+
+/* Align buttons vertically */
+.folder-item .tooltip-wrapper {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.folder-item-wrapper {
+  position: relative;
+  width: 100%;
+  padding: 0 0.5rem;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.75rem 0.75rem;
+  margin: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  border-left: 3px solid transparent;
+  user-select: none;
+}
+
+.folder-item:hover {
+  background: var(--bg-secondary);
+}
+
+.folder-item.active {
+  background: rgba(59, 130, 246, 0.15);
+  border-left-color: var(--primary);
+}
+
+.folder-toggle {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.folder-toggle-spacer {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.folder-toggle:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.folder-toggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.folder-toggle.expanded {
+  transform: rotate(90deg);
+}
+
+.folder-name-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.folder-name-btn:hover {
+  color: var(--text-primary);
+}
+
+.folder-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.folder-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-count {
+  font-size: 0.75rem;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  padding: 2px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.folder-item.active .profile-count {
+  background: var(--primary);
+  color: white;
+}
+
+.active-badge {
+  font-size: 0.7rem;
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  padding: 2px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  font-weight: 500;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.folders-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.75rem 1rem 0.5rem 1rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.folders-divider::before,
+.folders-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.folder-expanded-indicator {
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), transparent);
+  margin: -2px 1rem 0 1rem;
+}
+
+.folder-profiles-list {
+  padding-left: 2.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.profile-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  user-select: none;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.profile-item.active {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--text-primary);
+}
+
+.profile-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--success);
+  border-radius: 4px 0 0 4px;
+}
+
+.profile-item:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.profile-item.nested {
+  opacity: 0.8;
+}
+
+.profile-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.profile-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.context-menu {
+  position: fixed;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  z-index: 5000;
+  min-width: 120px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.context-menu button {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0.5rem 1rem;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.context-menu button:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.context-menu button:last-child {
+  color: var(--text-secondary);
+}
+
+.context-menu button:last-child:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.context-menu-item.context-menu-delete {
+  color: var(--text-secondary);
+}
+
+.context-menu-item.context-menu-delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--text-primary);
+}
+
+.context-menu-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.context-menu-item:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.profile-item.dragging {
+  opacity: 0.5;
+}
+
+.profile-context-menu {
+  position: fixed;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  z-index: 1000;
+  min-width: 140px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.context-menu-section {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--bg-tertiary);
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.25rem 0;
+}
+
+.sidebar-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.sidebar-empty p {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.btn-primary-small {
+  padding: 0.5rem 1rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary-small:hover {
+  background: var(--primary-dark);
+}
+
+/* Scrollbar */
+.sidebar-folders::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-folders::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-folders::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.sidebar-folders::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}

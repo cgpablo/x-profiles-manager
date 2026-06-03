@@ -1,0 +1,62 @@
+.create-folder-modal {
+  width: 90%;
+  max-width: 500px;
+}
+
+.folder-preview {
+  margin-top: 24px;
+  padding: 16px;
+  background: #f3f4f6;
+  border-radius: 8px;
+}
+
+.preview-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.folder-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 6px;
+  color: white;
+}
+
+.folder-icon {
+  font-size: 1.5rem;
+}
+
+.folder-name {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.icon-palette {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.icon-button {
+  padding: 8px;
+  border: 2px solid transparent;
+  background: #f3f4f6;
+  border-radius: 6px;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.icon-button:hover {
+  background: #e5e7eb;
+}
+
+.icon-button.active {
+  border-color: #3b82f6;
+  background: #dbeafe;
+}

@@ -1,0 +1,57 @@
+/**
+ * EmptyProfileCard CSS
+ */
+
+.empty-profile-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: var(--bg-secondary);
+  border: 2px dashed var(--border);
+  border-radius: 0.5rem;
+  padding: 2rem 1rem;
+  min-height: 150px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.empty-profile-card:hover {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.05);
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+.empty-profile-card:active {
+  transform: translateY(0);
+}
+
+.empty-card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.empty-card-icon {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1;
+}
+
+.empty-card-text {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+  text-align: center;
+}

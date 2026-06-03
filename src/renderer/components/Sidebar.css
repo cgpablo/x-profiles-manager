@@ -1,0 +1,64 @@
+/**
+ * Sidebar CSS
+ */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 280px;
+  min-width: 280px;
+  background: var(--bg-primary);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar > div {
+  padding: 0;
+}
+
+.sidebar > div:nth-child(1) {
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar > div:last-child {
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+/* Common styles for all sections */
+.sidebar-dashboard,
+.sidebar-folders,
+.sidebar-settings {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  flex-shrink: 0;
+}
+
+.sidebar-section-header h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.sidebar-section-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.5rem 0;
+}
+
+.sidebar-section-footer {
+  padding: 1rem;
+}

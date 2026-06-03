@@ -1,0 +1,191 @@
+/**
+ * ProfilesPanel CSS
+ */
+
+.profiles-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-dark);
+}
+
+.panel-header {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   padding: 1rem;
+   border-bottom: 1px solid var(--border);
+   flex-shrink: 0;
+   background: var(--bg-secondary);
+   height: auto;
+   min-height: 0;
+ }
+
+.panel-header-content {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   gap: 12px;
+   width: 100%;
+ }
+
+.panel-header-actions {
+   display: flex;
+   align-items: center;
+   gap: 6px;
+   width: 32px;
+   height: 32px;
+   flex-shrink: 0;
+ }
+
+.panel-header-folder-name {
+   font-size: 0.95rem;
+   font-weight: 600;
+   color: var(--text-primary);
+   flex: 1;
+   margin: 0;
+   line-height: 1.2;
+ }
+
+.panel-header-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border, #2d3250);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.panel-header-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--primary);
+}
+
+.panel-title-section {
+  display: none;
+}
+
+.panel-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.profile-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.btn-create-profile {
+  white-space: nowrap;
+}
+
+.panels-content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.profiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  padding: 2rem;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  text-align: center;
+  gap: 2rem;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.empty-state p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.folder-section {
+  padding: 2rem 2rem 0 2rem;
+  position: relative;
+}
+
+.folder-section .profiles-grid {
+  overflow: visible;
+}
+
+.folder-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: white;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+}
+
+.folder-icon {
+  font-size: 1.25rem;
+}
+
+.folder-name {
+  flex: 1;
+}
+
+.profile-count {
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+/* Scrollbar */
+.panels-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.panels-content::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+}
+
+.panels-content::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.panels-content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}

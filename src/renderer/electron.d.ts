@@ -1,0 +1,78 @@
+/**
+ * Global type definitions for Electron API and Electron-specific DOM elements.
+ */
+
+import { ChromeProfile, AppSettings, ProcessInfo, ProfileFolder } from '../types';
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ElectronAPI (exposed via contextBridge in preload.ts)
+// ──────────────────────────────────────────────────────────────────────────────
+
+interface ElectronAPI {
+  profiles: {
+    getAll: () => Promise<ChromeProfile[]>;
+    create: (name: string, color?: string, icon?: string, xAccount?: string, folderId?: string) => Promise<ChromeProfile>;
+    update: (profileId: string, updates: Partial<ChromeProfile>) => Promise<ChromeProfile | null>;
+    delete: (profileId: string) => Promise<boolean>;
+    saveOrder: (profileIds: string[]) => Promise<boolean>;
+  };
+  launcher: {
+    launch: (profileId: string, url?: string) => Promise<ProcessInfo | null>;
+    close: (profileId: string) => Promise<boolean>;
+    closeAll: () => Promise<number>;
+    focusWindow: (profileId: string) => Promise<boolean>;
+    getActive: () => Promise<string[]>;
+    isActive: (profileId: string) => Promise<boolean>;
+  };
+  folders: {
+    getAll: () => Promise<ProfileFolder[]>;
+    create: (name: string, color: string, icon: string) => Promise<ProfileFolder>;
+    update: (folderId: string, updates: Partial<ProfileFolder>) => Promise<ProfileFolder>;
+    delete: (folderId: string) => Promise<boolean>;
+    saveOrder: (folderIds: string[]) => Promise<boolean>;
+  };
+  settings: {
+    get: () => Promise<AppSettings>;
+    update: (updates: Partial<AppSettings>) => Promise<AppSettings>;
+  };
+  system: {
+    getInfo: () => Promise<any>;
+    clearAllData: () => Promise<boolean>;
+  };
+  dialog: {
+    openFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<string[]>;
+    fileToDataUrl: (filePath: string) => Promise<string>;
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// <webview> JSX element (Electron-specific)
+// ──────────────────────────────────────────────────────────────────────────────
+
+interface WebviewHTMLAttributes extends React.HTMLAttributes<HTMLElement> {
+  src?: string;
+  partition?: string;
+  allowpopups?: string;
+  preload?: string;
+  httpreferrer?: string;
+  useragent?: string;
+  disablewebsecurity?: string;
+  nodeintegration?: string;
+  nodeintegrationinsubframes?: string;
+  plugins?: string;
+  webpreferences?: string;
+  disableblinkfeatures?: string;
+  enableblinkfeatures?: string;
+}
+
+declare global {
+  interface Window {
+    electronAPI: ElectronAPI;
+  }
+
+  namespace JSX {
+    interface IntrinsicElements {
+      webview: WebviewHTMLAttributes;
+    }
+  }
+}

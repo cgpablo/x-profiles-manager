@@ -1,0 +1,41 @@
+/**
+ * SidebarSettings CSS
+ */
+
+.sidebar-settings {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.sidebar-section-header-btn {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   padding: 1rem;
+   border-bottom: 1px solid var(--border);
+   flex-shrink: 0;
+   background: transparent;
+   border: none;
+   cursor: pointer;
+   transition: all 0.2s;
+   width: 100%;
+   text-align: left;
+   height: 64px;
+ }
+
+.sidebar-section-header-btn:hover {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.sidebar-section-header-btn:active {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.sidebar-section-header-btn h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+

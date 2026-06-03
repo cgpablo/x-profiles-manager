@@ -1,0 +1,238 @@
+# X Profiles Manager
+
+**Manage multiple isolated Chrome profiles for simultaneous X (Twitter) accounts.**
+
+Run multiple X accounts at the same time without logging out or mixing sessions. Each profile is completely isolated with its own Chrome instance, cookies, and cache.
+
+---
+
+## 🎯 What It Does
+
+**Problem:** You have multiple X accounts and want to use them simultaneously.
+
+**Solution:** X Profiles Manager creates isolated Chrome profiles, allowing you to:
+- Open 5+ Chrome windows simultaneously
+- Each with a different X account logged in
+- No logout, no session mixing
+- Centralized control panel to manage them all
+
+**How:** Uses native Chrome `--user-data-dir` flag for true isolation (not extensions).
+
+---
+
+## ⚡ Quick Start
+
+### Installation & Development
+
+```bash
+# Clone repository
+git clone <repo-url>
+cd x-profiles-manager
+
+# Install dependencies
+npm install
+
+# Start development environment
+npm run dev
+```
+
+The app will open in development mode. You can now:
+1. Create profiles with custom names and colors
+2. Assign profiles to folders for organization
+3. Launch Chrome with isolated sessions
+4. Manage all profiles from the dashboard
+
+### Packaged Releases
+
+Download pre-built versions:
+- **Windows:** `X Profiles Manager 0.1.0.exe` - Portable executable (no installation needed)
+- **macOS:** `X Profiles Manager-0.1.0-arm64-mac.zip` - Universal App for M1/M2/M3
+
+---
+
+## 📋 System Requirements
+
+### All Platforms
+- **Node.js 16+** (LTS version recommended)
+- **npm 8+** (included with Node.js)
+- **Chrome or Chromium** - https://www.google.com/chrome/
+- **Git** (for cloning) - https://git-scm.com
+
+### Platform-Specific
+
+#### macOS
+- **10.15+** (Catalina or newer)
+- **Intel or Apple Silicon** (both supported)
+- Chrome at: `/Applications/Google Chrome.app`
+
+#### Windows
+- **Windows 10 or newer** (including Windows 11)
+- Chrome at: `C:\Program Files\Google\Chrome\Application\chrome.exe` or `Program Files (x86)`
+
+#### Linux
+- **Ubuntu 18.04+**, **Fedora**, or equivalent
+- Chrome at: `/usr/bin/google-chrome`
+
+---
+
+## 🚀 Features
+
+### Dashboard
+- **Visual Profile Grid:** See all profiles at a glance with custom colors and avatars
+- **Drag & Drop Reordering:** Organize profiles by dragging them into preferred order
+- **Folder Organization:** Group related profiles into customizable folders
+- **Undo & Save:** Undo accidental reordering or save changes permanently
+- **One-Click Launch:** Launch any profile with a single click
+
+### Profile Management
+- **Create & Edit:** Add new profiles with custom names and colors
+- **Profile Pictures:** Assign custom images to profiles for quick identification
+- **Move to Folder:** Organize profiles with right-click context menu
+- **Bulk Operations:** Close all profiles at once with a single button
+
+### Sidebar Navigation
+- **Folder View:** Browse all folders and profiles in hierarchical tree
+- **Profile Status:** See which profiles are currently active/running
+- **Quick Actions:** Create new profiles or folders from the sidebar
+- **Expandable Folders:** Collapse/expand folders to manage space
+
+### Settings
+- **Profile Configuration:** Edit profile names, colors, and properties
+- **Folder Management:** Rename or delete folders
+- **Visual Customization:** Dark theme interface optimized for productivity
+
+---
+
+## 🛠️ Development
+
+### Available Scripts
+
+```bash
+npm run dev              # Start development server with hot reload
+npm run build           # Build React and Electron for production
+npm run build:react     # Build React app only
+npm run build:electron  # Build Electron main process only
+npm run electron        # Run Electron directly
+npm run dist            # Package for distribution (macOS + Windows)
+npm run dist -- --mac   # Package for macOS only
+npm run dist -- --win   # Package for Windows only
+```
+
+### Project Structure
+
+```
+x-profiles-manager/
+├── src/
+│   ├── main/                 # Electron main process
+│   │   ├── index.ts         # Main entry point
+│   │   ├── launcher.ts      # Chrome launching logic
+│   │   └── db.ts            # SQLite database
+│   ├── renderer/            # React UI
+│   │   ├── App.tsx          # Main app component
+│   │   ├── components/      # UI components
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── Sidebar.tsx
+│   │   │   ├── Settings.tsx
+│   │   │   └── ...
+│   │   └── hooks/
+│   │       └── useElectronAPI.ts
+│   └── types/               # TypeScript definitions
+├── dist/                    # Build output
+├── package.json
+└── tsconfig.json
+```
+
+### Key Technologies
+
+- **Electron 27:** Desktop app framework
+- **React 18:** UI framework
+- **TypeScript:** Type-safe development
+- **Vite:** Fast build tool
+- **SQLite:** Local data persistence
+- **electron-builder:** Packaging tool
+
+---
+
+## 📝 Usage
+
+### Creating a Profile
+
+1. Click **"New Profile"** in Dashboard or Sidebar
+2. Enter profile name (required)
+3. Choose a color for quick identification (optional)
+4. Select a folder to organize it (optional)
+5. Click **"Create"** to save
+
+### Organizing Profiles
+
+- **Drag & Drop:** In Dashboard, drag profiles to reorder or move between folders
+- **Folders:** Create folders from Settings to group related profiles
+- **Right-Click:** Access context menu for move/edit/delete options
+
+### Launching Chrome
+
+1. Click profile card or **"Launch"** button
+2. Chrome opens with the isolated profile
+3. Log in to your X account as usual
+4. Each profile maintains separate sessions
+
+### Bulk Operations
+
+- **Close All:** Click ✕ button in header to close all active profiles
+- **Undo Changes:** Click ↶ button to undo reordering (auto-discards on view change)
+- **Save Order:** Click 💾 button to save profile organization
+
+---
+
+## 🐛 Known Limitations
+
+- **Chrome-only:** Works with Chrome/Chromium, not Firefox or Edge
+- **Mac Silicon:** Some features require M1/M2/M3 compatibility
+- **Profile Limit:** Tested with 10+ profiles; performance may degrade with 20+
+- **Data Directory:** Each profile uses ~100-500MB of disk space
+
+---
+
+## 📚 Additional Documentation
+
+- **[DEVELOPMENT_SUMMARY.md](DEVELOPMENT_SUMMARY.md)** - Detailed development notes
+- **[LIMITATIONS.md](LIMITATIONS.md)** - Technical limitations and analysis
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - In-depth setup guide
+
+---
+
+## 📄 License
+
+MIT License - See LICENSE file for details
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Feel free to submit issues or pull requests.
+
+---
+
+## 🎨 UI/UX Features
+
+### Dashboard Layout
+- Two-column layout: Folders on left, Profiles on right
+- Profile cards with custom colors and avatars
+- Smooth drag & drop interactions
+- Real-time status indicators
+
+### Sidebar Navigation
+- Auto-expanding folders when profiles are added
+- Manual collapse/expand control
+- Visual indicators for active profiles
+- Context menus for quick actions
+
+### Settings Interface
+- Clean form-based profile editing
+- Dark theme optimized for extended use
+- Responsive design for various screen sizes
+- Keyboard navigation support
+
+---
+
+**For questions or issues, please check LIMITATIONS.md or create an issue in the repository.**
