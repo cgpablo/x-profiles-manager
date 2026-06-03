@@ -191,49 +191,76 @@ export class ChromeLauncher {
           return false;
         }
       } else if (process.platform === 'win32') {
-        // Windows: Find and focus window by PID
+        // Windows: Find and focus window by PID using a temporary PowerShell script file
         const { execSync } = require('child_process');
+        const fs = require('fs');
+        const path = require('path');
+        const os = require('os');
+        
         try {
           const script = `
-            Add-Type @"
-              using System;
-              using System.Runtime.InteropServices;
-              
-              public class WindowHelper {
-                [DllImport("user32.dll")]
-                public static extern bool SetForegroundWindow(IntPtr hWnd);
-                
-                [DllImport("user32.dll")]
-                public static extern bool IsWindowVisible(IntPtr hWnd);
-                
-                [DllImport("user32.dll")]
-                private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-                
-                [DllImport("user32.dll", SetLastError = true)]
-                public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-                
-                public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-              }
+Add-Type @"
+  using System;
+  using System.Runtime.InteropServices;
+  
+  public class WindowHelper {
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+    
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+    
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+    
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+    
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+  }
 "@
-            
-            \$targetPID = ${processInfo.pid}
-            
-            [WindowHelper]::EnumWindows({
-              param(\$hWnd, \$lParam)
-              \$pid = 0
-              [WindowHelper]::GetWindowThreadProcessId(\$hWnd, [ref]\$pid)
-              
-              if (\$pid -eq \$targetPID -and [WindowHelper]::IsWindowVisible(\$hWnd)) {
-                [WindowHelper]::SetForegroundWindow(\$hWnd) | Out-Null
-                return \$false
-              }
-              return \$true
-            }, 0)
-          `;
-          execSync(`powershell -Command "${script}"`, {
-            stdio: 'ignore',
-          });
-          return true;
+
+\\$targetPID = ${processInfo.pid}
+\\$found = \\$false
+
+[WindowHelper]::EnumWindows({
+  param(\\$hWnd, \\$lParam)
+  \\$pid = 0
+  [WindowHelper]::GetWindowThreadProcessId(\\$hWnd, [ref]\\$pid)
+  
+  if (\\$pid -eq \\$targetPID -and [WindowHelper]::IsWindowVisible(\\$hWnd)) {
+    [WindowHelper]::SetForegroundWindow(\\$hWnd) | Out-Null
+    \\$script:found = \\$true
+    return \\$false
+  }
+  return \\$true
+}, 0)
+
+if (\\$found) {
+  exit 0
+} else {
+  exit 1
+}
+`;
+          
+          // Write script to temp file
+          const scriptPath = path.join(os.tmpdir(), `focus-window-${Date.now()}.ps1`);
+          fs.writeFileSync(scriptPath, script);
+          
+          try {
+            execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, {
+              stdio: 'ignore',
+              timeout: 5000,
+            });
+            return true;
+          } finally {
+            // Clean up temp file
+            try {
+              fs.unlinkSync(scriptPath);
+            } catch (e) {
+              // Ignore cleanup errors
+            }
+          }
         } catch (error) {
           console.error('Error focusing Chrome window on Windows:', error);
           return false;
