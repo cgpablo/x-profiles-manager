@@ -13,7 +13,7 @@
     "electron-dev": "wait-on --timeout 60000 --interval 500 http://localhost:3000 && electron .",
     "build": "npm run build:react && npm run build:electron",
     "build:react": "vite build",
-    "build:electron": "tsc --project tsconfig.electron.json && cp src/main/webview-preload.js dist/main/webview-preload.js",
+    "build:electron": "tsc --project tsconfig.electron.json && node copy-preload.js",
     "type-check": "tsc --noEmit",
     "dist": "npm run build && electron-builder"
   },
