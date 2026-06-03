@@ -24,7 +24,11 @@ export default function CreateFolderModal({ onClose, onCreated }: CreateFolderMo
 
   const modalRef = useModalClose({ onClose });
 
-  const handleCreate = async () => {
+  const handleCreate = async (e?: React.FormEvent | React.KeyboardEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    
     if (!name.trim()) {
       setError('Folder name is required');
       return;
@@ -51,40 +55,44 @@ export default function CreateFolderModal({ onClose, onCreated }: CreateFolderMo
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
 
-        <div className="modal-body">
-          {error && <div className="error-message">{error}</div>}
+        <form onSubmit={handleCreate}>
+          <div className="modal-body">
+            {error && <div className="error-message">{error}</div>}
 
-          <div className="form-group">
-            <label htmlFor="folder-name">Folder Name</label>
-            <input
-              id="folder-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Work, Personal, Projects"
-              className="form-input"
-              autoFocus
-            />
+            <div className="form-group">
+              <label htmlFor="folder-name">Folder Name</label>
+              <input
+                id="folder-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !loading && handleCreate(e)}
+                placeholder="e.g., Work, Personal, Projects"
+                className="form-input"
+                autoFocus
+                disabled={loading}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Color</label>
+              <ColorPicker value={selectedColor} onChange={setSelectedColor} disabled={loading} />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>Color</label>
-            <ColorPicker value={selectedColor} onChange={setSelectedColor} disabled={loading} />
+          <div className="modal-footer">
+            <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={loading || !name.trim()}
+            >
+              {loading ? 'Creating...' : 'Create Folder'}
+            </button>
           </div>
-        </div>
-
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose} disabled={loading}>
-            Cancel
-          </button>
-          <button
-            className="btn-primary"
-            onClick={handleCreate}
-            disabled={loading || !name.trim()}
-          >
-            {loading ? 'Creating...' : 'Create Folder'}
-          </button>
-        </div>
+        </form>
       </div>
     </div>
   );

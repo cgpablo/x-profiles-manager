@@ -108,6 +108,7 @@ export default function CreateProfileModal({
               type="text"
               value={xAccount}
               onChange={(e) => setXAccount(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !loading && handleSubmit(e as any)}
               placeholder="e.g., @yourhandle"
               disabled={loading}
             />
