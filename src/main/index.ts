@@ -60,7 +60,12 @@ app.on('window-all-closed', () => {
   // Close all Chrome profiles before quitting
   chromeLauncher.closeAllProfiles();
   
-  if (process.platform !== 'darwin') {
+  // On Windows, give time for taskkill to complete
+  if (process.platform === 'win32') {
+    setTimeout(() => {
+      app.quit();
+    }, 1000);
+  } else if (process.platform !== 'darwin') {
     app.quit();
   }
 });

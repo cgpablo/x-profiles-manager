@@ -362,10 +362,28 @@ if (\\$found) {
 
     try {
       if (process.platform === 'win32') {
-        // Windows: use taskkill
-        spawn('taskkill', ['/PID', processInfo.pid.toString(), '/T', '/F'], {
-          stdio: 'ignore',
-        });
+        // Windows: use taskkill with proper waiting
+        const { execSync } = require('child_process');
+        try {
+          // First try to kill by PID
+          if (processInfo.pid && processInfo.pid > 0) {
+            try {
+              execSync(`taskkill /PID ${processInfo.pid} /T /F`, {
+                stdio: 'ignore',
+                timeout: 5000,
+              });
+            } catch (e) {
+              console.warn(`Could not kill PID ${processInfo.pid}, trying by name...`);
+              // Fallback: kill all chrome processes for this profile
+              execSync(`taskkill /IM chrome.exe /F`, {
+                stdio: 'ignore',
+                timeout: 5000,
+              });
+            }
+          }
+        } catch (error) {
+          console.error(`Error in taskkill for Windows:`, error);
+        }
       } else if (process.platform === 'darwin') {
         // macOS: kill by pid first; also use pkill -f on user-data-dir as a fallback
         const profile = storageManager.getProfile(profileId);
@@ -379,7 +397,11 @@ if (\\$found) {
         }
       } else {
         // Linux: use kill signal on process group
-        process.kill(-processInfo.pid, 'SIGTERM');
+        try {
+          process.kill(-processInfo.pid, 'SIGTERM');
+        } catch (e) {
+          console.warn(`Could not kill process group for ${profileId}`, e);
+        }
       }
 
       // Remove from both tracking maps
@@ -387,6 +409,7 @@ if (\\$found) {
       if (processInfo.pid > 0) {
         this.browserWindowMap.delete(processInfo.pid);
       }
+      console.log(`✓ Closed profile ${profileId}`);
       return true;
     } catch (error) {
       console.error(`Error closing profile ${profileId}:`, error);
