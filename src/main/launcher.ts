@@ -181,14 +181,19 @@ export class ChromeLauncher {
         // macOS: Activate Google Chrome and bring to foreground
         const { execSync } = require('child_process');
         try {
-          // Use AppleScript to activate Chrome
-          const script = `tell application "Google Chrome" to activate`;
+          // Use AppleScript to activate Chrome - this is the most reliable way
+          const script = `tell application "Google Chrome"
+    activate
+    set frontmost to true
+end tell`;
           execSync(`osascript -e '${script.replace(/'/g, "'\\''")}'`, {
             stdio: 'ignore',
+            timeout: 5000,
           });
+          console.log(`✓ Focus window succeeded for profile ${profileId}`);
           return true;
         } catch (error) {
-          console.error('Error focusing Chrome on macOS:', error);
+          console.error(`✗ Error focusing Chrome on macOS for profile ${profileId}:`, error);
           return false;
         }
       } else if (process.platform === 'win32') {
@@ -238,8 +243,10 @@ Add-Type @"
 }, 0)
 
 if (\\$found) {
+  Write-Host "SUCCESS"
   exit 0
 } else {
+  Write-Host "FAILED"
   exit 1
 }
 `;
@@ -254,12 +261,16 @@ if (\\$found) {
               stdio: ['pipe', 'pipe', 'pipe'],
               timeout: 5000,
             });
-            console.log(`Focus window script output:`, output);
+            console.log(`✓ Focus window succeeded for profile ${profileId}`);
             return true;
           } catch (execError: any) {
-            // Focus may have failed but that's not critical - Chrome is still running
-            console.log(`Focus window script exited with code ${execError.status}, ignoring...`);
-            return true; // Return true anyway since focus is non-critical
+            // Check if it's exit code 1 (window not found) vs other errors
+            if (execError.status === 1) {
+              console.warn(`⚠ Could not find Chrome window for profile ${profileId} (PID ${processInfo.pid})`);
+              return false;
+            }
+            console.error(`✗ Focus window script error for profile ${profileId}:`, execError.message);
+            return false;
           } finally {
             // Clean up temp file
             try {
