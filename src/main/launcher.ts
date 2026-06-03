@@ -12,6 +12,7 @@ import { ProcessInfo, ChromeProfile } from '../types';
 export class ChromeLauncher {
   private runningProcesses: Map<string, ProcessInfo> = new Map();
   private browserWindowMap: Map<number, string> = new Map(); // pid => profileId
+  private profileMetadataMap: Map<string, any> = new Map(); // profileId => { folderId, name, color, icon, xAccount, dataDir }
 
   /**
     * Creates an HTML interstitial page that injects the xprofile into storage
@@ -483,6 +484,47 @@ if (\\$found) {
       this.cleanupDeadProcesses();
     }, 2000);
   }
+
+  /**
+   * Registra metadatos de un perfil (llamado cuando se crea o edita)
+   */
+  updateProfileMetadata(profileId: string, profile: ChromeProfile): void {
+    this.profileMetadataMap.set(profileId, {
+      folderId: profile.folderId,
+      name: profile.name,
+      color: profile.color,
+      icon: profile.icon,
+      xAccount: profile.xAccount,
+      dataDir: profile.dataDir,
+      createdAt: profile.createdAt,
+    });
+    console.log(`✓ Updated metadata for profile ${profileId}`);
+  }
+
+  /**
+   * Obtiene metadatos de un perfil
+   */
+  getProfileMetadata(profileId: string): any {
+    return this.profileMetadataMap.get(profileId);
+  }
+
+  /**
+   * Carga todos los metadatos de perfiles desde storage
+   */
+  loadProfileMetadata(profiles: ChromeProfile[]): void {
+    this.profileMetadataMap.clear();
+    for (const profile of profiles) {
+      this.updateProfileMetadata(profile.id, profile);
+    }
+    console.log(`✓ Loaded metadata for ${profiles.length} profiles`);
+  }
+
+  /**
+   * Elimina metadatos de un perfil (llamado cuando se elimina)
+   */
+  deleteProfileMetadata(profileId: string): void {
+    this.profileMetadataMap.delete(profileId);
+    console.log(`✓ Deleted metadata for profile ${profileId}`);
   }
 }
 

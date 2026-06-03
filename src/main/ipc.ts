@@ -13,6 +13,10 @@ export function setupIpcHandlers(): void {
   // Start process monitoring to detect when Chrome windows close
   chromeLauncher.startProcessMonitoring();
 
+  // Load all profile metadata into memory on startup
+  const allProfiles = storageManager.getAllProfiles();
+  chromeLauncher.loadProfileMetadata(allProfiles);
+
   // ====== PROFILE HANDLERS ======
 
   ipcMain.handle('profiles:getAll', async (): Promise<IpcResponse<ChromeProfile[]>> => {
@@ -38,11 +42,19 @@ export function setupIpcHandlers(): void {
         const extraUpdates: Record<string, unknown> = {};
         if (imagePath) extraUpdates.imagePath = imagePath;
         if (folderId) extraUpdates.folderId = folderId;
+        
+        let finalProfile = profile;
         if (Object.keys(extraUpdates).length > 0) {
-          const updatedProfile = storageManager.updateProfile(profile.id, extraUpdates);
-          return { success: true, data: updatedProfile };
+          const updated = storageManager.updateProfile(profile.id, extraUpdates);
+          if (updated) {
+            finalProfile = updated;
+          }
         }
-        return { success: true, data: profile };
+        
+        // Update metadata map
+        chromeLauncher.updateProfileMetadata(finalProfile.id, finalProfile);
+        
+        return { success: true, data: finalProfile };
       } catch (error) {
         return { success: false, error: String(error) };
       }
@@ -52,6 +64,11 @@ export function setupIpcHandlers(): void {
   ipcMain.handle('profiles:update', async (_, profileId: string, updates: Partial<ChromeProfile>) => {
     try {
       const profile = storageManager.updateProfile(profileId, updates);
+      if (!profile) {
+        return { success: false, error: 'Profile not found' };
+      }
+      // Update metadata map
+      chromeLauncher.updateProfileMetadata(profileId, profile);
       return { success: true, data: profile };
     } catch (error) {
       return { success: false, error: String(error) };
@@ -60,7 +77,12 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle('profiles:delete', async (_, profileId: string) => {
     try {
+      // Close the profile if it's running
+      chromeLauncher.closeProfile(profileId);
+      // Delete from storage
       const success = storageManager.deleteProfile(profileId);
+      // Delete metadata
+      chromeLauncher.deleteProfileMetadata(profileId);
       return { success, data: success };
     } catch (error) {
       return { success: false, error: String(error) };
