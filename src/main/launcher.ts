@@ -246,17 +246,18 @@ end tell`;
       console.log(`[Windows Focus] Starting focus for profile ${profileId}`);
       console.log(`[Windows Focus] dataDir: ${profile.dataDir}`);
       
-      const dataDirEscaped = profile.dataDir.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      // Escape dataDir for both file system and PowerShell
+      const dataDirForPowerShell = profile.dataDir.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       
-      // PowerShell script: Get all chrome.exe processes, find the one with our dataDir, and bring to front
-      const ps1Script = `
-\\$ErrorActionPreference = 'SilentlyContinue'
+      // Simple PowerShell script without complex lambdas
+      const ps1Script = `$ErrorActionPreference = 'SilentlyContinue'
 
+# Load Windows API
 Add-Type @"
-  using System;
-  using System.Runtime.InteropServices;
-  
-  public class WindowHelper {
+using System;
+using System.Runtime.InteropServices;
+
+public class WindowHelper {
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
     
@@ -273,67 +274,83 @@ Add-Type @"
     public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
     
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-  }
+}
 "@
 
-\\$dataDir = "${dataDirEscaped}"
-\\$found = \\$false
-
-Write-Output "[DEBUG] Looking for Chrome with dataDir: \\$dataDir"
+$dataDir = "${dataDirForPowerShell}"
+Write-Output "[DEBUG] Looking for Chrome with dataDir: $dataDir"
 
 # Get all Chrome processes
-try {
-  \\$chromeProcesses = @(Get-Process chrome -ErrorAction SilentlyContinue)
-  Write-Output "[DEBUG] Found \\$(\$chromeProcesses.Count) Chrome processes"
-  
-  foreach (\\$proc in \\$chromeProcesses) {
+$chromeProcesses = @(Get-Process chrome -ErrorAction SilentlyContinue)
+Write-Output "[DEBUG] Found $($chromeProcesses.Count) Chrome processes"
+
+$found = $false
+
+foreach ($proc in $chromeProcesses) {
     try {
-      # Get command line using WMI
-      \\$wmiProc = Get-WmiObject Win32_Process -Filter "ProcessId = \\$(\$proc.Id)" -ErrorAction SilentlyContinue
-      \\$cmdLine = \\$wmiProc.CommandLine
-      
-      if (\\$cmdLine) {
-        Write-Output "[DEBUG] Process \\$(\$proc.Id): \\$cmdLine"
+        # Get WMI process info to check command line
+        $wmiProc = Get-WmiObject Win32_Process -Filter "ProcessId = $($proc.Id)" -ErrorAction SilentlyContinue
+        $cmdLine = $wmiProc.CommandLine
         
-        if (\\$cmdLine -match [regex]::Escape(\\$dataDir)) {
-          Write-Output "[DEBUG] MATCH! Process \\$(\$proc.Id) has our dataDir"
-          
-          # Found the right Chrome process, now find its window
-          [WindowHelper]::EnumWindows({
-            param([IntPtr]\\$hWnd, [IntPtr]\\$lParam)
+        if ($cmdLine) {
+            Write-Output "[DEBUG] Process $($proc.Id): $cmdLine"
             
-            \\$pid = 0
-            [WindowHelper]::GetWindowThreadProcessId(\\$hWnd, [ref]\\$pid)
-            
-            if (\\$pid -eq \\$args[0] -and [WindowHelper]::IsWindowVisible(\\$hWnd)) {
-              Write-Output "[DEBUG] Found window for PID \\$pid"
-              [WindowHelper]::ShowWindow(\\$hWnd, 5) | Out-Null
-              [WindowHelper]::SetForegroundWindow(\\$hWnd) | Out-Null
-              \\$script:found = \\$true
-              return \\$false
+            if ($cmdLine -match [regex]::Escape($dataDir)) {
+                Write-Output "[DEBUG] MATCH! Process $($proc.Id) has our dataDir"
+                
+                # Found the right process, now enumerate windows to find its window
+                # We'll use a simpler approach: just activate this process
+                $hwnd = $proc.MainWindowHandle
+                
+                if ($hwnd -ne 0 -and [WindowHelper]::IsWindowVisible($hwnd)) {
+                    Write-Output "[DEBUG] Found window handle: $hwnd"
+                    [WindowHelper]::ShowWindow($hwnd, 5) | Out-Null
+                    [WindowHelper]::SetForegroundWindow($hwnd) | Out-Null
+                    Write-Output "[SUCCESS] Window brought to front"
+                    $found = $true
+                    break
+                } else {
+                    Write-Output "[DEBUG] Window not visible yet, trying EnumWindows..."
+                    
+                    # Fallback: enumerate all windows for this process
+                    $script:windowFound = $false
+                    $pidToFind = $proc.Id
+                    
+                    [WindowHelper]::EnumWindows([ScriptBlock]{
+                        param([IntPtr]$hWnd)
+                        
+                        $pid = 0
+                        [WindowHelper]::GetWindowThreadProcessId($hWnd, [ref]$pid)
+                        
+                        if ($pid -eq $pidToFind -and [WindowHelper]::IsWindowVisible($hWnd)) {
+                            Write-Output "[DEBUG] Found window via EnumWindows"
+                            [WindowHelper]::ShowWindow($hWnd, 5) | Out-Null
+                            [WindowHelper]::SetForegroundWindow($hWnd) | Out-Null
+                            $script:windowFound = $true
+                            return $false
+                        }
+                        
+                        return $true
+                    }.GetNewClosure(), [IntPtr]::Zero)
+                    
+                    if ($script:windowFound) {
+                        Write-Output "[SUCCESS] Window brought to front"
+                        $found = $true
+                        break
+                    }
+                }
             }
-            return \\$true
-          }, \\$proc.Id)
-          
-          if (\\$script:found) {
-            Write-Output "[SUCCESS] Window brought to front"
-            exit 0
-          }
         }
-      }
     } catch {
-      Write-Output "[ERROR] Failed to process \\$(\$proc.Id): \\$_"
+        Write-Output "[ERROR] Failed to process $($proc.Id): $_"
     }
-  }
-} catch {
-  Write-Output "[ERROR] Failed to get Chrome processes: \\$_"
 }
 
-if (\\$found) {
-  exit 0
+if ($found) {
+    exit 0
 } else {
-  Write-Output "[FAIL] Could not find Chrome window with this dataDir"
-  exit 1
+    Write-Output "[FAIL] Could not find or focus Chrome window with this dataDir"
+    exit 1
 }
 `;
       
@@ -351,7 +368,8 @@ if (\\$found) {
         console.log(`✓ Focus window succeeded for profile ${profileId} on Windows`);
         return true;
       } catch (e: any) {
-        console.log(`[Windows Focus] PowerShell stderr:\n${e.stderr || e.message}`);
+        const errorOutput = e.stdout || e.stderr || e.message;
+        console.log(`[Windows Focus] PowerShell stderr:\n${errorOutput}`);
         console.log(`[Windows Focus] PowerShell exit code: ${e.status}`);
         
         if (e.status === 1) {
