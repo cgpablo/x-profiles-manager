@@ -246,8 +246,9 @@ end tell`;
       console.log(`[Windows Focus] Starting focus for profile ${profileId}`);
       console.log(`[Windows Focus] dataDir: ${profile.dataDir}`);
       
-      // Escape dataDir for PowerShell (double backslashes)
-      const dataDirForPS = profile.dataDir.replace(/\\/g, '\\\\');
+      // dataDir already has single backslashes which is what Chrome uses in its command line
+      // No need to escape for PowerShell string - just escape double quotes
+      const dataDirForPS = profile.dataDir.replace(/"/g, '`"');
       
       // Build PowerShell script using array join to avoid template literal $ issues
       const lines = [
