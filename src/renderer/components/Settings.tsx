@@ -167,8 +167,35 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
     // Handlers for sidebar
     const handleLaunchProfile = () => {};
     const handleCloseProfile = () => {};
-    const handleOpenAllInBrowser = () => {};
-    const handleCloseAll = () => {};
+    const handleOpenAllInBrowser = async (folderId: string) => {
+      const folderProfiles = profiles.filter(p => p.folderId === folderId);
+      for (const profile of folderProfiles) {
+        try {
+          await electronAPI.launcher.launch(profile.id, 'https://x.com');
+        } catch (error) {
+          console.error('Error launching profile in browser:', profile.id, error);
+        }
+      }
+      onSettingsChange();
+    };
+
+    const handleCloseAll = async (folderId: string | null) => {
+      if (!folderId || typeof folderId !== 'string') {
+        console.error('Invalid folderId for handleCloseAll:', folderId);
+        return;
+      }
+      const folderProfiles = profiles.filter(p => p.folderId === folderId || (folderId === 'ungrouped' && !p.folderId));
+      for (const profile of folderProfiles) {
+        if (activeStatuses?.get(profile.id)) {
+          try {
+            await electronAPI.launcher.close(profile.id);
+          } catch (error) {
+            console.error('Error closing profile:', profile.id, error);
+          }
+        }
+      }
+      onSettingsChange();
+    };
 
     const handleCreateFolder = () => {
       setShowCreateFolderModal(true);
@@ -277,12 +304,20 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
               <label>Window Layout</label>
               <select
                 value={settings.windowLayout}
-                onChange={(e) =>
-                  setSettings({
+                onChange={(e) => {
+                  const newSettings = {
                     ...settings,
                     windowLayout: e.target.value as 'floating' | 'tiled',
-                  })
-                }
+                  };
+                  setSettings(newSettings);
+                  // Auto-save layout change
+                  electronAPI.settings.update(newSettings).then(() => {
+                    setOriginalSettings(newSettings);
+                    onSettingsSaved?.();
+                  }).catch(error => {
+                    console.error('Error saving settings:', error);
+                  });
+                }}
                 className="input-field"
               >
                 <option value="floating">Floating</option>
