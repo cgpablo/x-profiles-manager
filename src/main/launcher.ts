@@ -11,6 +11,7 @@ import { ProcessInfo, ChromeProfile } from '../types';
 
 export class ChromeLauncher {
   private runningProcesses: Map<string, ProcessInfo> = new Map();
+  private browserWindowMap: Map<number, string> = new Map(); // pid => profileId
 
   /**
     * Creates an HTML interstitial page that injects the xprofile into storage
@@ -162,6 +163,9 @@ export class ChromeLauncher {
       };
 
       this.runningProcesses.set(profileId, processInfo);
+      if (pid > 0) {
+        this.browserWindowMap.set(pid, profileId);
+      }
       return processInfo;
     } catch (error) {
       console.error(`Error launching profile ${profileId}:`, error);
@@ -174,7 +178,10 @@ export class ChromeLauncher {
    */
   focusWindow(profileId: string): boolean {
     const processInfo = this.runningProcesses.get(profileId);
-    if (!processInfo || !processInfo.pid) return false;
+    if (!processInfo || !processInfo.pid) {
+      console.warn(`✗ No process info for profile ${profileId}`);
+      return false;
+    }
 
     try {
       if (process.platform === 'darwin') {
@@ -197,14 +204,20 @@ end tell`;
           return false;
         }
       } else if (process.platform === 'win32') {
-        // Windows: Find and focus window by PID using a temporary PowerShell script file
+        // Windows: Use simple approach - activate by PID with nircmd or wmctrl fallback
         const { execSync } = require('child_process');
-        const fs = require('fs');
-        const path = require('path');
-        const os = require('os');
-        
         try {
-          const script = `
+          // Try using nircmd if available (most reliable)
+          try {
+            execSync(`nircmd win activate pid ${processInfo.pid}`, {
+              stdio: 'ignore',
+              timeout: 5000,
+            });
+            console.log(`✓ Focus window succeeded for profile ${profileId} using nircmd`);
+            return true;
+          } catch {
+            // nircmd not available, fall back to powershell
+            const ps1Script = `
 Add-Type @"
   using System;
   using System.Runtime.InteropServices;
@@ -243,44 +256,40 @@ Add-Type @"
 }, 0)
 
 if (\\$found) {
-  Write-Host "SUCCESS"
   exit 0
 } else {
-  Write-Host "FAILED"
   exit 1
 }
 `;
-           
-          // Write script to temp file
-          const scriptPath = path.join(os.tmpdir(), `focus-window-${Date.now()}.ps1`);
-          fs.writeFileSync(scriptPath, script);
-          
-          try {
-            const output = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, {
-              encoding: 'utf8',
-              stdio: ['pipe', 'pipe', 'pipe'],
-              timeout: 5000,
-            });
-            console.log(`✓ Focus window succeeded for profile ${profileId}`);
-            return true;
-          } catch (execError: any) {
-            // Check if it's exit code 1 (window not found) vs other errors
-            if (execError.status === 1) {
-              console.warn(`⚠ Could not find Chrome window for profile ${profileId} (PID ${processInfo.pid})`);
-              return false;
-            }
-            console.error(`✗ Focus window script error for profile ${profileId}:`, execError.message);
-            return false;
-          } finally {
-            // Clean up temp file
+            
+            const fs = require('fs');
+            const path = require('path');
+            const os = require('os');
+            const scriptPath = path.join(os.tmpdir(), `focus-${Date.now()}.ps1`);
+            fs.writeFileSync(scriptPath, ps1Script);
+            
             try {
-              fs.unlinkSync(scriptPath);
-            } catch (e) {
-              // Ignore cleanup errors
+              execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, {
+                stdio: 'ignore',
+                timeout: 5000,
+              });
+              console.log(`✓ Focus window succeeded for profile ${profileId} using PowerShell`);
+              return true;
+            } catch (e: any) {
+              if (e.status === 1) {
+                console.warn(`⚠ Could not find Chrome window for profile ${profileId}`);
+              } else {
+                console.error(`✗ PowerShell focus failed:`, e.message);
+              }
+              return false;
+            } finally {
+              try {
+                fs.unlinkSync(scriptPath);
+              } catch {}
             }
           }
         } catch (error) {
-          console.error('Error in focus window setup:', error);
+          console.error(`✗ Error focusing Chrome on Windows for profile ${profileId}:`, error);
           return false;
         }
       } else {
@@ -290,14 +299,15 @@ if (\\$found) {
           execSync(`xdotool search --pid ${processInfo.pid} windowactivate 2>/dev/null`, {
             stdio: 'ignore',
           });
+          console.log(`✓ Focus window succeeded for profile ${profileId}`);
           return true;
         } catch (error) {
-          console.error('Error focusing Chrome window on Linux:', error);
+          console.error(`✗ Error focusing Chrome window on Linux:`, error);
           return false;
         }
       }
     } catch (error) {
-      console.error(`Error focusing window for profile ${profileId}:`, error);
+      console.error(`✗ Error focusing window for profile ${profileId}:`, error);
       return false;
     }
   }
@@ -331,11 +341,18 @@ if (\\$found) {
         process.kill(-processInfo.pid, 'SIGTERM');
       }
 
+      // Remove from both tracking maps
       this.runningProcesses.delete(profileId);
+      if (processInfo.pid > 0) {
+        this.browserWindowMap.delete(processInfo.pid);
+      }
       return true;
     } catch (error) {
       console.error(`Error closing profile ${profileId}:`, error);
       this.runningProcesses.delete(profileId);
+      if (processInfo.pid > 0) {
+        this.browserWindowMap.delete(processInfo.pid);
+      }
       return false;
     }
   }
@@ -378,7 +395,7 @@ if (\\$found) {
             stdio: ['pipe', 'pipe', 'ignore'],
           });
           // tasklist returns output even if nothing matches; check for actual process info
-          const lines = output.trim().split('\n').filter(l => l.trim().length > 0);
+          const lines = output.trim().split('\n').filter((l: string) => l.trim().length > 0);
           
           if (lines.length > 0 && lines[0].includes('chrome')) {
             console.log(`✓ Process ${profileId} (PID ${processInfo.pid}) is still alive`);
