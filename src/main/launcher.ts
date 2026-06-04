@@ -501,20 +501,18 @@ if ($found) {
 
 
   /**
-   * CDP Method: Abre una nueva pestaña temporalmente y luego la cierra.
-   * Chrome siempre activa la ventana al abrir una pestaña nueva → 100% fiable.
+   * CDP Method: Abre una nueva pestaña temporalmente para que Chrome active su ventana.
+   * Luego usa WinAPI (EnumWindows + AttachThreadInput) para forzar el foreground a nivel OS.
+   * El CDP solo no es suficiente — Chrome activa internamente pero Windows bloquea el foreground.
    */
   private async focusWindowCDP(profileId: string): Promise<boolean> {
     const http = require('http');
-    const { execSync } = require('child_process');
 
     const debugPort = this.debugPorts.get(profileId);
     if (!debugPort) {
       console.error(`[CDP Focus] No debug port found for profile ${profileId}`);
       return false;
     }
-
-    console.log(`[CDP Focus] Using debug port: ${debugPort}`);
 
     const httpRequest = (url: string, method: string = 'GET'): Promise<string> => {
       return new Promise((resolve, reject) => {
@@ -531,39 +529,26 @@ if ($found) {
     };
 
     try {
-      // Step 1: Grant Chrome permission to take foreground BEFORE opening tab.
-      // Electron is currently the foreground app (user just clicked), so
-      // AllowSetForegroundWindow grants Chrome the right to steal focus.
-      // Without this, Windows blocks the activation and Chrome only flashes orange.
-      if (process.platform === 'win32') {
-        try {
-          const ps = `
-Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class FG{[DllImport("user32.dll")]public static extern bool AllowSetForegroundWindow(int p);}';
-Get-Process -Name chrome -ErrorAction SilentlyContinue | ForEach-Object { [FG]::AllowSetForegroundWindow($_.Id) | Out-Null };
-Write-Output 'done'
-`;
-            const psResult = execSync(
-              `powershell -NoProfile -Command "${ps.replace(/\n/g, ' ')}"`,
-              { encoding: 'utf8', timeout: 2000 }
-            );
-            console.log(`[CDP Focus] AllowSetForegroundWindow granted: ${psResult.trim()}`);
-        } catch (e: any) {
-          // Non-fatal: proceed anyway, CDP may still work on some systems
-          console.warn(`[CDP Focus] Could not grant AllowSetForegroundWindow: ${e.message}`);
-        }
-      }
-
-      // Step 2: Open a new tab — Chrome activates its window when a new tab is opened
+      // Step 1: Open a new tab — signals Chrome to activate its window internally
       const newTabUrl = `http://localhost:${debugPort}/json/new?url=about:blank`;
       console.log(`[CDP Focus] Opening temporary tab...`);
       const openData = await httpRequest(newTabUrl, 'PUT');
       const newTab = JSON.parse(openData);
       const newTabId = newTab.id;
-      console.log(`[CDP Focus] Opened tab: ${newTabId}, window should activate`);
+      console.log(`[CDP Focus] Opened tab: ${newTabId}`);
 
-      // Step 3: Wait for activation, then close the temporary tab
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Step 2: On Windows, Chrome activates internally but Windows UIPI blocks the foreground
+      // change (resulting in the orange taskbar flash). Use EnumWindows + AttachThreadInput
+      // to force the OS-level foreground change right after Chrome's internal activation.
+      if (process.platform === 'win32') {
+        // Small delay so Chrome has time to process the new tab activation
+        await new Promise(resolve => setTimeout(resolve, 150));
+        await this.forceWindowsForeground(profileId);
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
 
+      // Step 3: Close the temporary tab
       const closeUrl = `http://localhost:${debugPort}/json/close/${newTabId}`;
       await httpRequest(closeUrl, 'GET');
       console.log(`✓ Focus window succeeded for profile ${profileId} via CDP`);
@@ -571,6 +556,121 @@ Write-Output 'done'
     } catch (error: any) {
       console.error(`✗ CDP focus failed for profile ${profileId}: ${error.message}`);
       return false;
+    }
+  }
+
+  /**
+   * Fuerza el foreground de la ventana Chrome asociada al perfil usando WinAPI.
+   * Usa EnumWindows + AttachThreadInput para saltarse las restricciones de Windows UIPI.
+   */
+  private async forceWindowsForeground(profileId: string): Promise<boolean> {
+    const { execSync } = require('child_process');
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+
+    const profile = storageManager.getProfile(profileId);
+    if (!profile) return false;
+
+    const normalizedDataDir = profile.dataDir.replace(/\\/g, '/').toLowerCase();
+
+    const ps1Script = `
+$ErrorActionPreference = "SilentlyContinue"
+
+Add-Type @"
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+
+public class WinFG {
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int n);
+    [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint a, uint b, bool f);
+    [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowTextLength(IntPtr h);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+
+    public delegate bool EnumProc(IntPtr hWnd, IntPtr lParam);
+    [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr lParam);
+
+    public static List<IntPtr> GetVisibleWindowsForPid(uint pid) {
+        var result = new List<IntPtr>();
+        EnumWindows(delegate(IntPtr hWnd, IntPtr lp) {
+            uint wpid; GetWindowThreadProcessId(hWnd, out wpid);
+            if (wpid == pid && IsWindowVisible(hWnd) && GetWindowTextLength(hWnd) > 0)
+                result.Add(hWnd);
+            return true;
+        }, IntPtr.Zero);
+        return result;
+    }
+
+    public static void ForceForeground(IntPtr hWnd) {
+        IntPtr fg = GetForegroundWindow();
+        uint fgThread = GetWindowThreadProcessId(fg, IntPtr.Zero);
+        uint curThread = GetCurrentThreadId();
+        if (fgThread != curThread) AttachThreadInput(curThread, fgThread, true);
+        ShowWindow(hWnd, 9);
+        BringWindowToTop(hWnd);
+        SetForegroundWindow(hWnd);
+        if (fgThread != curThread) AttachThreadInput(curThread, fgThread, false);
+    }
+}
+"@
+
+$dataDir = "${normalizedDataDir}"
+$chromeProcs = Get-Process -Name chrome -ErrorAction SilentlyContinue
+$found = $false
+
+foreach ($proc in $chromeProcs) {
+    $windows = [WinFG]::GetVisibleWindowsForPid([uint32]$proc.Id)
+    if ($windows.Count -gt 0) {
+        # Verify this is the right Chrome by checking cmdline against dataDir
+        $cmdLine = (Get-CimInstance Win32_Process -Filter "ProcessId=$($proc.Id)").CommandLine
+        if ($cmdLine -and $cmdLine.Replace("\\","").ToLower() -like "*$($dataDir.Replace("/",""))*") {
+            [WinFG]::ForceForeground($windows[0])
+            Write-Output "[SUCCESS] Forced foreground for PID $($proc.Id)"
+            $found = $true
+            break
+        }
+    }
+}
+
+if (-not $found) {
+    # Fallback: bring any visible Chrome window to front (CDP already activated the right one)
+    foreach ($proc in $chromeProcs) {
+        $windows = [WinFG]::GetVisibleWindowsForPid([uint32]$proc.Id)
+        if ($windows.Count -gt 0) {
+            [WinFG]::ForceForeground($windows[0])
+            Write-Output "[SUCCESS] Forced foreground (fallback) for PID $($proc.Id)"
+            $found = $true
+            break
+        }
+    }
+}
+
+exit $(if ($found) { 0 } else { 1 })
+`;
+
+    const scriptPath = path.join(os.tmpdir(), `fgforce-${profileId}-${Date.now()}.ps1`);
+    fs.writeFileSync(scriptPath, ps1Script, 'utf8');
+
+    try {
+      const result = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, {
+        encoding: 'utf8',
+        timeout: 4000,
+      });
+      console.log(`[WinFG] ${result.trim()}`);
+      return result.includes('[SUCCESS]');
+    } catch (e: any) {
+      console.warn(`[WinFG] forceWindowsForeground failed: ${e.message}`);
+      return false;
+    } finally {
+      try { fs.unlinkSync(scriptPath); } catch {}
     }
   }
 
