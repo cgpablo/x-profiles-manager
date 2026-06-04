@@ -537,26 +537,16 @@ if ($found) {
       // Without this, Windows blocks the activation and Chrome only flashes orange.
       if (process.platform === 'win32') {
         try {
-          const pids = execSync(
-            `wmic process where "name='chrome.exe'" get ProcessId /value`,
-            { encoding: 'utf8', timeout: 2000 }
-          )
-            .split('\n')
-            .filter((l: string) => l.startsWith('ProcessId='))
-            .map((l: string) => l.replace('ProcessId=', '').trim())
-            .filter(Boolean)
-            .join(',');
-
-          if (pids) {
-            // AllowSetForegroundWindow must be called from the foreground process (Electron).
-            // We P/Invoke it directly via a tiny PowerShell inline so we don't spawn a full script.
-            const ps = `
+          const ps = `
 Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class FG{[DllImport("user32.dll")]public static extern bool AllowSetForegroundWindow(int p);}';
-"${pids}".Split(',') | ForEach-Object { [FG]::AllowSetForegroundWindow([int]$_) | Out-Null }
+Get-Process -Name chrome -ErrorAction SilentlyContinue | ForEach-Object { [FG]::AllowSetForegroundWindow($_.Id) | Out-Null };
+Write-Output 'done'
 `;
-            execSync(`powershell -NoProfile -Command "${ps.replace(/\n/g, ' ')}"`, { timeout: 2000 });
-            console.log(`[CDP Focus] AllowSetForegroundWindow granted for PIDs: ${pids}`);
-          }
+            const psResult = execSync(
+              `powershell -NoProfile -Command "${ps.replace(/\n/g, ' ')}"`,
+              { encoding: 'utf8', timeout: 2000 }
+            );
+            console.log(`[CDP Focus] AllowSetForegroundWindow granted: ${psResult.trim()}`);
         } catch (e: any) {
           // Non-fatal: proceed anyway, CDP may still work on some systems
           console.warn(`[CDP Focus] Could not grant AllowSetForegroundWindow: ${e.message}`);
