@@ -370,57 +370,86 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
               <small>When disabled, focus button will be hidden</small>
             </div>
 
-            {window.electronAPI.platform === 'win32' && (
-              <div className="setting-item">
-                <label>Windows Focus Method</label>
-                <select
-                  value={settings.platformPreferences?.focusMethod || 'auto'}
-                  onChange={(e) => {
-                    const prefs = settings.platformPreferences || {};
-                    const newSettings = {
-                      ...settings,
-                      platformPreferences: {
-                        ...prefs,
-                        focusMethod: e.target.value as 'auto' | 'datadir' | 'pid',
-                      },
-                    };
-                    setSettings(newSettings);
-                  }}
-                  className="input-field"
-                >
-                  <option value="auto">Auto (recommended)</option>
-                  <option value="datadir">Search by Profile Directory</option>
-                  <option value="pid">Search by Process ID</option>
-                </select>
-                <small>How to identify and focus the Chrome window</small>
-              </div>
-            )}
-
             <div className="setting-item">
-              <label>Debug Mode</label>
+              <label>Developer Mode</label>
               <div className="checkbox-group">
                 <input
                   type="checkbox"
-                  id="debugMode"
-                  checked={settings.platformPreferences?.debugMode || false}
+                  id="developerMode"
+                  checked={settings.platformPreferences?.developerMode || false}
                   onChange={(e) => {
                     const prefs = settings.platformPreferences || {};
                     const newSettings = {
                       ...settings,
                       platformPreferences: {
                         ...prefs,
-                        debugMode: e.target.checked,
+                        developerMode: e.target.checked,
                       },
                     };
                     setSettings(newSettings);
                   }}
                 />
-                <label htmlFor="debugMode" style={{ marginLeft: '8px' }}>
-                  Enable verbose logging in console
+                <label htmlFor="developerMode" style={{ marginLeft: '8px' }}>
+                  Show developer options
                 </label>
               </div>
-              <small>Useful for troubleshooting focus and process issues</small>
+              <small>Shows advanced settings and debug options</small>
             </div>
+
+            {settings.platformPreferences?.developerMode && window.electronAPI.platform === 'win32' && (
+              <>
+                <div className="setting-item">
+                  <label>Windows Focus Method</label>
+                  <select
+                    value={settings.platformPreferences?.focusMethodWindows || 'auto'}
+                    onChange={(e) => {
+                      const prefs = settings.platformPreferences || {};
+                      const newSettings = {
+                        ...settings,
+                        platformPreferences: {
+                          ...prefs,
+                          focusMethodWindows: e.target.value as 'auto' | 'workaround',
+                        },
+                      };
+                      setSettings(newSettings);
+                    }}
+                    className="input-field"
+                  >
+                    <option value="auto">Auto (try standard first, then workaround)</option>
+                    <option value="workaround">Workaround (open/close tab)</option>
+                  </select>
+                  <small>How to focus the Chrome window on Windows</small>
+                </div>
+              </>
+            )}
+
+            {settings.platformPreferences?.developerMode && (
+              <div className="setting-item">
+                <label>Debug Mode</label>
+                <div className="checkbox-group">
+                  <input
+                    type="checkbox"
+                    id="debugMode"
+                    checked={settings.platformPreferences?.debugMode || false}
+                    onChange={(e) => {
+                      const prefs = settings.platformPreferences || {};
+                      const newSettings = {
+                        ...settings,
+                        platformPreferences: {
+                          ...prefs,
+                          debugMode: e.target.checked,
+                        },
+                      };
+                      setSettings(newSettings);
+                    }}
+                  />
+                  <label htmlFor="debugMode" style={{ marginLeft: '8px' }}>
+                    Enable verbose logging in console
+                  </label>
+                </div>
+                <small>Useful for troubleshooting focus and process issues</small>
+              </div>
+            )}
           </div>
 
           <div className="settings-section info">

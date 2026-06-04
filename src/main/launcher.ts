@@ -345,6 +345,103 @@ if ($found) {
 
 
   /**
+   * Windows Workaround: Abre una nueva pestaña temporalmente y luego la cierra
+   * Esto fuerza a Chrome a traer la ventana al frente
+   */
+  private focusWindowWindowsWorkaround(profileId: string, processInfo: ProcessInfo): boolean {
+    const http = require('http');
+    
+    try {
+      console.log(`[Windows Workaround] Starting focus workaround for profile ${profileId}`);
+      
+      const debugPort = this.debugPorts.get(profileId);
+      if (!debugPort) {
+        console.error(`[Windows Workaround] No debug port found for profile ${profileId}`);
+        return false;
+      }
+
+      console.log(`[Windows Workaround] Using debug port: ${debugPort}`);
+
+      // Step 1: Get list of tabs
+      const tabsUrl = `http://localhost:${debugPort}/json/list`;
+      
+      try {
+        const req = http.get(tabsUrl, { timeout: 2000 }, (res: any) => {
+          let data = '';
+          res.on('data', (chunk: any) => { data += chunk; });
+          res.on('end', () => {
+            try {
+              const tabs = JSON.parse(data);
+              console.log(`[Windows Workaround] Found ${tabs.length} tabs`);
+              
+              if (tabs.length === 0) {
+                console.log(`[Windows Workaround] No tabs found, cannot focus`);
+                return;
+              }
+              
+              // Step 2: Open a new tab
+              const newTabUrl = `http://localhost:${debugPort}/json/new?url=about:blank`;
+              console.log(`[Windows Workaround] Opening temporary tab...`);
+              
+              http.get(newTabUrl, { timeout: 2000 }, (openRes: any) => {
+                let openData = '';
+                openRes.on('data', (chunk: any) => { openData += chunk; });
+                openRes.on('end', () => {
+                  try {
+                    const newTab = JSON.parse(openData);
+                    const newTabId = newTab.id;
+                    console.log(`[Windows Workaround] Opened tab: ${newTabId}, window will activate`);
+                    
+                    // Step 3: Small delay then close the temporary tab
+                    setTimeout(() => {
+                      const closeUrl = `http://localhost:${debugPort}/json/close/${newTabId}`;
+                      console.log(`[Windows Workaround] Closing temporary tab...`);
+                      
+                      http.get(closeUrl, { timeout: 2000 }, (closeRes: any) => {
+                        closeRes.on('data', () => {});
+                        closeRes.on('end', () => {
+                          console.log(`✓ Focus window succeeded for profile ${profileId} on Windows (workaround)`);
+                        });
+                      }).on('error', (err: any) => {
+                        console.error(`[Windows Workaround] Error closing tab: ${err.message}`);
+                      });
+                    }, 300);
+                  } catch (e) {
+                    console.error(`[Windows Workaround] Error parsing new tab response: ${e}`);
+                  }
+                });
+              }).on('error', (err: any) => {
+                console.error(`[Windows Workaround] Error opening new tab: ${err.message}`);
+              });
+            } catch (e) {
+              console.error(`[Windows Workaround] Error parsing tabs response: ${e}`);
+            }
+          });
+        });
+        
+        req.on('error', (err: any) => {
+          console.log(`[Windows Workaround] Could not connect to CDP: ${err.message}`);
+        });
+        
+        req.on('timeout', () => {
+          req.destroy();
+          console.log(`[Windows Workaround] CDP connection timed out`);
+        });
+        
+        // Return true immediately - operations continue in background
+        return true;
+      } catch (error) {
+        console.error(`[Windows Workaround] Error during HTTP request:`, error);
+        return false;
+      }
+    } catch (error) {
+      console.error(`✗ Error in Windows workaround:`, error);
+      return false;
+    }
+  }
+
+
+  /**
    * Intenta enfocar la ventana de Chrome del perfil
    */
   focusWindow(profileId: string): boolean {
@@ -364,7 +461,21 @@ if ($found) {
       if (process.platform === 'darwin') {
         return this.focusWindowMacOS(profileId, processInfo);
       } else if (process.platform === 'win32') {
-        return this.focusWindowWindows(profileId, processInfo, profile);
+        // Check Windows focus method setting
+        const settings = storageManager.getSettings();
+        const focusMethod = settings.platformPreferences?.focusMethodWindows || 'auto';
+        
+        if (focusMethod === 'workaround') {
+          return this.focusWindowWindowsWorkaround(profileId, processInfo);
+        } else {
+          // Try standard method first, then fallback to workaround
+          const result = this.focusWindowWindows(profileId, processInfo, profile);
+          if (!result) {
+            console.log(`[Focus] Standard method failed, trying workaround...`);
+            return this.focusWindowWindowsWorkaround(profileId, processInfo);
+          }
+          return result;
+        }
       } else {
         // Linux: use xdotool to focus by PID
         try {

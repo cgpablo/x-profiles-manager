@@ -34,7 +34,8 @@ export interface AppSettings {
   autoLaunchOnStartup?: boolean;
   platformPreferences?: {
     enableFocusWindows?: boolean; // Enable/disable focus window feature
-    focusMethod?: 'auto' | 'datadir' | 'pid'; // Windows: which method to use
+    developerMode?: boolean; // Show developer options (focus method selector, debug mode)
+    focusMethodWindows?: 'auto' | 'workaround'; // Windows: which method to use
     debugMode?: boolean; // Enable extra logging
   };
 }
