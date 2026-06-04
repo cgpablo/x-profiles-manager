@@ -318,182 +318,121 @@ end tell`;
   }
 
   /**
-   * Windows API: Enfoca ventana de Chrome buscando por dataDir en command line.
-   * Usa EnumWindows para encontrar el HWND correcto (más fiable que MainWindowHandle).
+   * Windows API: Enfoca ventana de Chrome usando koffi (Win32 directo, sin PowerShell).
+   * Estrategia:
+   * 1. CreateToolhelp32Snapshot para enumerar todos los procesos chrome.exe
+   * 2. El PID guardado en processInfo como pista principal
+   * 3. EnumWindows para encontrar el HWND visible correcto
+   * 4. AttachThreadInput + SetForegroundWindow para forzar el foreground
    */
-  private focusWindowWindows(profileId: string, processInfo: ProcessInfo, profile: any): boolean {
-    const { execSync } = require('child_process');
-    const fs = require('fs');
-    const path = require('path');
-    const os = require('os');
-    
+  private focusWindowWindows(profileId: string, processInfo: ProcessInfo, _profile: any): boolean {
     try {
-      console.log(`[WinAPI Focus] Starting for profile ${profileId}`);
-      console.log(`[WinAPI Focus] PID: ${processInfo.pid}, DataDir: ${profile.dataDir}`);
-      
-      const normalizedDataDir = profile.dataDir.replace(/\\/g, '/').toLowerCase();
-      
-      // PowerShell script using EnumWindows to find the correct HWND
-      const ps1Script = `
-$ErrorActionPreference = "SilentlyContinue"
+      const koffi = require('koffi');
+      const user32 = koffi.load('user32.dll');
+      const kernel32 = koffi.load('kernel32.dll');
 
-Add-Type @"
-using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Text;
+      // --- Win32 API bindings ---
+      const WNDENUMPROC = koffi.proto('bool __stdcall WNDENUMPROC(void *hwnd, intptr_t lParam)');
 
-public class WinFocus {
-    [DllImport("user32.dll")]
-    public static extern bool SetForegroundWindow(IntPtr hWnd);
-    
-    [DllImport("user32.dll")]
-    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-    
-    [DllImport("user32.dll")]
-    public static extern bool BringWindowToTop(IntPtr hWnd);
-    
-    [DllImport("user32.dll")]
-    public static extern bool IsWindowVisible(IntPtr hWnd);
-    
-    [DllImport("user32.dll")]
-    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
-    
-    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-    
-    [DllImport("user32.dll")]
-    public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-    
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    public static extern int GetWindowTextLength(IntPtr hWnd);
-    
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-    
-    [DllImport("user32.dll")]
-    public static extern bool AllowSetForegroundWindow(int dwProcessId);
-    
-    [DllImport("user32.dll")]
-    public static extern IntPtr GetForegroundWindow();
-    
-    [DllImport("user32.dll")]
-    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr lpdwProcessId);
-    
-    [DllImport("user32.dll")]
-    public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
-    
-    [DllImport("kernel32.dll")]
-    public static extern uint GetCurrentThreadId();
+      const EnumWindows              = user32.func('bool EnumWindows(WNDENUMPROC *fn, intptr_t lParam)');
+      const IsWindowVisible          = user32.func('bool IsWindowVisible(void *hWnd)');
+      const GetWindowTextLengthW     = user32.func('int GetWindowTextLengthW(void *hWnd)');
+      const GetWindowThreadProcessId = user32.func('uint32_t GetWindowThreadProcessId(void *hWnd, _Out_ uint32_t *lpdwProcessId)');
+      const GetForegroundWindow      = user32.func('void *GetForegroundWindow()');
+      const AttachThreadInput        = user32.func('bool AttachThreadInput(uint32_t idAttach, uint32_t idAttachTo, bool fAttach)');
+      const SetForegroundWindow      = user32.func('bool SetForegroundWindow(void *hWnd)');
+      const ShowWindow               = user32.func('bool ShowWindow(void *hWnd, int nCmdShow)');
+      const BringWindowToTop         = user32.func('bool BringWindowToTop(void *hWnd)');
+      const GetCurrentThreadId       = kernel32.func('uint32_t GetCurrentThreadId()');
 
-    public static List<IntPtr> GetWindowsForPid(uint targetPid) {
-        List<IntPtr> result = new List<IntPtr>();
-        EnumWindows(delegate(IntPtr hWnd, IntPtr lParam) {
-            uint pid;
-            GetWindowThreadProcessId(hWnd, out pid);
-            if (pid == targetPid && IsWindowVisible(hWnd)) {
-                int len = GetWindowTextLength(hWnd);
-                if (len > 0) {
-                    result.Add(hWnd);
-                }
-            }
-            return true;
-        }, IntPtr.Zero);
-        return result;
-    }
-    
-    public static bool ForceForeground(IntPtr hWnd) {
-        IntPtr foreground = GetForegroundWindow();
-        uint foreThread = GetWindowThreadProcessId(foreground, IntPtr.Zero);
-        uint curThread = GetCurrentThreadId();
-        
-        if (foreThread != curThread) {
-            AttachThreadInput(curThread, foreThread, true);
-            ShowWindow(hWnd, 9);
-            BringWindowToTop(hWnd);
-            SetForegroundWindow(hWnd);
-            AttachThreadInput(curThread, foreThread, false);
-        } else {
-            ShowWindow(hWnd, 9);
-            BringWindowToTop(hWnd);
-            SetForegroundWindow(hWnd);
-        }
-        return true;
-    }
-}
-"@
+      // CreateToolhelp32Snapshot to enumerate all chrome.exe PIDs
+      const TH32CS_SNAPPROCESS = 0x00000002;
+      const PROCESSENTRY32 = koffi.struct('PROCESSENTRY32', {
+        dwSize:              'uint32_t',
+        cntUsage:            'uint32_t',
+        th32ProcessID:       'uint32_t',
+        th32DefaultHeapID:   'uintptr_t',
+        th32ModuleID:        'uint32_t',
+        cntThreads:          'uint32_t',
+        th32ParentProcessID: 'uint32_t',
+        pcPriClassBase:      'int32_t',
+        dwFlags:             'uint32_t',
+        szExeFile:           koffi.array('char', 260),
+      });
 
-$dataDir = "${normalizedDataDir}"
-$found = $false
+      const CreateToolhelp32Snapshot = kernel32.func('void *CreateToolhelp32Snapshot(uint32_t dwFlags, uint32_t th32ProcessID)');
+      const Process32First           = kernel32.func('bool Process32First(void *hSnapshot, _Inout_ PROCESSENTRY32 *lppe)');
+      const Process32Next            = kernel32.func('bool Process32Next(void *hSnapshot, _Inout_ PROCESSENTRY32 *lppe)');
+      const CloseHandle              = kernel32.func('bool CloseHandle(void *hObject)');
 
-Write-Output "[DEBUG] Looking for Chrome with dataDir: $dataDir"
+      // Collect all chrome.exe PIDs
+      const chromePids: number[] = [];
+      const snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+      const entry: any = { dwSize: koffi.sizeof(PROCESSENTRY32) };
 
-# Find chrome.exe processes matching our dataDir
-$chromeProcs = Get-WmiObject Win32_Process -Filter "Name = 'chrome.exe'" -ErrorAction SilentlyContinue
-$matchingPids = @()
-
-foreach ($proc in $chromeProcs) {
-    if ($proc.CommandLine) {
-        $normalizedCmdLine = $proc.CommandLine.Replace("\\\\", "/").Replace("\\", "/").ToLower()
-        if ($normalizedCmdLine -like "*user-data-dir*$dataDir*") {
-            $matchingPids += $proc.ProcessId
-            Write-Output "[DEBUG] Matching PID: $($proc.ProcessId)"
-        }
-    }
-}
-
-Write-Output "[DEBUG] Found $($matchingPids.Count) matching PIDs"
-
-# For each matching PID, use EnumWindows to find visible windows
-foreach ($pid in $matchingPids) {
-    $windows = [WinFocus]::GetWindowsForPid([uint32]$pid)
-    Write-Output "[DEBUG] PID $pid has $($windows.Count) visible windows"
-    
-    foreach ($hwnd in $windows) {
-        $title = New-Object System.Text.StringBuilder 256
-        [void][WinFocus]::GetWindowText($hwnd, $title, 256)
-        Write-Output "[DEBUG] HWND $hwnd title: $($title.ToString())"
-        
-        # Focus this window
-        [WinFocus]::ForceForeground($hwnd) | Out-Null
-        Write-Output "[SUCCESS] Focused HWND $hwnd (PID $pid)"
-        $found = $true
-        break
-    }
-    if ($found) { break }
-}
-
-if ($found) {
-    exit 0
-} else {
-    Write-Output "[FAIL] No visible Chrome window found for dataDir"
-    exit 1
-}
-`;
-      
-      const scriptPath = path.join(os.tmpdir(), `focus-${profileId}-${Date.now()}.ps1`);
-      fs.writeFileSync(scriptPath, ps1Script, 'utf8');
-      
-      try {
-        const result = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, {
-          encoding: 'utf8',
-          timeout: 5000,
-        });
-        
-        console.log(`[WinAPI Focus] Output:\n${result}`);
-        const success = result.includes('[SUCCESS]');
-        if (success) {
-          console.log(`✓ Focus window succeeded for profile ${profileId} via WinAPI`);
-        }
-        return success;
-      } catch (e: any) {
-        console.log(`[WinAPI Focus] Failed: ${e.message}`);
-        if (e.stdout) console.log(`[WinAPI Focus] stdout: ${e.stdout}`);
-        return false;
-      } finally {
-        try { fs.unlinkSync(scriptPath); } catch {}
+      if (Process32First(snapshot, entry)) {
+        do {
+          // szExeFile is a char array — koffi gives us a Buffer or number array
+          const nameBytes: number[] = entry.szExeFile;
+          const name = Buffer.from(nameBytes).toString('utf8').replace(/\0.*$/, '');
+          if (name.toLowerCase() === 'chrome.exe') {
+            chromePids.push(entry.th32ProcessID);
+          }
+        } while (Process32Next(snapshot, entry));
       }
-    } catch (error) {
-      console.error(`✗ Error in WinAPI focus:`, error);
+      CloseHandle(snapshot);
+
+      console.log(`[WinAPI Focus] Found ${chromePids.length} chrome.exe PIDs. Stored PID: ${processInfo.pid}`);
+
+      // Prioritize the stored PID (launched by us), then all chrome PIDs
+      const prioritized = [processInfo.pid, ...chromePids.filter(p => p !== processInfo.pid)];
+
+      // Find a visible window for any of these PIDs
+      let targetHwnd: any = null;
+
+      for (const pid of prioritized) {
+        const callback = koffi.register((hwnd: any, _lParam: number) => {
+          if (targetHwnd) return false;
+          if (!IsWindowVisible(hwnd)) return true;
+          if (GetWindowTextLengthW(hwnd) === 0) return true;
+          const pidOut = [0];
+          GetWindowThreadProcessId(hwnd, pidOut);
+          if (pidOut[0] === pid) {
+            targetHwnd = hwnd;
+            return false;
+          }
+          return true;
+        }, koffi.pointer(WNDENUMPROC));
+
+        EnumWindows(callback, 0);
+        koffi.unregister(callback);
+
+        if (targetHwnd) {
+          console.log(`[WinAPI Focus] Found window for PID ${pid}`);
+          break;
+        }
+      }
+
+      if (!targetHwnd) {
+        console.warn(`[WinAPI Focus] No visible Chrome window found`);
+        return false;
+      }
+
+      // Force foreground via AttachThreadInput
+      const fgHwnd = GetForegroundWindow();
+      const fgThreadId = GetWindowThreadProcessId(fgHwnd, null);
+      const curThreadId = GetCurrentThreadId();
+
+      if (fgThreadId !== curThreadId) AttachThreadInput(curThreadId, fgThreadId, true);
+      ShowWindow(targetHwnd, 9); // SW_RESTORE
+      BringWindowToTop(targetHwnd);
+      SetForegroundWindow(targetHwnd);
+      if (fgThreadId !== curThreadId) AttachThreadInput(curThreadId, fgThreadId, false);
+
+      console.log(`✓ Focus window succeeded for profile ${profileId} via WinAPI (koffi)`);
+      return true;
+    } catch (e: any) {
+      console.error(`✗ WinAPI focus failed: ${e.message}`);
       return false;
     }
   }
