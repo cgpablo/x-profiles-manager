@@ -6,7 +6,7 @@ import React from 'react';
 import { ChromeProfile, ProfileFolder } from '../../types';
 import SidebarDashboard from './SidebarDashboard';
 import SidebarFolders from './SidebarFolders';
-// import SidebarSettings from './SidebarSettings'; // DISABLED
+import SidebarSettings from './SidebarSettings';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -90,8 +90,8 @@ export default function Sidebar({
              orderedProfiles={orderedProfiles}
            />
 
-       {/* Settings Section - DISABLED */}
-       {/* <SidebarSettings onOpenSettings={onOpenSettings} /> */}
+       {/* Settings Section */}
+       <SidebarSettings onOpenSettings={onOpenSettings} />
      </aside>
    );
  }

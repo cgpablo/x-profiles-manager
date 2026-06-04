@@ -452,76 +452,79 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
                 </div>
                 <small>Useful for troubleshooting focus and process issues</small>
               </div>
-            )}
-          </div>
+             )}
+           </div>
 
-          <div className="settings-section">
-            <h3>Extensions</h3>
-            <p className="section-description">
-              Select which extensions to automatically install on all profiles.
-            </p>
-            <div className="extensions-container">
-              <div className="extension-item">
-                <div className="checkbox-group">
-                  <input
-                    type="checkbox"
-                    id="ublockOriginLite"
-                    checked={settings.platformPreferences?.extensionsConfig?.ublockOriginLite !== false}
-                    onChange={(e) => {
-                      const prefs = settings.platformPreferences || {};
-                      const extConfig = prefs.extensionsConfig || {};
-                      const newSettings = {
-                        ...settings,
-                        platformPreferences: {
-                          ...prefs,
-                          extensionsConfig: {
-                            ...extConfig,
-                            ublockOriginLite: e.target.checked,
-                          },
-                        },
-                      };
-                      setSettings(newSettings);
-                    }}
-                  />
-                  <label htmlFor="ublockOriginLite" style={{ marginLeft: '8px' }}>
-                    <strong>uBlock Origin Lite</strong>
-                  </label>
-                </div>
-                <small>Lightweight ad blocker and privacy tool</small>
-              </div>
+           {/* Extensions Section - DISABLED */}
+           {/*
+           <div className="settings-section">
+             <h3>Extensions</h3>
+             <p className="section-description">
+               Select which extensions to automatically install on all profiles.
+             </p>
+             <div className="extensions-container">
+               <div className="extension-item">
+                 <div className="checkbox-group">
+                   <input
+                     type="checkbox"
+                     id="ublockOriginLite"
+                     checked={settings.platformPreferences?.extensionsConfig?.ublockOriginLite !== false}
+                     onChange={(e) => {
+                       const prefs = settings.platformPreferences || {};
+                       const extConfig = prefs.extensionsConfig || {};
+                       const newSettings = {
+                         ...settings,
+                         platformPreferences: {
+                           ...prefs,
+                           extensionsConfig: {
+                             ...extConfig,
+                             ublockOriginLite: e.target.checked,
+                           },
+                         },
+                       };
+                       setSettings(newSettings);
+                     }}
+                   />
+                   <label htmlFor="ublockOriginLite" style={{ marginLeft: '8px' }}>
+                     <strong>uBlock Origin Lite</strong>
+                   </label>
+                 </div>
+                 <small>Lightweight ad blocker and privacy tool</small>
+               </div>
 
-              <div className="extension-item">
-                <div className="checkbox-group">
-                  <input
-                    type="checkbox"
-                    id="twitterControl"
-                    checked={settings.platformPreferences?.extensionsConfig?.twitterControl !== false}
-                    onChange={(e) => {
-                      const prefs = settings.platformPreferences || {};
-                      const extConfig = prefs.extensionsConfig || {};
-                      const newSettings = {
-                        ...settings,
-                        platformPreferences: {
-                          ...prefs,
-                          extensionsConfig: {
-                            ...extConfig,
-                            twitterControl: e.target.checked,
-                          },
-                        },
-                      };
-                      setSettings(newSettings);
-                    }}
-                  />
-                  <label htmlFor="twitterControl" style={{ marginLeft: '8px' }}>
-                    <strong>Control Panel for Twitter</strong>
-                  </label>
-                </div>
-                <small>Enhance and control your Twitter experience</small>
-              </div>
-            </div>
-          </div>
+               <div className="extension-item">
+                 <div className="checkbox-group">
+                   <input
+                     type="checkbox"
+                     id="twitterControl"
+                     checked={settings.platformPreferences?.extensionsConfig?.twitterControl !== false}
+                     onChange={(e) => {
+                       const prefs = settings.platformPreferences || {};
+                       const extConfig = prefs.extensionsConfig || {};
+                       const newSettings = {
+                         ...settings,
+                         platformPreferences: {
+                           ...prefs,
+                           extensionsConfig: {
+                             ...extConfig,
+                             twitterControl: e.target.checked,
+                           },
+                         },
+                       };
+                       setSettings(newSettings);
+                     }}
+                   />
+                   <label htmlFor="twitterControl" style={{ marginLeft: '8px' }}>
+                     <strong>Control Panel for Twitter</strong>
+                   </label>
+                 </div>
+                 <small>Enhance and control your Twitter experience</small>
+               </div>
+             </div>
+           </div>
+           */}
 
-          <div className="settings-section">
+           <div className="settings-section">
             <h3>Backup & Restore</h3>
             <p className="section-description">
               Export all your profiles, extensions, and settings to a backup file. Import a previously exported backup to restore everything.
