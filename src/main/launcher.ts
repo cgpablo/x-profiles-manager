@@ -142,42 +142,22 @@ export class ChromeLauncher {
         } catch (error) {
           console.error('Error returning focus to app:', error);
         }
-      } else if (process.platform === 'win32') {
-        // Windows: use chrome.exe directly with no-activate flag
-        if (!fs.existsSync(chromePath)) {
-          throw new Error(`Chrome not found at ${chromePath}`);
-        }
+       } else if (process.platform === 'win32') {
+         // Windows: use chrome.exe directly with no-activate flag
+         if (!fs.existsSync(chromePath)) {
+           throw new Error(`Chrome not found at ${chromePath}`);
+         }
 
-        args.push('--disable-activate-on-launch');
+         args.push('--disable-activate-on-launch');
 
-        const proc = spawn(chromePath, args, {
-          detached: true,
-          stdio: 'ignore',
-          shell: false,
-        });
-        
-        pid = proc.pid || 0;
-        proc.unref();
-        
-        // Try to get the window handle for this process
-        let windowHandle = 0;
-        if (pid > 0) {
-          windowHandle = this.getWindowHandleWindows(pid, profileId);
-        }
-        
-        const processInfo: ProcessInfo = {
-          profileId,
-          pid,
-          windowHandle,
-          startTime: Date.now(),
-        };
-
-        this.runningProcesses.set(profileId, processInfo);
-        if (pid > 0) {
-          this.browserWindowMap.set(pid, profileId);
-        }
-        console.log(`[Windows Launch] Launched profile ${profileId} with PID ${pid} and window handle ${windowHandle}`);
-        return processInfo;
+         const proc = spawn(chromePath, args, {
+           detached: true,
+           stdio: 'ignore',
+           shell: false,
+         });
+         
+         pid = proc.pid || 0;
+         proc.unref();
       } else {
         // Linux and others
         if (!fs.existsSync(chromePath)) {
@@ -211,38 +191,6 @@ export class ChromeLauncher {
   }
 
   /**
-   * Windows: Obtiene el window handle de un proceso Chrome (con reintentos)
-   */
-  private getWindowHandleWindows(pid: number, profileId: string): number {
-    const { execSync } = require('child_process');
-    
-    // Retry a few times because the window might not be created immediately
-    for (let attempt = 0; attempt < 10; attempt++) {
-      try {
-        const result = execSync(
-          `powershell -NoProfile -Command "Get-Process -Id ${pid} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty MainWindowHandle"`,
-          { encoding: 'utf8', timeout: 2000 }
-        ).trim();
-        
-        const hwnd = parseInt(result, 10);
-        if (hwnd > 0) {
-          console.log(`[Windows Launch] Got window handle ${hwnd} for PID ${pid} (attempt ${attempt + 1})`);
-          return hwnd;
-        }
-      } catch (e) {
-        // Continue retrying
-      }
-      
-      // Wait a bit before retrying
-      const delay = Math.min(100 * (attempt + 1), 500);
-      require('child_process').execSync(`timeout /t ${Math.ceil(delay / 1000)}`, { stdio: 'ignore' });
-    }
-    
-    console.warn(`[Windows Launch] Could not get window handle for PID ${pid} after retries`);
-    return 0;
-  }
-
-  /**
    * macOS: Enfoca ventana de Chrome por PID Unix
    */
   private focusWindowMacOS(profileId: string, processInfo: ProcessInfo): boolean {
@@ -273,134 +221,80 @@ end tell`;
   }
 
   /**
-   * Windows: Enfoca ventana de Chrome por windowHandle o búsqueda
+   * Windows: Enfoca ventana de Chrome usando Chrome DevTools Protocol
+   * Abre una nueva pestaña que automáticamente trae la ventana al frente
    */
-  private focusWindowWindows(profileId: string, processInfo: ProcessInfo, profile: any): boolean {
-    const { execSync } = require('child_process');
-    const fs = require('fs');
-    const path = require('path');
-    const os = require('os');
-    
+  private async focusWindowWindows(profileId: string, processInfo: ProcessInfo, profile: any): Promise<boolean> {
     try {
       console.log(`[Windows Focus] Starting focus for profile ${profileId}`);
-      console.log(`[Windows Focus] PID: ${processInfo.pid}, WindowHandle: ${processInfo.windowHandle}`);
       
-      // If we have a stored window handle, use it directly
-      if (processInfo.windowHandle && processInfo.windowHandle > 0) {
-        console.log(`[Windows Focus] Using stored window handle: ${processInfo.windowHandle}`);
+      const debugPort = this.debugPorts.get(profileId);
+      if (!debugPort) {
+        console.error(`[Windows Focus] No debug port found for profile ${profileId}`);
+        return false;
+      }
+
+      console.log(`[Windows Focus] Using debug port: ${debugPort}`);
+
+      // Try to connect to Chrome DevTools Protocol
+      try {
+        const http = require('http');
         
-        const ps1Script = [
-          'Add-Type @"',
-          'using System;',
-          'using System.Runtime.InteropServices;',
-          '',
-          'public class WindowHelper {',
-          '    [DllImport("user32.dll")]',
-          '    public static extern bool SetForegroundWindow(IntPtr hWnd);',
-          '    ',
-          '    [DllImport("user32.dll")]',
-          '    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);',
-          '}',
-          '"@',
-          '',
-          '$hwnd = [IntPtr]' + processInfo.windowHandle,
-          '[WindowHelper]::ShowWindow($hwnd, 9) | Out-Null',
-          '[WindowHelper]::SetForegroundWindow($hwnd) | Out-Null',
-          'Write-Output "[SUCCESS] Window brought to front using stored handle"',
-          'exit 0',
-        ].join('\r\n');
+        // Get the list of tabs from Chrome DevTools Protocol
+        const tabsUrl = `http://localhost:${debugPort}/json/list`;
         
-        const scriptPath = path.join(os.tmpdir(), `focus-${profileId}-${Date.now()}.ps1`);
-        fs.writeFileSync(scriptPath, ps1Script, 'utf8');
-        
-        try {
-          const result = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, {
-            encoding: 'utf8',
-            timeout: 5000,
+        return new Promise((resolve) => {
+          const req = http.get(tabsUrl, { timeout: 3000 }, (res: any) => {
+            let data = '';
+            res.on('data', (chunk: any) => { data += chunk; });
+            res.on('end', () => {
+              try {
+                const tabs = JSON.parse(data);
+                console.log(`[Windows Focus] Found ${tabs.length} open tabs`);
+                
+                if (tabs.length > 0) {
+                  // If there are tabs, activate the first one
+                  // CDP automatically brings the window to front when activating a tab
+                  const firstTab = tabs[0];
+                  const activateUrl = `http://localhost:${debugPort}/json/activate/${firstTab.id}`;
+                  
+                  console.log(`[Windows Focus] Activating tab: ${firstTab.url}`);
+                  
+                  http.get(activateUrl, { timeout: 3000 }, (activateRes: any) => {
+                    activateRes.on('data', () => {});
+                    activateRes.on('end', () => {
+                      console.log(`✓ Focus window succeeded for profile ${profileId} on Windows (via CDP)`);
+                      resolve(true);
+                    });
+                  }).on('error', (err: any) => {
+                    console.error(`[Windows Focus] Error activating tab: ${err.message}`);
+                    resolve(false);
+                  });
+                } else {
+                  console.log(`[Windows Focus] No tabs found, trying to open new tab`);
+                  resolve(false);
+                }
+              } catch (e) {
+                console.error(`[Windows Focus] Error parsing tabs response: ${e}`);
+                resolve(false);
+              }
+            });
           });
           
-          console.log(`[Windows Focus] PowerShell output:\n${result}`);
-          console.log(`✓ Focus window succeeded for profile ${profileId} on Windows (via stored handle)`);
-          return true;
-        } catch (e: any) {
-          console.log(`[Windows Focus] Failed with stored handle: ${e.message}`);
-          // Fall through to try search by dataDir
-        } finally {
-          try { fs.unlinkSync(scriptPath); } catch {}
-        }
-      }
-      
-      // Fallback: search by dataDir
-      console.log(`[Windows Focus] Searching by dataDir: ${profile.dataDir}`);
-      const dataDirForPS = profile.dataDir.replace(/"/g, '`"');
-      
-      const ps1Script = [
-        '$ErrorActionPreference = "SilentlyContinue"',
-        '',
-        'Add-Type @"',
-        'using System;',
-        'using System.Runtime.InteropServices;',
-        '',
-        'public class WindowHelper {',
-        '    [DllImport("user32.dll")]',
-        '    public static extern bool SetForegroundWindow(IntPtr hWnd);',
-        '    ',
-        '    [DllImport("user32.dll")]',
-        '    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);',
-        '}',
-        '"@',
-        '',
-        '$dataDir = "' + dataDirForPS + '"',
-        'Write-Output "[DEBUG] Looking for Chrome with dataDir: $dataDir"',
-        '',
-        '$wmiProcesses = Get-WmiObject Win32_Process -Filter "Name = \'chrome.exe\'" -ErrorAction SilentlyContinue',
-        'Write-Output "[DEBUG] Found $($wmiProcesses.Count) Chrome WMI processes"',
-        '',
-        '$found = $false',
-        '',
-        'foreach ($wmiProc in $wmiProcesses) {',
-        '    $cmdLine = $wmiProc.CommandLine',
-        '    if ($cmdLine) {',
-        '        if ($cmdLine.Contains($dataDir)) {',
-        '            Write-Output "[DEBUG] MATCH! PID $($wmiProc.ProcessId)"',
-        '            $proc = Get-Process -Id $wmiProc.ProcessId -ErrorAction SilentlyContinue',
-        '            if ($proc -and $proc.MainWindowHandle -ne 0) {',
-        '                [WindowHelper]::ShowWindow($proc.MainWindowHandle, 9) | Out-Null',
-        '                [WindowHelper]::SetForegroundWindow($proc.MainWindowHandle) | Out-Null',
-        '                Write-Output "[SUCCESS] Window brought to front"',
-        '                $found = $true',
-        '                break',
-        '            }',
-        '        }',
-        '    }',
-        '}',
-        '',
-        'if ($found) {',
-        '    exit 0',
-        '} else {',
-        '    Write-Output "[FAIL] Could not find Chrome window"',
-        '    exit 1',
-        '}',
-      ].join('\r\n');
-      
-      const scriptPath = path.join(os.tmpdir(), `focus-${profileId}-${Date.now()}.ps1`);
-      fs.writeFileSync(scriptPath, ps1Script, 'utf8');
-      console.log(`[Windows Focus] Created search script`);
-      
-      try {
-        const result = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, {
-          encoding: 'utf8',
-          timeout: 5000,
+          req.on('error', (err: any) => {
+            console.log(`[Windows Focus] Could not connect to CDP at port ${debugPort}: ${err.message}`);
+            resolve(false);
+          });
+          
+          req.on('timeout', () => {
+            req.destroy();
+            console.log(`[Windows Focus] CDP connection timed out`);
+            resolve(false);
+          });
         });
-        
-        console.log(`[Windows Focus] PowerShell output:\n${result}`);
-        console.log(`✓ Focus window succeeded for profile ${profileId} on Windows`);
-        return true;
-      } catch (e: any) {
-        console.log(`[Windows Focus] Search failed: ${e.message}`);
+      } catch (error) {
+        console.error(`[Windows Focus] Error using CDP: ${error}`);
         return false;
-      } finally {
-        try { fs.unlinkSync(scriptPath); } catch {}
       }
     } catch (error) {
       console.error(`✗ Error focusing Chrome on Windows:`, error);
@@ -408,10 +302,11 @@ end tell`;
     }
   }
 
+
   /**
    * Intenta enfocar la ventana de Chrome del perfil
    */
-  focusWindow(profileId: string): boolean {
+  async focusWindow(profileId: string): Promise<boolean> {
     const processInfo = this.runningProcesses.get(profileId);
     if (!processInfo || !processInfo.pid) {
       console.warn(`✗ No process info for profile ${profileId}`);
@@ -428,7 +323,7 @@ end tell`;
       if (process.platform === 'darwin') {
         return this.focusWindowMacOS(profileId, processInfo);
       } else if (process.platform === 'win32') {
-        return this.focusWindowWindows(profileId, processInfo, profile);
+        return await this.focusWindowWindows(profileId, processInfo, profile);
       } else {
         // Linux: use xdotool to focus by PID
         try {

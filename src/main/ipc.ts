@@ -132,7 +132,7 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle('launcher:focusWindow', async (_, profileId: string) => {
     try {
-      const success = chromeLauncher.focusWindow(profileId);
+      const success = await chromeLauncher.focusWindow(profileId);
       return { success: true, data: success };
     } catch (error) {
       console.error('Error in focusWindow handler:', error);
