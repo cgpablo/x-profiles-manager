@@ -2,41 +2,50 @@
 
 ## Latest Updates (v0.1.0)
 
-### Windows Focus Window Fix (Latest)
+### Windows Focus Window Implementation (Latest)
 
-#### Problem
-- Windows focus implementation relied on `timeout /t` command which is incompatible with Node.js `execSync`
-- Previous approach using stored window handles had reliability issues
-- Command-line matching for Chrome processes was unreliable across Windows versions
+### Final Implementation: PowerShell Window API Approach
 
-#### Solution
-- **Chrome DevTools Protocol (CDP) Approach**: Uses Chrome's built-in debugging interface
-- Each Chrome profile launched with `--remote-debugging-port=${debugPort}` (range 9222-9322)
-- When focusing a profile, connects to CDP endpoint: `http://localhost:${debugPort}/json/list`
-- Activates the first tab, which automatically brings the Chrome window to front
-- Works reliably across all Windows versions
+#### Problem with CDP Fallback
+- Opening temporary tabs accumulates infinitely in the Chrome window
+- Tabs need to be closed after activation (extra complexity)
+- Not ideal user experience
 
-#### Implementation Details
-- `getWindowHandleWindows()` function removed (was the source of the issue)
-- New `focusWindowWindows()` async function using HTTP to CDP endpoint
-- `focusWindow()` made async to support CDP operations
-- IPC handler updated to await async focusWindow call
-- Cross-platform implementations now complete:
-  - **macOS**: AppleScript with specific PID activation ✅
-  - **Windows**: Chrome DevTools Protocol ✅
-  - **Linux**: xdotool with PID ✅
+#### Solution: Direct PowerShell Window API
+- **No temporary tabs**: Simply bring window to front using Windows APIs
+- **Method**: 
+  1. Find all `chrome.exe` processes using `Get-Process`
+  2. Read each process's command line using WMI
+  3. Extract `--user-data-dir=` value from command line
+  4. Normalize paths (convert `\` to `/`, lowercase) for comparison
+  5. Match against profile's dataDir
+  6. Use Windows API calls to bring window to front:
+     - `ShowWindow(hWnd, 9)` - Restore/show window
+     - `BringWindowToTop(hWnd)` - Bring to top of z-order
+     - `SetForegroundWindow(hWnd)` - Set focus
+  
+#### Key Implementation Details
+- **Path normalization critical**: Windows paths with backslashes need conversion
+- **Regex matching**: Use PowerShell regex to extract user-data-dir value
+- **Quote handling**: Strip quotes from extracted path for comparison
+- **Error handling**: Try-catch blocks for each process iteration
+- **Comprehensive logging**: Debug output shows:
+  - Number of Chrome processes found
+  - Each process's extracted user-data-dir
+  - Whether match was found
+  - Window handle being activated
 
-#### Testing on Windows
-To test the focus feature on Windows:
-1. Open dev environment: `npm run dev`
-2. Create 2-3 profiles with different names
-3. Launch them all ("Open in Browser" button)
-4. Click the eye icon on each profile - should bring that specific window to front
-5. Verify correct window activates every time (not always the same window)
+#### Advantages
+- No CDP server needed
+- No extra tabs opened
+- Direct control via Windows APIs
+- Works with all Chrome versions
+- Better debugging with process-by-process logging
 
-#### Files Modified
-- `src/main/launcher.ts` - Focus implementation, debug port setup
-- `src/main/ipc.ts` - Updated focusWindow handler to await async call
+#### Script Location
+- Generated in system temp directory: `focus-{profileId}-{timestamp}.ps1`
+- Auto-deleted after execution
+- Full path logged for debugging
 
 ### UI/UX Improvements
 
