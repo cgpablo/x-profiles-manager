@@ -158,6 +158,26 @@ export class ChromeLauncher {
         
         pid = proc.pid || 0;
         proc.unref();
+        
+        // Try to get the window handle for this process
+        let windowHandle = 0;
+        if (pid > 0) {
+          windowHandle = this.getWindowHandleWindows(pid, profileId);
+        }
+        
+        const processInfo: ProcessInfo = {
+          profileId,
+          pid,
+          windowHandle,
+          startTime: Date.now(),
+        };
+
+        this.runningProcesses.set(profileId, processInfo);
+        if (pid > 0) {
+          this.browserWindowMap.set(pid, profileId);
+        }
+        console.log(`[Windows Launch] Launched profile ${profileId} with PID ${pid} and window handle ${windowHandle}`);
+        return processInfo;
       } else {
         // Linux and others
         if (!fs.existsSync(chromePath)) {
@@ -191,16 +211,35 @@ export class ChromeLauncher {
   }
 
   /**
-   * Conecta al Chrome DevTools Protocol para obtener información de ventanas
+   * Windows: Obtiene el window handle de un proceso Chrome (con reintentos)
    */
-  private async getChromeDevToolsInfo(debugPort: number): Promise<any> {
-    try {
-      const response = await fetch(`http://localhost:${debugPort}/json`);
-      if (!response.ok) return null;
-      return await response.json();
-    } catch (error) {
-      return null;
+  private getWindowHandleWindows(pid: number, profileId: string): number {
+    const { execSync } = require('child_process');
+    
+    // Retry a few times because the window might not be created immediately
+    for (let attempt = 0; attempt < 10; attempt++) {
+      try {
+        const result = execSync(
+          `powershell -NoProfile -Command "Get-Process -Id ${pid} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty MainWindowHandle"`,
+          { encoding: 'utf8', timeout: 2000 }
+        ).trim();
+        
+        const hwnd = parseInt(result, 10);
+        if (hwnd > 0) {
+          console.log(`[Windows Launch] Got window handle ${hwnd} for PID ${pid} (attempt ${attempt + 1})`);
+          return hwnd;
+        }
+      } catch (e) {
+        // Continue retrying
+      }
+      
+      // Wait a bit before retrying
+      const delay = Math.min(100 * (attempt + 1), 500);
+      require('child_process').execSync(`timeout /t ${Math.ceil(delay / 1000)}`, { stdio: 'ignore' });
     }
+    
+    console.warn(`[Windows Launch] Could not get window handle for PID ${pid} after retries`);
+    return 0;
   }
 
   /**
@@ -234,7 +273,7 @@ end tell`;
   }
 
   /**
-   * Windows: Enfoca ventana de Chrome por dataDir
+   * Windows: Enfoca ventana de Chrome por windowHandle o búsqueda
    */
   private focusWindowWindows(profileId: string, processInfo: ProcessInfo, profile: any): boolean {
     const { execSync } = require('child_process');
@@ -244,14 +283,58 @@ end tell`;
     
     try {
       console.log(`[Windows Focus] Starting focus for profile ${profileId}`);
-      console.log(`[Windows Focus] dataDir: ${profile.dataDir}`);
+      console.log(`[Windows Focus] PID: ${processInfo.pid}, WindowHandle: ${processInfo.windowHandle}`);
       
-      // dataDir already has single backslashes which is what Chrome uses in its command line
-      // No need to escape for PowerShell string - just escape double quotes
+      // If we have a stored window handle, use it directly
+      if (processInfo.windowHandle && processInfo.windowHandle > 0) {
+        console.log(`[Windows Focus] Using stored window handle: ${processInfo.windowHandle}`);
+        
+        const ps1Script = [
+          'Add-Type @"',
+          'using System;',
+          'using System.Runtime.InteropServices;',
+          '',
+          'public class WindowHelper {',
+          '    [DllImport("user32.dll")]',
+          '    public static extern bool SetForegroundWindow(IntPtr hWnd);',
+          '    ',
+          '    [DllImport("user32.dll")]',
+          '    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);',
+          '}',
+          '"@',
+          '',
+          '$hwnd = [IntPtr]' + processInfo.windowHandle,
+          '[WindowHelper]::ShowWindow($hwnd, 9) | Out-Null',
+          '[WindowHelper]::SetForegroundWindow($hwnd) | Out-Null',
+          'Write-Output "[SUCCESS] Window brought to front using stored handle"',
+          'exit 0',
+        ].join('\r\n');
+        
+        const scriptPath = path.join(os.tmpdir(), `focus-${profileId}-${Date.now()}.ps1`);
+        fs.writeFileSync(scriptPath, ps1Script, 'utf8');
+        
+        try {
+          const result = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, {
+            encoding: 'utf8',
+            timeout: 5000,
+          });
+          
+          console.log(`[Windows Focus] PowerShell output:\n${result}`);
+          console.log(`✓ Focus window succeeded for profile ${profileId} on Windows (via stored handle)`);
+          return true;
+        } catch (e: any) {
+          console.log(`[Windows Focus] Failed with stored handle: ${e.message}`);
+          // Fall through to try search by dataDir
+        } finally {
+          try { fs.unlinkSync(scriptPath); } catch {}
+        }
+      }
+      
+      // Fallback: search by dataDir
+      console.log(`[Windows Focus] Searching by dataDir: ${profile.dataDir}`);
       const dataDirForPS = profile.dataDir.replace(/"/g, '`"');
       
-      // Build PowerShell script using array join to avoid template literal $ issues
-      const lines = [
+      const ps1Script = [
         '$ErrorActionPreference = "SilentlyContinue"',
         '',
         'Add-Type @"',
@@ -270,7 +353,6 @@ end tell`;
         '$dataDir = "' + dataDirForPS + '"',
         'Write-Output "[DEBUG] Looking for Chrome with dataDir: $dataDir"',
         '',
-        '# Get all Chrome processes and their command lines via WMI',
         '$wmiProcesses = Get-WmiObject Win32_Process -Filter "Name = \'chrome.exe\'" -ErrorAction SilentlyContinue',
         'Write-Output "[DEBUG] Found $($wmiProcesses.Count) Chrome WMI processes"',
         '',
@@ -279,75 +361,46 @@ end tell`;
         'foreach ($wmiProc in $wmiProcesses) {',
         '    $cmdLine = $wmiProc.CommandLine',
         '    if ($cmdLine) {',
-        '        Write-Output "[DEBUG-CMD] PID $($wmiProc.ProcessId): $cmdLine"',
         '        if ($cmdLine.Contains($dataDir)) {',
-        '            Write-Output "[DEBUG] MATCH! Process $($wmiProc.ProcessId) has our dataDir"',
-        '            ',
-        '            # Get the .NET process object to access MainWindowHandle',
+        '            Write-Output "[DEBUG] MATCH! PID $($wmiProc.ProcessId)"',
         '            $proc = Get-Process -Id $wmiProc.ProcessId -ErrorAction SilentlyContinue',
         '            if ($proc -and $proc.MainWindowHandle -ne 0) {',
-        '                Write-Output "[DEBUG] Found MainWindowHandle: $($proc.MainWindowHandle)"',
         '                [WindowHelper]::ShowWindow($proc.MainWindowHandle, 9) | Out-Null',
         '                [WindowHelper]::SetForegroundWindow($proc.MainWindowHandle) | Out-Null',
-        '                Write-Output "[SUCCESS] Window brought to front via MainWindowHandle"',
+        '                Write-Output "[SUCCESS] Window brought to front"',
         '                $found = $true',
         '                break',
-        '            } else {',
-        '                Write-Output "[DEBUG] No MainWindowHandle for PID $($wmiProc.ProcessId)"',
         '            }',
         '        }',
-        '    }',
-        '}',
-        '',
-        '# Fallback: if no match found by dataDir, try MainWindowHandle of any chrome with a window',
-        'if (-not $found) {',
-        '    Write-Output "[DEBUG] Trying fallback: find any Chrome with a visible window"',
-        '    $chromeWithWindow = Get-Process chrome -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1',
-        '    if ($chromeWithWindow) {',
-        '        Write-Output "[DEBUG] Fallback: using PID $($chromeWithWindow.Id) with handle $($chromeWithWindow.MainWindowHandle)"',
-        '        [WindowHelper]::ShowWindow($chromeWithWindow.MainWindowHandle, 9) | Out-Null',
-        '        [WindowHelper]::SetForegroundWindow($chromeWithWindow.MainWindowHandle) | Out-Null',
-        '        Write-Output "[SUCCESS] Window brought to front via fallback"',
-        '        $found = $true',
         '    }',
         '}',
         '',
         'if ($found) {',
         '    exit 0',
         '} else {',
-        '    Write-Output "[FAIL] Could not find or focus Chrome window"',
+        '    Write-Output "[FAIL] Could not find Chrome window"',
         '    exit 1',
         '}',
-      ];
-      
-      const ps1Script = lines.join('\r\n');
+      ].join('\r\n');
       
       const scriptPath = path.join(os.tmpdir(), `focus-${profileId}-${Date.now()}.ps1`);
       fs.writeFileSync(scriptPath, ps1Script, 'utf8');
-      console.log(`[Windows Focus] Created script at: ${scriptPath}`);
+      console.log(`[Windows Focus] Created search script`);
       
       try {
         const result = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, {
           encoding: 'utf8',
-          timeout: 10000,
+          timeout: 5000,
         });
         
         console.log(`[Windows Focus] PowerShell output:\n${result}`);
         console.log(`✓ Focus window succeeded for profile ${profileId} on Windows`);
         return true;
       } catch (e: any) {
-        const errorOutput = e.stdout || e.stderr || e.message;
-        console.log(`[Windows Focus] PowerShell output:\n${errorOutput}`);
-        console.log(`[Windows Focus] PowerShell exit code: ${e.status}`);
-        
-        if (e.status === 1) {
-          console.warn(`⚠ Could not find visible Chrome window for profile ${profileId}`);
-        }
+        console.log(`[Windows Focus] Search failed: ${e.message}`);
         return false;
       } finally {
-        try {
-          fs.unlinkSync(scriptPath);
-        } catch {}
+        try { fs.unlinkSync(scriptPath); } catch {}
       }
     } catch (error) {
       console.error(`✗ Error focusing Chrome on Windows:`, error);

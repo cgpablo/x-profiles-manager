@@ -42,7 +42,7 @@ export interface AppSettings {
 export interface ProcessInfo {
   profileId: string;
   pid: number;
-  windowId?: number;
+  windowHandle?: number; // Windows HWND or other platform window identifier
   startTime: number;
 }
 
