@@ -506,6 +506,7 @@ if ($found) {
    */
   private async focusWindowCDP(profileId: string): Promise<boolean> {
     const http = require('http');
+    const { execSync } = require('child_process');
 
     const debugPort = this.debugPorts.get(profileId);
     if (!debugPort) {
@@ -530,15 +531,47 @@ if ($found) {
     };
 
     try {
-      // Step 1: Open a new tab (Chrome activates window automatically)
+      // Step 1: Grant Chrome permission to take foreground BEFORE opening tab.
+      // Electron is currently the foreground app (user just clicked), so
+      // AllowSetForegroundWindow grants Chrome the right to steal focus.
+      // Without this, Windows blocks the activation and Chrome only flashes orange.
+      if (process.platform === 'win32') {
+        try {
+          const pids = execSync(
+            `wmic process where "name='chrome.exe'" get ProcessId /value`,
+            { encoding: 'utf8', timeout: 2000 }
+          )
+            .split('\n')
+            .filter((l: string) => l.startsWith('ProcessId='))
+            .map((l: string) => l.replace('ProcessId=', '').trim())
+            .filter(Boolean)
+            .join(',');
+
+          if (pids) {
+            // AllowSetForegroundWindow must be called from the foreground process (Electron).
+            // We P/Invoke it directly via a tiny PowerShell inline so we don't spawn a full script.
+            const ps = `
+Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class FG{[DllImport("user32.dll")]public static extern bool AllowSetForegroundWindow(int p);}';
+"${pids}".Split(',') | ForEach-Object { [FG]::AllowSetForegroundWindow([int]$_) | Out-Null }
+`;
+            execSync(`powershell -NoProfile -Command "${ps.replace(/\n/g, ' ')}"`, { timeout: 2000 });
+            console.log(`[CDP Focus] AllowSetForegroundWindow granted for PIDs: ${pids}`);
+          }
+        } catch (e: any) {
+          // Non-fatal: proceed anyway, CDP may still work on some systems
+          console.warn(`[CDP Focus] Could not grant AllowSetForegroundWindow: ${e.message}`);
+        }
+      }
+
+      // Step 2: Open a new tab — Chrome activates its window when a new tab is opened
       const newTabUrl = `http://localhost:${debugPort}/json/new?url=about:blank`;
-      console.log(`[CDP Focus] Opening temporary tab via PUT...`);
+      console.log(`[CDP Focus] Opening temporary tab...`);
       const openData = await httpRequest(newTabUrl, 'PUT');
       const newTab = JSON.parse(openData);
       const newTabId = newTab.id;
-      console.log(`[CDP Focus] Opened tab: ${newTabId}, window activated`);
+      console.log(`[CDP Focus] Opened tab: ${newTabId}, window should activate`);
 
-      // Step 2: Wait for window activation then close temp tab
+      // Step 3: Wait for activation, then close the temporary tab
       await new Promise(resolve => setTimeout(resolve, 300));
 
       const closeUrl = `http://localhost:${debugPort}/json/close/${newTabId}`;
