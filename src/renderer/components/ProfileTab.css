@@ -17,6 +17,7 @@
   overflow: hidden;
   gap: 0.5rem;
   min-width: 0;
+  max-width: 100%;
 }
 
 .profile-tab::before {
@@ -54,12 +55,15 @@
 .profile-header {
   display: flex;
   gap: 1rem;
+  width: 100%;
+  align-items: flex-start;
 }
 
 .profile-content {
   width: 100%;
   display: flex;
   align-items: flex-start;
+  gap: 1rem;
 }
 
 .profile-icon-badge {
@@ -125,51 +129,37 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 0.25rem;
+  gap: 0.5rem;
   min-width: 0;
+  max-width: 100%;
 }
 
-.profile-header-row {
+/* Compact layout: show name + account on same line, badge below, buttons on right */
+.profile-header-compact {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.25rem;
-}
-
-.preview-btn {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: 1px solid var(--border);
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  border-radius: 0.375rem;
-  cursor: pointer;
-  font-size: 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.preview-btn:hover {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: white;
-  transform: scale(1.05);
+  width: 100%;
+  min-width: 0;
 }
 
 .profile-info h3 {
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.25rem;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .profile-account {
   font-size: 0.75rem;
   color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
 }
 
 .profile-status {
@@ -186,7 +176,6 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
-  margin-top: 0;
   width: fit-content;
 }
 
@@ -204,10 +193,10 @@
   display: flex;
   flex-direction: row;
   gap: 0.5rem;
-  margin-top: 0.5rem;
   justify-content: flex-start;
   flex-shrink: 0;
-  align-self: flex-start;
+  align-self: center;
+  margin-left: auto;
 }
 
 .action-btn {

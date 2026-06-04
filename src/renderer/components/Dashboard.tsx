@@ -49,11 +49,21 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
   // Track folder assignment to detect move-to-folder changes
   const prevFolderAssignmentRef = useRef<string>('');
 
-  // Initialize orderedFolders from folders prop (only when folder IDs change)
+  // Initialize orderedFolders from folders prop (when folder IDs or folder data changes)
   useEffect(() => {
     const newIds = folders.map(f => f.id).join(',');
     const prevIds = orderedFolders.map(f => f.id).join(',');
-    if (newIds !== prevIds) {
+    
+    // Also check if any folder data (name, color, icon) changed
+    const folderDataChanged = orderedFolders.some(oldFolder => {
+      const newFolder = folders.find(f => f.id === oldFolder.id);
+      return !newFolder || 
+             oldFolder.name !== newFolder.name || 
+             oldFolder.color !== newFolder.color || 
+             oldFolder.icon !== newFolder.icon;
+    });
+    
+    if (newIds !== prevIds || folderDataChanged) {
       setOrderedFolders(folders);
     }
   }, [folders]);
