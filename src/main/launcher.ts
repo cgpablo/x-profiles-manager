@@ -318,12 +318,8 @@ end tell`;
   }
 
   /**
-   * Windows: Enfoca ventana de Chrome buscando por dataDir en command line
-   * Estrategia: 
-   * 1. Busca todos los procesos chrome.exe
-   * 2. Para cada uno, obtiene el MainWindowHandle (HWND)
-   * 3. Compara el command line con el dataDir del perfil
-   * 4. Cuando encuentra match, usa SetForegroundWindow para traer al frente
+   * Windows API: Enfoca ventana de Chrome buscando por dataDir en command line.
+   * Usa EnumWindows para encontrar el HWND correcto (más fiable que MainWindowHandle).
    */
   private focusWindowWindows(profileId: string, processInfo: ProcessInfo, profile: any): boolean {
     const { execSync } = require('child_process');
@@ -332,28 +328,22 @@ end tell`;
     const os = require('os');
     
     try {
-      console.log(`[Windows Focus] Starting focus for profile ${profileId}`);
-      console.log(`[Windows Focus] PID: ${processInfo.pid}, DataDir: ${profile.dataDir}`);
+      console.log(`[WinAPI Focus] Starting for profile ${profileId}`);
+      console.log(`[WinAPI Focus] PID: ${processInfo.pid}, DataDir: ${profile.dataDir}`);
       
-      // Crear script PowerShell que busca Chrome por dataDir
-      // Normalize el path: convertir backslashes a forward slashes y a lowercase
       const normalizedDataDir = profile.dataDir.replace(/\\/g, '/').toLowerCase();
       
-      // Script PowerShell que:
-      // 1. Busca todos los procesos chrome.exe
-      // 2. Lee su command line
-      // 3. Normaliza el path (backslash -> forward slash, lowercase)
-      // 4. Busca la coincidencia de user-data-dir
-      // 5. Trae al frente cuando encuentra match
-      
+      // PowerShell script using EnumWindows to find the correct HWND
       const ps1Script = `
 $ErrorActionPreference = "SilentlyContinue"
 
 Add-Type @"
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text;
 
-public class WindowHelper {
+public class WinFocus {
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
     
@@ -362,6 +352,73 @@ public class WindowHelper {
     
     [DllImport("user32.dll")]
     public static extern bool BringWindowToTop(IntPtr hWnd);
+    
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+    
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+    
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+    
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+    
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern int GetWindowTextLength(IntPtr hWnd);
+    
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+    
+    [DllImport("user32.dll")]
+    public static extern bool AllowSetForegroundWindow(int dwProcessId);
+    
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+    
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr lpdwProcessId);
+    
+    [DllImport("user32.dll")]
+    public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+    
+    [DllImport("kernel32.dll")]
+    public static extern uint GetCurrentThreadId();
+
+    public static List<IntPtr> GetWindowsForPid(uint targetPid) {
+        List<IntPtr> result = new List<IntPtr>();
+        EnumWindows(delegate(IntPtr hWnd, IntPtr lParam) {
+            uint pid;
+            GetWindowThreadProcessId(hWnd, out pid);
+            if (pid == targetPid && IsWindowVisible(hWnd)) {
+                int len = GetWindowTextLength(hWnd);
+                if (len > 0) {
+                    result.Add(hWnd);
+                }
+            }
+            return true;
+        }, IntPtr.Zero);
+        return result;
+    }
+    
+    public static bool ForceForeground(IntPtr hWnd) {
+        IntPtr foreground = GetForegroundWindow();
+        uint foreThread = GetWindowThreadProcessId(foreground, IntPtr.Zero);
+        uint curThread = GetCurrentThreadId();
+        
+        if (foreThread != curThread) {
+            AttachThreadInput(curThread, foreThread, true);
+            ShowWindow(hWnd, 9);
+            BringWindowToTop(hWnd);
+            SetForegroundWindow(hWnd);
+            AttachThreadInput(curThread, foreThread, false);
+        } else {
+            ShowWindow(hWnd, 9);
+            BringWindowToTop(hWnd);
+            SetForegroundWindow(hWnd);
+        }
+        return true;
+    }
 }
 "@
 
@@ -370,51 +427,51 @@ $found = $false
 
 Write-Output "[DEBUG] Looking for Chrome with dataDir: $dataDir"
 
-$processes = Get-Process -Name "chrome" -ErrorAction SilentlyContinue
-Write-Output "[DEBUG] Found $($processes.Count) Chrome processes"
+# Find chrome.exe processes matching our dataDir
+$chromeProcs = Get-WmiObject Win32_Process -Filter "Name = 'chrome.exe'" -ErrorAction SilentlyContinue
+$matchingPids = @()
 
-foreach ($proc in $processes) {
-    try {
-        $cmdLine = (Get-WmiObject Win32_Process -Filter "ProcessId = $($proc.Id)" -ErrorAction SilentlyContinue).CommandLine
-        if ($cmdLine) {
-            $normalizedCmdLine = $cmdLine.Replace("\\\\", "/").ToLower()
-            
-            if ($normalizedCmdLine -match "user-data-dir=([^\\s]+)") {
-                $userDataDirValue = $matches[1]
-                $userDataDirNormalized = $userDataDirValue.Trim('"').Replace("\\\\", "/").ToLower()
-                
-                Write-Output "[DEBUG] PID $($proc.Id): user-data-dir = $userDataDirNormalized"
-                
-                if ($userDataDirNormalized -eq $dataDir) {
-                    Write-Output "[SUCCESS] MATCH! PID $($proc.Id) with window handle $($proc.MainWindowHandle)"
-                    
-                    if ($proc.MainWindowHandle -ne 0) {
-                        [WindowHelper]::ShowWindow($proc.MainWindowHandle, 9) | Out-Null
-                        [WindowHelper]::BringWindowToTop($proc.MainWindowHandle) | Out-Null
-                        [WindowHelper]::SetForegroundWindow($proc.MainWindowHandle) | Out-Null
-                        Write-Output "[SUCCESS] Window brought to front"
-                        $found = $true
-                        break
-                    }
-                }
-            }
+foreach ($proc in $chromeProcs) {
+    if ($proc.CommandLine) {
+        $normalizedCmdLine = $proc.CommandLine.Replace("\\\\", "/").Replace("\\", "/").ToLower()
+        if ($normalizedCmdLine -like "*user-data-dir*$dataDir*") {
+            $matchingPids += $proc.ProcessId
+            Write-Output "[DEBUG] Matching PID: $($proc.ProcessId)"
         }
-    } catch {
-        Write-Output "[ERROR] Exception processing PID $($proc.Id): $_"
     }
+}
+
+Write-Output "[DEBUG] Found $($matchingPids.Count) matching PIDs"
+
+# For each matching PID, use EnumWindows to find visible windows
+foreach ($pid in $matchingPids) {
+    $windows = [WinFocus]::GetWindowsForPid([uint32]$pid)
+    Write-Output "[DEBUG] PID $pid has $($windows.Count) visible windows"
+    
+    foreach ($hwnd in $windows) {
+        $title = New-Object System.Text.StringBuilder 256
+        [void][WinFocus]::GetWindowText($hwnd, $title, 256)
+        Write-Output "[DEBUG] HWND $hwnd title: $($title.ToString())"
+        
+        # Focus this window
+        [WinFocus]::ForceForeground($hwnd) | Out-Null
+        Write-Output "[SUCCESS] Focused HWND $hwnd (PID $pid)"
+        $found = $true
+        break
+    }
+    if ($found) { break }
 }
 
 if ($found) {
     exit 0
 } else {
-    Write-Output "[FAIL] Could not find Chrome window matching dataDir"
+    Write-Output "[FAIL] No visible Chrome window found for dataDir"
     exit 1
 }
 `;
       
       const scriptPath = path.join(os.tmpdir(), `focus-${profileId}-${Date.now()}.ps1`);
       fs.writeFileSync(scriptPath, ps1Script, 'utf8');
-      console.log(`[Windows Focus] Created PowerShell script at: ${scriptPath}`);
       
       try {
         const result = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, {
@@ -422,19 +479,21 @@ if ($found) {
           timeout: 5000,
         });
         
-        console.log(`[Windows Focus] PowerShell output:\n${result}`);
-        console.log(`✓ Focus window succeeded for profile ${profileId} on Windows`);
-        return true;
+        console.log(`[WinAPI Focus] Output:\n${result}`);
+        const success = result.includes('[SUCCESS]');
+        if (success) {
+          console.log(`✓ Focus window succeeded for profile ${profileId} via WinAPI`);
+        }
+        return success;
       } catch (e: any) {
-        console.log(`[Windows Focus] Failed to focus: ${e.message}`);
-        console.log(`[Windows Focus] stderr: ${e.stderr ? e.stderr.toString() : 'none'}`);
-        console.log(`[Windows Focus] stdout: ${e.stdout ? e.stdout.toString() : 'none'}`);
+        console.log(`[WinAPI Focus] Failed: ${e.message}`);
+        if (e.stdout) console.log(`[WinAPI Focus] stdout: ${e.stdout}`);
         return false;
       } finally {
         try { fs.unlinkSync(scriptPath); } catch {}
       }
     } catch (error) {
-      console.error(`✗ Error focusing Chrome on Windows:`, error);
+      console.error(`✗ Error in WinAPI focus:`, error);
       return false;
     }
   }
@@ -442,97 +501,52 @@ if ($found) {
 
 
   /**
-   * Windows Workaround: Abre una nueva pestaña temporalmente y luego la cierra
-   * Esto fuerza a Chrome a traer la ventana al frente
+   * CDP Method: Abre una nueva pestaña temporalmente y luego la cierra.
+   * Chrome siempre activa la ventana al abrir una pestaña nueva → 100% fiable.
    */
-  private focusWindowWindowsWorkaround(profileId: string, processInfo: ProcessInfo): boolean {
+  private async focusWindowCDP(profileId: string): Promise<boolean> {
     const http = require('http');
-    
-    try {
-      console.log(`[Windows Workaround] Starting focus workaround for profile ${profileId}`);
-      
-      const debugPort = this.debugPorts.get(profileId);
-      if (!debugPort) {
-        console.error(`[Windows Workaround] No debug port found for profile ${profileId}`);
-        return false;
-      }
 
-      console.log(`[Windows Workaround] Using debug port: ${debugPort}`);
+    const debugPort = this.debugPorts.get(profileId);
+    if (!debugPort) {
+      console.error(`[CDP Focus] No debug port found for profile ${profileId}`);
+      return false;
+    }
 
-      // Step 1: Get list of tabs
-      const tabsUrl = `http://localhost:${debugPort}/json/list`;
-      
-      try {
-        const req = http.get(tabsUrl, { timeout: 2000 }, (res: any) => {
+    console.log(`[CDP Focus] Using debug port: ${debugPort}`);
+
+    const httpRequest = (url: string, method: string = 'GET'): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const options = { method, timeout: 3000 };
+        const req = http.request(url, options, (res: any) => {
           let data = '';
           res.on('data', (chunk: any) => { data += chunk; });
-          res.on('end', () => {
-            try {
-              const tabs = JSON.parse(data);
-              console.log(`[Windows Workaround] Found ${tabs.length} tabs`);
-              
-              if (tabs.length === 0) {
-                console.log(`[Windows Workaround] No tabs found, cannot focus`);
-                return;
-              }
-              
-              // Step 2: Open a new tab
-              const newTabUrl = `http://localhost:${debugPort}/json/new?url=about:blank`;
-              console.log(`[Windows Workaround] Opening temporary tab...`);
-              
-              http.get(newTabUrl, { timeout: 2000 }, (openRes: any) => {
-                let openData = '';
-                openRes.on('data', (chunk: any) => { openData += chunk; });
-                openRes.on('end', () => {
-                  try {
-                    const newTab = JSON.parse(openData);
-                    const newTabId = newTab.id;
-                    console.log(`[Windows Workaround] Opened tab: ${newTabId}, window will activate`);
-                    
-                    // Step 3: Small delay then close the temporary tab
-                    setTimeout(() => {
-                      const closeUrl = `http://localhost:${debugPort}/json/close/${newTabId}`;
-                      console.log(`[Windows Workaround] Closing temporary tab...`);
-                      
-                      http.get(closeUrl, { timeout: 2000 }, (closeRes: any) => {
-                        closeRes.on('data', () => {});
-                        closeRes.on('end', () => {
-                          console.log(`✓ Focus window succeeded for profile ${profileId} on Windows (workaround)`);
-                        });
-                      }).on('error', (err: any) => {
-                        console.error(`[Windows Workaround] Error closing tab: ${err.message}`);
-                      });
-                    }, 300);
-                  } catch (e) {
-                    console.error(`[Windows Workaround] Error parsing new tab response: ${e}`);
-                  }
-                });
-              }).on('error', (err: any) => {
-                console.error(`[Windows Workaround] Error opening new tab: ${err.message}`);
-              });
-            } catch (e) {
-              console.error(`[Windows Workaround] Error parsing tabs response: ${e}`);
-            }
-          });
+          res.on('end', () => resolve(data));
         });
-        
-        req.on('error', (err: any) => {
-          console.log(`[Windows Workaround] Could not connect to CDP: ${err.message}`);
-        });
-        
-        req.on('timeout', () => {
-          req.destroy();
-          console.log(`[Windows Workaround] CDP connection timed out`);
-        });
-        
-        // Return true immediately - operations continue in background
-        return true;
-      } catch (error) {
-        console.error(`[Windows Workaround] Error during HTTP request:`, error);
-        return false;
-      }
-    } catch (error) {
-      console.error(`✗ Error in Windows workaround:`, error);
+        req.on('error', (err: any) => reject(err));
+        req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+        req.end();
+      });
+    };
+
+    try {
+      // Step 1: Open a new tab (Chrome activates window automatically)
+      const newTabUrl = `http://localhost:${debugPort}/json/new?url=about:blank`;
+      console.log(`[CDP Focus] Opening temporary tab via PUT...`);
+      const openData = await httpRequest(newTabUrl, 'PUT');
+      const newTab = JSON.parse(openData);
+      const newTabId = newTab.id;
+      console.log(`[CDP Focus] Opened tab: ${newTabId}, window activated`);
+
+      // Step 2: Wait for window activation then close temp tab
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const closeUrl = `http://localhost:${debugPort}/json/close/${newTabId}`;
+      await httpRequest(closeUrl, 'GET');
+      console.log(`✓ Focus window succeeded for profile ${profileId} via CDP`);
+      return true;
+    } catch (error: any) {
+      console.error(`✗ CDP focus failed for profile ${profileId}: ${error.message}`);
       return false;
     }
   }
@@ -541,7 +555,7 @@ if ($found) {
   /**
    * Intenta enfocar la ventana de Chrome del perfil
    */
-  focusWindow(profileId: string): boolean {
+  async focusWindow(profileId: string): Promise<boolean> {
     const processInfo = this.runningProcesses.get(profileId);
     if (!processInfo || !processInfo.pid) {
       console.warn(`✗ No process info for profile ${profileId}`);
@@ -563,7 +577,7 @@ if ($found) {
         const focusMethod = settings.platformPreferences?.focusMethodWindows || 'auto';
         
         if (focusMethod === 'cdp') {
-          return this.focusWindowWindowsWorkaround(profileId, processInfo);
+          return await this.focusWindowCDP(profileId);
         } else if (focusMethod === 'winapi') {
           return this.focusWindowWindows(profileId, processInfo, profile);
         } else {
@@ -571,7 +585,7 @@ if ($found) {
           const result = this.focusWindowWindows(profileId, processInfo, profile);
           if (!result) {
             console.log(`[Focus] Windows API method failed, falling back to CDP...`);
-            return this.focusWindowWindowsWorkaround(profileId, processInfo);
+            return await this.focusWindowCDP(profileId);
           }
           return result;
         }
