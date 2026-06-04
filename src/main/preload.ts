@@ -36,6 +36,8 @@ interface ElectronAPI {
   system: {
     getInfo: () => Promise<any>;
     clearAllData: () => Promise<boolean>;
+    selectFile: () => Promise<string>;
+    selectDirectory: () => Promise<string>;
   };
   dialog: {
     openFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<string[]>;
@@ -104,9 +106,11 @@ const electronAPI: ElectronAPI = {
       unwrapResponse(ipcRenderer.invoke('settings:update', updates)),
   },
    system: {
-     getInfo: () => unwrapResponse(ipcRenderer.invoke('system:getInfo')),
-     clearAllData: () => unwrapResponse(ipcRenderer.invoke('system:clearAllData')),
-   },
+      getInfo: () => unwrapResponse(ipcRenderer.invoke('system:getInfo')),
+      clearAllData: () => unwrapResponse(ipcRenderer.invoke('system:clearAllData')),
+      selectFile: () => unwrapResponse(ipcRenderer.invoke('system:selectFile')),
+      selectDirectory: () => unwrapResponse(ipcRenderer.invoke('system:selectDirectory')),
+    },
      dialog: {
        openFile: (options?) =>
          unwrapResponse(ipcRenderer.invoke('dialog:openFile', options)),

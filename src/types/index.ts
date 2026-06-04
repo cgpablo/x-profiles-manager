@@ -24,6 +24,11 @@ export interface ChromeProfile {
   lastAccessed?: number;
   isActive?: boolean;
   orderIndex?: number; // For sorting profiles
+  installedExtensions?: {
+    ublockOriginLite?: boolean;
+    twitterControl?: boolean;
+  };
+  extensionsPromptShown?: boolean; // Flag: have we already shown the extension setup prompt?
 }
 
 export interface AppSettings {
@@ -37,6 +42,10 @@ export interface AppSettings {
     developerMode?: boolean; // Show developer options (focus method selector, debug mode)
     focusMethodWindows?: 'auto' | 'winapi' | 'cdp'; // Windows: which method to use
     debugMode?: boolean; // Enable extra logging
+    extensionsConfig?: {
+      ublockOriginLite?: boolean;
+      twitterControl?: boolean;
+    };
   };
 }
 

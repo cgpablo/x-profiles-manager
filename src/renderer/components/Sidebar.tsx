@@ -6,7 +6,7 @@ import React from 'react';
 import { ChromeProfile, ProfileFolder } from '../../types';
 import SidebarDashboard from './SidebarDashboard';
 import SidebarFolders from './SidebarFolders';
-import SidebarSettings from './SidebarSettings';
+// import SidebarSettings from './SidebarSettings'; // DISABLED
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -82,16 +82,16 @@ export default function Sidebar({
            profileCountByFolder={profileCountByFolder}
             onLaunchProfile={onLaunchProfile}
             onCloseProfile={onCloseProfile}
-            onOpenAllInBrowser={onOpenAllInBrowser}
-            onCloseAll={onCloseAll}
-           activeStatuses={activeStatuses}
-            onMoveProfileToFolder={onMoveProfileToFolder}
-            onGoToFolders={onGoToFolders}
-            orderedProfiles={orderedProfiles}
-          />
+             onOpenAllInBrowser={onOpenAllInBrowser}
+             onCloseAll={onCloseAll}
+            activeStatuses={activeStatuses}
+             onMoveProfileToFolder={onMoveProfileToFolder}
+             onGoToFolders={onGoToFolders}
+             orderedProfiles={orderedProfiles}
+           />
 
-      {/* Settings Section */}
-      <SidebarSettings onOpenSettings={onOpenSettings} />
-    </aside>
-  );
-}
+       {/* Settings Section - DISABLED */}
+       {/* <SidebarSettings onOpenSettings={onOpenSettings} /> */}
+     </aside>
+   );
+ }

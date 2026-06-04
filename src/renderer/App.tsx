@@ -7,7 +7,7 @@ import { ChromeProfile, ProfileFolder } from '../types';
 import { useElectronAPI } from './hooks/useElectronAPI';
 import Dashboard from './components/Dashboard';
 import Folders from './components/Folders';
-import Settings from './components/Settings';
+// import Settings from './components/Settings'; // DISABLED
 import Tooltip from './components/Tooltip';
 import './App.css';
 
@@ -342,6 +342,7 @@ function App() {
               />
             )}
 
+            {/* Settings view - DISABLED
             {view === 'settings' && (
               <Settings
                 folders={folders}
@@ -381,6 +382,7 @@ function App() {
                 onDirtyChange={setSettingsIsDirty}
               />
             )}
+            */}
           </>
         )}
       </main>

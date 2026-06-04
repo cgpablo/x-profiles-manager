@@ -385,6 +385,7 @@ export class StorageManager {
 
   async restoreBackup(backupPath: string): Promise<void> {
     const AdmZip = require('adm-zip');
+    const { installExtension } = require('./extensionsManager');
     
     try {
       // Verify backup file exists
@@ -436,6 +437,38 @@ export class StorageManager {
             fs.mkdirSync(targetDir, { recursive: true });
             fs.writeFileSync(targetPath, entry.getData());
           }
+        }
+
+        // After restore, install extensions from importedprofiles if marked as installed
+        try {
+          const profilesData = JSON.parse(profilesEntry.getData().toString()) as ChromeProfile[];
+          const settingsData = JSON.parse(settingsEntry.getData().toString()) as AppSettings;
+          
+          // Get Chrome path from settings
+          const chromePath = settingsData.chromePath;
+          
+          // For each profile with installedExtensions marked as true, install them
+          for (const profile of profilesData) {
+            if (profile.installedExtensions && chromePath) {
+              const extensionsToInstall = (Object.entries(profile.installedExtensions) as any[])
+                .filter(([_, installed]) => installed === true)
+                .map(([key, _]) => key);
+              
+              if (extensionsToInstall.length > 0) {
+                console.log(`Installing ${extensionsToInstall.length} extensions for profile ${profile.name}...`);
+                for (const extKey of extensionsToInstall) {
+                  try {
+                    await installExtension(chromePath, profile.dataDir, extKey);
+                  } catch (error) {
+                    console.error(`Failed to install extension ${extKey} for profile ${profile.name}:`, error);
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('Error installing extensions during restore:', error);
+          // Don't fail the restore if extension installation fails
         }
 
         console.log('Backup restored successfully');

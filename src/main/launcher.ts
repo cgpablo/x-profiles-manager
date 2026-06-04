@@ -103,12 +103,39 @@ export class ChromeLauncher {
   }
 
   /**
-   * Platform-specific: Close Chrome process on macOS
-   */
+    * Platform-specific: Close Chrome process on macOS
+    * Uses graceful shutdown first, then force kill if necessary
+    */
   private closeProcessMacOS(processInfo: ProcessInfo, profile?: ChromeProfile): void {
     const { execSync } = require('child_process');
     if (processInfo.pid && processInfo.pid > 0) {
-      try { process.kill(processInfo.pid, 'SIGTERM'); } catch {}
+      try {
+        // First try graceful close with AppleScript (simulates clicking the close button)
+        console.log(`[macOS] Attempting graceful close for PID ${processInfo.pid}`);
+        try {
+          const script = `tell application "Google Chrome" to close (every window)`;
+          execSync(`osascript -e '${script.replace(/'/g, "'\\''")}'`, {
+            stdio: 'ignore',
+            timeout: 3000,
+          });
+          // Wait a moment for graceful close to complete
+          setTimeout(() => {
+            try {
+              process.kill(processInfo.pid, 0); // Check if process still exists
+              // If it does, send SIGTERM
+              console.log(`[macOS] Process still running, sending SIGTERM`);
+              process.kill(processInfo.pid, 'SIGTERM');
+            } catch {
+              // Process is already dead
+            }
+          }, 500);
+        } catch (e) {
+          console.warn(`[macOS] AppleScript close failed, falling back to SIGTERM`);
+          process.kill(processInfo.pid, 'SIGTERM');
+        }
+      } catch (e) {
+        console.error(`[macOS] Error closing process:`, e);
+      }
     }
     if (profile) {
       try {
@@ -256,6 +283,20 @@ export class ChromeLauncher {
         `--remote-debugging-port=${debugPort}`,
       ];
 
+      // Platform-specific flags
+      if (process.platform === 'win32' || process.platform === 'linux') {
+        // Windows & Linux: disable crash recovery prompt
+        args.push('--disable-session-crashed-bubble');
+      } else if (process.platform === 'darwin') {
+        // macOS: suppress various crash/recovery prompts and session restoration
+        args.push('--disable-session-crashed-bubble');
+        args.push('--disable-component-update');
+        args.push('--no-service-autorun');
+        // Disable session restoration completely
+        args.push('--disable-session-restore');
+        args.push('--disable-sync');
+      }
+
       // Build the URL - use interstitial page if xAccount is specified
       let finalUrl = url;
       if (profile.xAccount) {
@@ -328,11 +369,12 @@ export class ChromeLauncher {
         startTime: Date.now(),
       };
 
-      this.runningProcesses.set(profileId, processInfo);
-      if (pid > 0) {
-        this.browserWindowMap.set(pid, profileId);
-      }
-      return processInfo;
+       this.runningProcesses.set(profileId, processInfo);
+       if (pid > 0) {
+         this.browserWindowMap.set(pid, profileId);
+       }
+
+       return processInfo;
     } catch (error) {
       console.error(`Error launching profile ${profileId}:`, error);
       return null;
@@ -436,7 +478,60 @@ end tell`;
     }
   }
 
+  /**
+   * Helper: Make HTTP request to CDP endpoint
+   */
+  private makeHttpRequest(url: string, method: string = 'GET'): Promise<string> {
+    const http = require('http');
+    return new Promise((resolve, reject) => {
+      const options = { method, timeout: 3000 };
+      const req = http.request(url, options, (res: any) => {
+        let data = '';
+        res.on('data', (chunk: any) => { data += chunk; });
+        res.on('end', () => resolve(data));
+      });
+      req.on('error', (err: any) => reject(err));
+      req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+      req.end();
+    });
+  }
 
+  /**
+   * Helper: Make CDP request to open URL in new tab
+   */
+  private makeHttpCdpRequest(debugPort: number, url: string): Promise<void> {
+    const http = require('http');
+    return new Promise((resolve, reject) => {
+      const postUrl = `http://localhost:${debugPort}/json/new`;
+      const postData = `url=${encodeURIComponent(url)}`;
+      
+      const options = {
+        method: 'POST',
+        timeout: 3000,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Length': Buffer.byteLength(postData)
+        }
+      };
+      
+      const req = http.request(postUrl, options, (res: any) => {
+        let data = '';
+        res.on('data', (chunk: any) => { data += chunk; });
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            resolve();
+          } else {
+            reject(new Error(`HTTP ${res.statusCode}`));
+          }
+        });
+      });
+      
+      req.on('error', (err: any) => reject(err));
+      req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+      req.write(postData);
+      req.end();
+    });
+  }
 
   /**
    * CDP Method: Usa koffi para llamar AllowSetForegroundWindow directamente desde el proceso
@@ -444,27 +539,11 @@ end tell`;
    * y finalmente llama SetForegroundWindow directamente para forzar el foreground a nivel OS.
    */
   private async focusWindowCDP(profileId: string): Promise<boolean> {
-    const http = require('http');
-
     const debugPort = this.debugPorts.get(profileId);
     if (!debugPort) {
       console.error(`[CDP Focus] No debug port found for profile ${profileId}`);
       return false;
     }
-
-    const httpRequest = (url: string, method: string = 'GET'): Promise<string> => {
-      return new Promise((resolve, reject) => {
-        const options = { method, timeout: 3000 };
-        const req = http.request(url, options, (res: any) => {
-          let data = '';
-          res.on('data', (chunk: any) => { data += chunk; });
-          res.on('end', () => resolve(data));
-        });
-        req.on('error', (err: any) => reject(err));
-        req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
-        req.end();
-      });
-    };
 
     try {
       // Step 1: Grant all Chrome processes permission to take foreground.
@@ -477,7 +556,7 @@ end tell`;
       // Step 2: Open a new tab — Chrome activates its window internally
       const newTabUrl = `http://localhost:${debugPort}/json/new?url=about:blank`;
       console.log(`[CDP Focus] Opening temporary tab...`);
-      const openData = await httpRequest(newTabUrl, 'PUT');
+      const openData = await this.makeHttpRequest(newTabUrl, 'PUT');
       const newTab = JSON.parse(openData);
       const newTabId = newTab.id;
       console.log(`[CDP Focus] Opened tab: ${newTabId}`);
@@ -491,7 +570,7 @@ end tell`;
       // Step 4: Close the temporary tab
       await new Promise(resolve => setTimeout(resolve, 150));
       const closeUrl = `http://localhost:${debugPort}/json/close/${newTabId}`;
-      await httpRequest(closeUrl, 'GET');
+      await this.makeHttpRequest(closeUrl, 'GET');
       console.log(`✓ Focus window succeeded for profile ${profileId} via CDP`);
       return true;
     } catch (error: any) {
@@ -739,6 +818,16 @@ end tell`;
     setInterval(() => {
       this.cleanupDeadProcesses();
     }, 2000);
+  }
+
+  /**
+   * Install missing extensions based on global settings preference
+   * DISABLED: Extension opening system needs to be reworked
+   */
+  async openExtensionsIfNeeded(profile: ChromeProfile, settings: any): Promise<void> {
+    // TODO: Re-implement extension opening with proper CDP/WebSocket support
+    console.log(`Profile ${profile.id}: Extension opening disabled for now`);
+    return;
   }
 
   /**

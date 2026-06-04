@@ -26,20 +26,83 @@
   border-left: 1px solid var(--border);
 }
 
+.tab-bar {
+  display: none;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+  gap: 0;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 1rem;
+  border: none;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.tab-button:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.tab-button.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: var(--bg-primary);
+}
+
+.tab-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.tab-content.active {
+  display: flex !important;
+}
+
 /* Columns */
 .folders-column,
 .profiles-column {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-width: 0;
   overflow: hidden;
-  overflow-x: hidden;
   background: var(--bg-primary);
   border-right: 1px solid var(--border);
 }
 
 .profiles-column {
   border-right: none;
+}
+
+/* En pantallas estrechas (< 1200px), cambiar a layout vertical con tabs */
+@media (max-width: 1200px) {
+  .main-content {
+    flex-direction: column;
+  }
+
+  .tab-bar {
+    display: flex;
+  }
+
+  .folders-column,
+  .profiles-column {
+    display: none;
+  }
+
+  .folders-column.active,
+  .profiles-column.active {
+    display: flex !important;
+  }
 }
 
 /* Column Header */
@@ -106,9 +169,11 @@
 .folders-list {
   display: flex;
   flex-direction: column;
+  flex: 1;
   gap: 1rem;
   padding: 1rem;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .folder-card {
@@ -269,9 +334,11 @@
 .profiles-list {
   display: flex;
   flex-direction: column;
+  flex: 1;
   gap: 1rem;
   padding: 1rem;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .profile-card {

@@ -43,6 +43,7 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
   const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
   const [draggedProfileId, setDraggedProfileId] = useState<string | null>(null);
   const [orderedProfiles, setOrderedProfiles] = useState<Map<string | 'ungrouped', ChromeProfile[]>>(new Map());
+  const [activeTab, setActiveTab] = useState<'folders' | 'profiles'>('folders'); // Para tabs en pantallas estrechas
   const dragOverTimerRef = useRef<NodeJS.Timeout | null>(null);
   // Track profile IDs to detect add/delete vs status-only changes
   const prevProfileIdsRef = useRef<string>('');
@@ -347,10 +348,26 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                  onCloseAll={handleCloseAllInFolder}
              />
 
-        {/* Main Content - 2 Columns */}
-        <div className="main-content">
-          {/* Left Column - Folders */}
-           <div className="folders-column">
+          {/* Main Content - 2 Columns (or tabs on narrow screens) */}
+          <div className="main-content">
+            {/* Tab bar (visible only on narrow screens) */}
+            <div className="tab-bar">
+             <button
+               className={`tab-button ${activeTab === 'folders' ? 'active' : ''}`}
+               onClick={() => setActiveTab('folders')}
+             >
+               Folders
+             </button>
+             <button
+               className={`tab-button ${activeTab === 'profiles' ? 'active' : ''}`}
+               onClick={() => setActiveTab('profiles')}
+             >
+               Profiles
+             </button>
+           </div>
+
+            {/* Left Column - Folders */}
+            <div className={`folders-column ${activeTab === 'folders' ? 'active' : ''}`}>
              <div className="column-header">
                <p className="column-title">{folders.length} Folders</p>
                <Tooltip text="Create new folder" position="left">
@@ -364,7 +381,7 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                </Tooltip>
              </div>
 
-           {folders.length === 0 ? (
+             {folders.length === 0 ? (
                <div className="empty-state">
                  <p>No folders yet. Create one to organize your profiles.</p>
                </div>
@@ -437,8 +454,8 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
              )}
           </div>
 
-          {/* Right Column - Profiles */}
-           <div className="profiles-column">
+            {/* Right Column - Profiles */}
+            <div className={`profiles-column ${activeTab === 'profiles' ? 'active' : ''}`}>
              <div className="column-header">
                <p className="column-title">
                  {selectedFolderId ? `${selectedFolderProfiles.length} Profiles` : 'No folder selected'}
@@ -456,43 +473,43 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                )}
              </div>
 
-            {!selectedFolderId ? (
-              <div className="empty-state">
-                <p>No folder selected</p>
-              </div>
-            ) : selectedFolderProfiles.length === 0 ? (
-              <div className="empty-state">
-                <p>
-                  {selectedFolderId === 'ungrouped'
-                    ? 'No ungrouped profiles yet.'
-                    : `No profiles in this folder.`}
-                </p>
-              </div>
-             ) : (
-                 <div className="profiles-list">
-                      {selectedFolderProfiles.map((profile) => (
-                        <ProfileTab
-                          key={`${profile.id}-${profile.imagePath || 'no-image'}`}
-                          profile={profile}
-                          isActive={activeStatuses.get(profile.id) || false}
-                          isSelected={false}
-                          isDragging={draggedProfileId === profile.id}
-                          onLaunch={() => handleLaunchProfile(profile.id)}
-                          onClose={() => handleCloseProfile(profile.id)}
-                          onDelete={() => handleDeleteProfile(profile.id)}
-                          onEdit={() => handleEditProfile(profile)}
-                          onMoveToFolder={handleMoveProfileToFolder}
-                          folders={folders}
-                          onDragStart={(e) => handleProfileDragStart(e, profile.id)}
-                          onDragOver={handleProfileDragOver}
-                          onDrop={(e) => handleProfileDrop(e, profile.id)}
-                          onDragEnd={handleProfileDragEnd}
-                          disableContextMenu={true}
-                        />
-                      ))}
-                </div>
-             )}
-          </div>
+             {!selectedFolderId ? (
+               <div className="empty-state">
+                 <p>No folder selected</p>
+               </div>
+             ) : selectedFolderProfiles.length === 0 ? (
+               <div className="empty-state">
+                 <p>
+                   {selectedFolderId === 'ungrouped'
+                     ? 'No ungrouped profiles yet.'
+                     : `No profiles in this folder.`}
+                 </p>
+               </div>
+              ) : (
+                  <div className="profiles-list">
+                       {selectedFolderProfiles.map((profile) => (
+                         <ProfileTab
+                           key={`${profile.id}-${profile.imagePath || 'no-image'}`}
+                           profile={profile}
+                           isActive={activeStatuses.get(profile.id) || false}
+                           isSelected={false}
+                           isDragging={draggedProfileId === profile.id}
+                           onLaunch={() => handleLaunchProfile(profile.id)}
+                           onClose={() => handleCloseProfile(profile.id)}
+                           onDelete={() => handleDeleteProfile(profile.id)}
+                           onEdit={() => handleEditProfile(profile)}
+                           onMoveToFolder={handleMoveProfileToFolder}
+                           folders={folders}
+                           onDragStart={(e) => handleProfileDragStart(e, profile.id)}
+                           onDragOver={handleProfileDragOver}
+                           onDrop={(e) => handleProfileDrop(e, profile.id)}
+                           onDragEnd={handleProfileDragEnd}
+                           disableContextMenu={true}
+                         />
+                       ))}
+                 </div>
+              )}
+           </div>
         </div>
       </div>
 

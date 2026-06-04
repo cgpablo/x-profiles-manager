@@ -10,8 +10,7 @@
   min-width: 280px;
   background: var(--bg-primary);
   border-right: 1px solid var(--border);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .sidebar > div {
@@ -33,8 +32,6 @@
 .sidebar-settings {
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
 .sidebar-section-header {

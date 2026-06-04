@@ -97,6 +97,21 @@ export function setupIpcHandlers(): void {
       if (!processInfo) {
         return { success: false, error: 'Failed to launch profile' };
       }
+      
+      // After successful launch, check and open extensions if needed
+      // Wait a moment for Chrome to fully load, then open extension tabs
+      setTimeout(async () => {
+        try {
+          const profile = storageManager.getProfile(profileId);
+          const settings = storageManager.getSettings();
+          if (profile && settings) {
+            await chromeLauncher.openExtensionsIfNeeded(profile, settings);
+          }
+        } catch (error) {
+          console.error(`Error opening extensions for profile ${profileId}:`, error);
+        }
+      }, 2000); // Wait 2 seconds for Chrome to load
+      
       return { success: true, data: processInfo };
     } catch (error) {
       return { success: false, error: String(error) };
@@ -350,6 +365,48 @@ export function setupIpcHandlers(): void {
       return { success: true, data: true };
     } catch (error) {
       console.error('Import error:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // ====== SYSTEM HANDLERS ======
+
+  ipcMain.handle('system:selectFile', async (): Promise<IpcResponse<string>> => {
+    try {
+      const result = await dialog.showOpenDialog({
+        title: 'Select Chrome executable',
+        properties: ['openFile'],
+        filters: [
+          { name: 'Chrome Executable', extensions: process.platform === 'darwin' ? [] : ['exe'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      });
+
+      if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+        return { success: false, error: 'Selection canceled' };
+      }
+
+      return { success: true, data: result.filePaths[0] };
+    } catch (error) {
+      console.error('Error selecting file:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('system:selectDirectory', async (): Promise<IpcResponse<string>> => {
+    try {
+      const result = await dialog.showOpenDialog({
+        title: 'Select directory',
+        properties: ['openDirectory'],
+      });
+
+      if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+        return { success: false, error: 'Selection canceled' };
+      }
+
+      return { success: true, data: result.filePaths[0] };
+    } catch (error) {
+      console.error('Error selecting directory:', error);
       return { success: false, error: String(error) };
     }
   });

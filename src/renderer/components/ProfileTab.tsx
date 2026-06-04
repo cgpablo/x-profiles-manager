@@ -173,29 +173,34 @@ export default function ProfileTab({
           setShowContextMenu(true);
         }}
      >
-      {/* Left section: Profile icon and info + buttons */}
-      <div className="profile-content">
-           <div className="profile-header">
-             <div className="profile-icon-badge">
-               {imageUrl ? (
-                 <img 
-                   src={imageUrl} 
-                   alt={profile.name} 
-                   className="profile-image"
-                 />
-               ) : (
-                 <div className="profile-icon-placeholder">{profile.name.charAt(0).toUpperCase()}</div>
-               )}
-               {isActive && <div className="active-indicator" />}
+       {/* Left section: Profile icon and info + buttons */}
+       <div className="profile-content">
+            <div className="profile-icon-badge">
+              {imageUrl ? (
+                <img 
+                  src={imageUrl} 
+                  alt={profile.name} 
+                  className="profile-image"
+                />
+              ) : (
+                <div className="profile-icon-placeholder">{profile.name.charAt(0).toUpperCase()}</div>
+              )}
+              {isActive && <div className="active-indicator" />}
+            </div>
+
+            <div className="profile-header">
+              <div className="profile-info">
+                <h3>{profile.name}</h3>
+                {profile.xAccount && <p className="profile-account">@{profile.xAccount}</p>}
+                <span className={`status-badge ${isActive ? 'online' : 'offline'}`}>
+                  {isActive ? '● Online' : '○ Offline'}
+                </span>
               </div>
-           <div className="profile-info">
-             <h3>{profile.name}</h3>
-             {profile.xAccount && <p className="profile-account">@{profile.xAccount}</p>}
-             <span className={`status-badge ${isActive ? 'online' : 'offline'}`}>
-               {isActive ? '● Online' : '○ Offline'}
-             </span>
-                 {/* Action buttons below status badge */}
-                <div className="profile-actions">
+
+              {/* Action buttons: 2 rows on the right */}
+              <div className="profile-actions">
+                {/* Row 1: Open/Focus/Close buttons */}
+                <div className="action-row">
                   {/* 🌐 Open in browser (hidden when already active) / 👁️ Focus window (shown when active) */}
                   {!isActive ? (
                     <Tooltip text="Open in browser" position="top">
@@ -235,33 +240,36 @@ export default function ProfileTab({
                       </button>
                     </Tooltip>
                   )}
+                </div>
 
-                 <Tooltip text="Edit profile" position="top">
-                   <button
-                     className="action-btn edit-btn"
-                     onClick={() => {
-                       onCloseContextMenus?.();
-                       onEdit();
-                     }}
-                   >
-                     ✎
-                  </button>
-                </Tooltip>
-                 <Tooltip text="Delete profile" position="top">
-                   <button
-                     className="action-btn delete-btn"
-                     onClick={() => {
-                       onCloseContextMenus?.();
-                       onDelete();
-                     }}
-                  >
-                    🗑️
-                  </button>
-                </Tooltip>
-             </div>
-          </div>
-        </div>
-      </div>
+                {/* Row 2: Edit and Delete buttons */}
+                <div className="action-row">
+                  <Tooltip text="Edit profile" position="top">
+                    <button
+                      className="action-btn edit-btn"
+                      onClick={() => {
+                        onCloseContextMenus?.();
+                        onEdit();
+                      }}
+                    >
+                      ✎
+                    </button>
+                  </Tooltip>
+                  <Tooltip text="Delete profile" position="top">
+                    <button
+                      className="action-btn delete-btn"
+                      onClick={() => {
+                        onCloseContextMenus?.();
+                        onDelete();
+                      }}
+                    >
+                      🗑️
+                    </button>
+                  </Tooltip>
+                </div>
+              </div>
+            </div>
+       </div>
 
       {/* Context Menu */}
       {!disableContextMenu && showContextMenu && (
