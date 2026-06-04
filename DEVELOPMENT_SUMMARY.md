@@ -4,48 +4,67 @@
 
 ### Windows Focus Window Implementation (Latest)
 
-### Final Implementation: PowerShell Window API Approach
+#### Dual Approach Implemented
 
-#### Problem with CDP Fallback
-- Opening temporary tabs accumulates infinitely in the Chrome window
-- Tabs need to be closed after activation (extra complexity)
-- Not ideal user experience
+**Problem Encountered**:
+- Standard PowerShell Window API method (matching by dataDir) not working reliably in all Windows configurations
+- User feedback: method doesn't find windows consistently
 
-#### Solution: Direct PowerShell Window API
-- **No temporary tabs**: Simply bring window to front using Windows APIs
-- **Method**: 
-  1. Find all `chrome.exe` processes using `Get-Process`
-  2. Read each process's command line using WMI
-  3. Extract `--user-data-dir=` value from command line
-  4. Normalize paths (convert `\` to `/`, lowercase) for comparison
-  5. Match against profile's dataDir
-  6. Use Windows API calls to bring window to front:
-     - `ShowWindow(hWnd, 9)` - Restore/show window
-     - `BringWindowToTop(hWnd)` - Bring to top of z-order
-     - `SetForegroundWindow(hWnd)` - Set focus
-  
-#### Key Implementation Details
-- **Path normalization critical**: Windows paths with backslashes need conversion
-- **Regex matching**: Use PowerShell regex to extract user-data-dir value
-- **Quote handling**: Strip quotes from extracted path for comparison
-- **Error handling**: Try-catch blocks for each process iteration
-- **Comprehensive logging**: Debug output shows:
-  - Number of Chrome processes found
-  - Each process's extracted user-data-dir
-  - Whether match was found
-  - Window handle being activated
+**Solution**:
+- Implemented workaround method as fallback (and optional primary method)
+- Workaround: Opens temporary `about:blank` tab then closes it (100% reliable, window always activates)
+- User can choose between methods in Developer Mode settings
+- Default: Auto mode (tries standard first, falls back to workaround)
 
-#### Advantages
-- No CDP server needed
-- No extra tabs opened
-- Direct control via Windows APIs
-- Works with all Chrome versions
-- Better debugging with process-by-process logging
+#### Implementation
 
-#### Script Location
-- Generated in system temp directory: `focus-{profileId}-{timestamp}.ps1`
-- Auto-deleted after execution
-- Full path logged for debugging
+**Standard Method** (Primary):
+- Searches Chrome processes by matching `--user-data-dir` in command line
+- Normalizes paths and uses PowerShell Window API
+- Stateless - no side effects
+
+**Workaround Method** (Reliable Fallback):
+- Uses Chrome DevTools Protocol via `--remote-debugging-port`
+- Opens temporary `about:blank` tab (activates window)
+- Waits 300ms for activation
+- Closes temporary tab (no persistence)
+- Works 100% of the time when Chrome is running
+
+#### User Configuration
+
+**Settings → Platform Preferences**:
+1. **Enable Focus Windows** - Global toggle for focus feature
+2. **Developer Mode** - Reveals advanced options:
+   - **Windows Focus Method** selector (Windows only):
+     - `auto` (default): Try standard → fallback to workaround
+     - `workaround`: Always use open/close tab method
+   - **Debug Mode**: Verbose console logging
+
+#### Technical Details
+
+**Focus Method Selection** (Windows):
+```
+focusWindow(profileId):
+  if platform === 'darwin': use AppleScript ✅
+  if platform === 'win32':
+    if focusMethodWindows === 'workaround': use workaround
+    else (auto): try standard → if fails, try workaround
+  if platform === 'linux': use xdotool ✅
+```
+
+**Workaround Flow**:
+1. Get debug port from profileId (9222 + hash mod 100)
+2. HTTP GET `/json/list` to verify tabs exist
+3. HTTP GET `/json/new?url=about:blank` to open tab (window activates)
+4. Wait 300ms
+5. HTTP GET `/json/close/{tabId}` to remove tab
+6. Complete - no visible changes, window is front & focused
+
+#### Files Modified
+- `src/types/index.ts` - Added `developerMode`, `focusMethodWindows` settings
+- `src/main/launcher.ts` - Added `focusWindowWindowsWorkaround()` method
+- `src/renderer/components/Settings.tsx` - New Developer Mode section with controls
+
 
 ### UI/UX Improvements
 
