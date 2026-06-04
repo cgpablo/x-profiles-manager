@@ -422,18 +422,6 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
             )}
           </div>
 
-          <div className="settings-section info">
-            <h3>About</h3>
-            <div className="info-item">
-              <strong>App Version</strong>
-              <span>0.1.0</span>
-            </div>
-            <div className="info-item">
-              <strong>Storage Location</strong>
-              <span className="mono">{settings.profilesDir}</span>
-            </div>
-          </div>
-
           <div className="settings-section">
             <h3>Backup & Restore</h3>
             <p className="section-description">
