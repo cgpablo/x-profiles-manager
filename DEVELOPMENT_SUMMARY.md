@@ -2,6 +2,42 @@
 
 ## Latest Updates (v0.1.0)
 
+### Windows Focus Window Fix (Latest)
+
+#### Problem
+- Windows focus implementation relied on `timeout /t` command which is incompatible with Node.js `execSync`
+- Previous approach using stored window handles had reliability issues
+- Command-line matching for Chrome processes was unreliable across Windows versions
+
+#### Solution
+- **Chrome DevTools Protocol (CDP) Approach**: Uses Chrome's built-in debugging interface
+- Each Chrome profile launched with `--remote-debugging-port=${debugPort}` (range 9222-9322)
+- When focusing a profile, connects to CDP endpoint: `http://localhost:${debugPort}/json/list`
+- Activates the first tab, which automatically brings the Chrome window to front
+- Works reliably across all Windows versions
+
+#### Implementation Details
+- `getWindowHandleWindows()` function removed (was the source of the issue)
+- New `focusWindowWindows()` async function using HTTP to CDP endpoint
+- `focusWindow()` made async to support CDP operations
+- IPC handler updated to await async focusWindow call
+- Cross-platform implementations now complete:
+  - **macOS**: AppleScript with specific PID activation ✅
+  - **Windows**: Chrome DevTools Protocol ✅
+  - **Linux**: xdotool with PID ✅
+
+#### Testing on Windows
+To test the focus feature on Windows:
+1. Open dev environment: `npm run dev`
+2. Create 2-3 profiles with different names
+3. Launch them all ("Open in Browser" button)
+4. Click the eye icon on each profile - should bring that specific window to front
+5. Verify correct window activates every time (not always the same window)
+
+#### Files Modified
+- `src/main/launcher.ts` - Focus implementation, debug port setup
+- `src/main/ipc.ts` - Updated focusWindow handler to await async call
+
 ### UI/UX Improvements
 
 #### 1. Dashboard Enhancements

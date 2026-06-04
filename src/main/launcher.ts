@@ -221,80 +221,120 @@ end tell`;
   }
 
   /**
-   * Windows: Enfoca ventana de Chrome usando Chrome DevTools Protocol
-   * Abre una nueva pestaña que automáticamente trae la ventana al frente
+   * Windows: Enfoca ventana de Chrome buscando por dataDir en command line
+   * Estrategia: 
+   * 1. Busca todos los procesos chrome.exe
+   * 2. Para cada uno, obtiene el MainWindowHandle (HWND)
+   * 3. Compara el command line con el dataDir del perfil
+   * 4. Cuando encuentra match, usa SetForegroundWindow para traer al frente
    */
-  private async focusWindowWindows(profileId: string, processInfo: ProcessInfo, profile: any): Promise<boolean> {
+  private focusWindowWindows(profileId: string, processInfo: ProcessInfo, profile: any): boolean {
+    const { execSync } = require('child_process');
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+    
     try {
       console.log(`[Windows Focus] Starting focus for profile ${profileId}`);
+      console.log(`[Windows Focus] PID: ${processInfo.pid}, DataDir: ${profile.dataDir}`);
       
-      const debugPort = this.debugPorts.get(profileId);
-      if (!debugPort) {
-        console.error(`[Windows Focus] No debug port found for profile ${profileId}`);
-        return false;
-      }
+      // Crear script PowerShell que busca Chrome por dataDir
+      // Normalize el path: convertir backslashes a forward slashes y a lowercase
+      const normalizedDataDir = profile.dataDir.replace(/\\/g, '/').toLowerCase();
+      
+      // Script PowerShell que:
+      // 1. Busca todos los procesos chrome.exe
+      // 2. Lee su command line
+      // 3. Normaliza el path (backslash -> forward slash, lowercase)
+      // 4. Busca la coincidencia de user-data-dir
+      // 5. Trae al frente cuando encuentra match
+      
+      const ps1Script = `
+$ErrorActionPreference = "SilentlyContinue"
 
-      console.log(`[Windows Focus] Using debug port: ${debugPort}`);
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
 
-      // Try to connect to Chrome DevTools Protocol
-      try {
-        const http = require('http');
-        
-        // Get the list of tabs from Chrome DevTools Protocol
-        const tabsUrl = `http://localhost:${debugPort}/json/list`;
-        
-        return new Promise((resolve) => {
-          const req = http.get(tabsUrl, { timeout: 3000 }, (res: any) => {
-            let data = '';
-            res.on('data', (chunk: any) => { data += chunk; });
-            res.on('end', () => {
-              try {
-                const tabs = JSON.parse(data);
-                console.log(`[Windows Focus] Found ${tabs.length} open tabs`);
+public class WindowHelper {
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+    
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    
+    [DllImport("user32.dll")]
+    public static extern bool BringWindowToTop(IntPtr hWnd);
+}
+"@
+
+$dataDir = "${normalizedDataDir}"
+$found = $false
+
+Write-Output "[DEBUG] Looking for Chrome with dataDir: $dataDir"
+
+$processes = Get-Process -Name "chrome" -ErrorAction SilentlyContinue
+Write-Output "[DEBUG] Found $($processes.Count) Chrome processes"
+
+foreach ($proc in $processes) {
+    try {
+        $cmdLine = (Get-WmiObject Win32_Process -Filter "ProcessId = $($proc.Id)" -ErrorAction SilentlyContinue).CommandLine
+        if ($cmdLine) {
+            $normalizedCmdLine = $cmdLine.Replace("\\\\", "/").ToLower()
+            
+            if ($normalizedCmdLine -match "user-data-dir=([^\\s]+)") {
+                $userDataDirValue = $matches[1]
+                $userDataDirNormalized = $userDataDirValue.Trim('"').Replace("\\\\", "/").ToLower()
                 
-                if (tabs.length > 0) {
-                  // If there are tabs, activate the first one
-                  // CDP automatically brings the window to front when activating a tab
-                  const firstTab = tabs[0];
-                  const activateUrl = `http://localhost:${debugPort}/json/activate/${firstTab.id}`;
-                  
-                  console.log(`[Windows Focus] Activating tab: ${firstTab.url}`);
-                  
-                  http.get(activateUrl, { timeout: 3000 }, (activateRes: any) => {
-                    activateRes.on('data', () => {});
-                    activateRes.on('end', () => {
-                      console.log(`✓ Focus window succeeded for profile ${profileId} on Windows (via CDP)`);
-                      resolve(true);
-                    });
-                  }).on('error', (err: any) => {
-                    console.error(`[Windows Focus] Error activating tab: ${err.message}`);
-                    resolve(false);
-                  });
-                } else {
-                  console.log(`[Windows Focus] No tabs found, trying to open new tab`);
-                  resolve(false);
+                Write-Output "[DEBUG] PID $($proc.Id): user-data-dir = $userDataDirNormalized"
+                
+                if ($userDataDirNormalized -eq $dataDir) {
+                    Write-Output "[SUCCESS] MATCH! PID $($proc.Id) with window handle $($proc.MainWindowHandle)"
+                    
+                    if ($proc.MainWindowHandle -ne 0) {
+                        [WindowHelper]::ShowWindow($proc.MainWindowHandle, 9) | Out-Null
+                        [WindowHelper]::BringWindowToTop($proc.MainWindowHandle) | Out-Null
+                        [WindowHelper]::SetForegroundWindow($proc.MainWindowHandle) | Out-Null
+                        Write-Output "[SUCCESS] Window brought to front"
+                        $found = $true
+                        break
+                    }
                 }
-              } catch (e) {
-                console.error(`[Windows Focus] Error parsing tabs response: ${e}`);
-                resolve(false);
-              }
-            });
-          });
-          
-          req.on('error', (err: any) => {
-            console.log(`[Windows Focus] Could not connect to CDP at port ${debugPort}: ${err.message}`);
-            resolve(false);
-          });
-          
-          req.on('timeout', () => {
-            req.destroy();
-            console.log(`[Windows Focus] CDP connection timed out`);
-            resolve(false);
-          });
+            }
+        }
+    } catch {
+        Write-Output "[ERROR] Exception processing PID $($proc.Id): $_"
+    }
+}
+
+if ($found) {
+    exit 0
+} else {
+    Write-Output "[FAIL] Could not find Chrome window matching dataDir"
+    exit 1
+}
+`;
+      
+      const scriptPath = path.join(os.tmpdir(), `focus-${profileId}-${Date.now()}.ps1`);
+      fs.writeFileSync(scriptPath, ps1Script, 'utf8');
+      console.log(`[Windows Focus] Created PowerShell script at: ${scriptPath}`);
+      
+      try {
+        const result = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, {
+          encoding: 'utf8',
+          timeout: 5000,
         });
-      } catch (error) {
-        console.error(`[Windows Focus] Error using CDP: ${error}`);
+        
+        console.log(`[Windows Focus] PowerShell output:\n${result}`);
+        console.log(`✓ Focus window succeeded for profile ${profileId} on Windows`);
+        return true;
+      } catch (e: any) {
+        console.log(`[Windows Focus] Failed to focus: ${e.message}`);
+        console.log(`[Windows Focus] stderr: ${e.stderr ? e.stderr.toString() : 'none'}`);
+        console.log(`[Windows Focus] stdout: ${e.stdout ? e.stdout.toString() : 'none'}`);
         return false;
+      } finally {
+        try { fs.unlinkSync(scriptPath); } catch {}
       }
     } catch (error) {
       console.error(`✗ Error focusing Chrome on Windows:`, error);
@@ -303,10 +343,11 @@ end tell`;
   }
 
 
+
   /**
    * Intenta enfocar la ventana de Chrome del perfil
    */
-  async focusWindow(profileId: string): Promise<boolean> {
+  focusWindow(profileId: string): boolean {
     const processInfo = this.runningProcesses.get(profileId);
     if (!processInfo || !processInfo.pid) {
       console.warn(`✗ No process info for profile ${profileId}`);
@@ -323,7 +364,7 @@ end tell`;
       if (process.platform === 'darwin') {
         return this.focusWindowMacOS(profileId, processInfo);
       } else if (process.platform === 'win32') {
-        return await this.focusWindowWindows(profileId, processInfo, profile);
+        return this.focusWindowWindows(profileId, processInfo, profile);
       } else {
         // Linux: use xdotool to focus by PID
         try {
