@@ -26,8 +26,105 @@ export class ChromeLauncher {
   }
 
   /**
-    * Creates an HTML interstitial page that injects the xprofile into storage
-    */
+   * Platform-specific: Close Chrome process on Windows
+   */
+  private closeProcessWindows(processInfo: ProcessInfo): void {
+    const { execSync } = require('child_process');
+    try {
+      if (processInfo.pid && processInfo.pid > 0) {
+        try {
+          execSync(`taskkill /PID ${processInfo.pid} /T /F`, {
+            stdio: 'ignore',
+            timeout: 5000,
+          });
+        } catch (e) {
+          console.warn(`Could not kill PID ${processInfo.pid}, trying by name...`);
+          execSync(`taskkill /IM chrome.exe /F`, {
+            stdio: 'ignore',
+            timeout: 5000,
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`Error in taskkill for Windows:`, error);
+    }
+  }
+
+  /**
+   * Platform-specific: Close Chrome process on macOS
+   */
+  private closeProcessMacOS(processInfo: ProcessInfo, profile?: ChromeProfile): void {
+    const { execSync } = require('child_process');
+    if (processInfo.pid && processInfo.pid > 0) {
+      try { process.kill(processInfo.pid, 'SIGTERM'); } catch {}
+    }
+    if (profile) {
+      try {
+        execSync(`pkill -f ${JSON.stringify('user-data-dir=' + profile.dataDir)}`, { stdio: 'ignore' });
+      } catch {}
+    }
+  }
+
+  /**
+   * Platform-specific: Close Chrome process on Linux
+   */
+  private closeProcessLinux(processInfo: ProcessInfo): void {
+    try {
+      process.kill(-processInfo.pid, 'SIGTERM');
+    } catch (e) {
+      console.warn(`Could not kill process group`, e);
+    }
+  }
+
+  /**
+   * Platform-specific: Check if profile process is running on Windows
+   */
+  private getProfileStatusWindows(processInfo: ProcessInfo): boolean {
+    const { execSync } = require('child_process');
+    try {
+      const output = execSync(`tasklist /FI "PID eq ${processInfo.pid}" /NH`, {
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+      });
+      const lines = output.trim().split('\n').filter((l: string) => l.trim().length > 0);
+      return lines.length > 0 && lines[0].includes('chrome');
+    } catch (error: any) {
+      return false;
+    }
+  }
+
+  /**
+   * Platform-specific: Check if profile process is running on macOS
+   */
+  private getProfileStatusMacOS(processInfo: ProcessInfo, profile?: ChromeProfile): boolean {
+    const { execSync } = require('child_process');
+    if (!profile) return false;
+    
+    try {
+      execSync(`pgrep -f ${JSON.stringify('user-data-dir=' + profile.dataDir)}`, {
+        stdio: 'ignore',
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Platform-specific: Check if profile process is running on Linux
+   */
+  private getProfileStatusLinux(processInfo: ProcessInfo): boolean {
+    try {
+      process.kill(processInfo.pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Creates an HTML interstitial page that injects the xprofile into storage
+   */
   private createInterstitialPage(profile: ChromeProfile): string {
     const xprofile = profile.xAccount || '';
     const username = xprofile.startsWith('@') ? xprofile.substring(1) : xprofile;
@@ -504,47 +601,14 @@ if ($found) {
     if (!processInfo) return false;
 
     try {
+      const profile = storageManager.getProfile(profileId);
+      
       if (process.platform === 'win32') {
-        // Windows: use taskkill with proper waiting
-        const { execSync } = require('child_process');
-        try {
-          // First try to kill by PID
-          if (processInfo.pid && processInfo.pid > 0) {
-            try {
-              execSync(`taskkill /PID ${processInfo.pid} /T /F`, {
-                stdio: 'ignore',
-                timeout: 5000,
-              });
-            } catch (e) {
-              console.warn(`Could not kill PID ${processInfo.pid}, trying by name...`);
-              // Fallback: kill all chrome processes for this profile
-              execSync(`taskkill /IM chrome.exe /F`, {
-                stdio: 'ignore',
-                timeout: 5000,
-              });
-            }
-          }
-        } catch (error) {
-          console.error(`Error in taskkill for Windows:`, error);
-        }
+        this.closeProcessWindows(processInfo);
       } else if (process.platform === 'darwin') {
-        // macOS: kill by pid first; also use pkill -f on user-data-dir as a fallback
-        const profile = storageManager.getProfile(profileId);
-        if (processInfo.pid && processInfo.pid > 0) {
-          try { process.kill(processInfo.pid, 'SIGTERM'); } catch {}
-        }
-        if (profile) {
-          try {
-            execSync(`pkill -f ${JSON.stringify('user-data-dir=' + profile.dataDir)}`, { stdio: 'ignore' });
-          } catch {}
-        }
+        this.closeProcessMacOS(processInfo, profile || undefined);
       } else {
-        // Linux: use kill signal on process group
-        try {
-          process.kill(-processInfo.pid, 'SIGTERM');
-        } catch (e) {
-          console.warn(`Could not kill process group for ${profileId}`, e);
-        }
+        this.closeProcessLinux(processInfo);
       }
 
       // Remove from both tracking maps
@@ -572,63 +636,23 @@ if ($found) {
     if (!processInfo) return false;
 
     try {
+      const profile = storageManager.getProfile(profileId);
+      let isAlive = false;
+
       if (process.platform === 'darwin') {
-        // On macOS we launch via `open -g` which exits immediately,
-        // so the stored pid is the `open` process pid, not Chrome.
-        // Use pgrep to check if Chrome is running with this profile's data dir.
-        const profile = storageManager.getProfile(profileId);
-        if (!profile) {
-          this.cleanupProfile(profileId, processInfo);
-          return false;
-        }
-        const { execSync } = require('child_process');
-        try {
-          // pgrep returns exit code 0 if at least one process matches
-          execSync(`pgrep -f ${JSON.stringify('user-data-dir=' + profile.dataDir)}`, {
-            stdio: 'ignore',
-          });
-          return true;
-        } catch {
-          this.cleanupProfile(profileId, processInfo);
-          return false;
-        }
+        isAlive = this.getProfileStatusMacOS(processInfo, profile || undefined);
       } else if (process.platform === 'win32') {
-        // Windows: use tasklist to check if process exists
-        // This is more reliable than assuming it's running
-        const { execSync } = require('child_process');
-        try {
-          const output = execSync(`tasklist /FI "PID eq ${processInfo.pid}" /NH`, {
-            encoding: 'utf8',
-            stdio: ['pipe', 'pipe', 'ignore'],
-          });
-          // tasklist returns output even if nothing matches; check for actual process info
-          const lines = output.trim().split('\n').filter((l: string) => l.trim().length > 0);
-          
-          if (lines.length > 0 && lines[0].includes('chrome')) {
-            return true;
-          } else {
-            console.log(`✗ Process ${profileId} (PID ${processInfo.pid}) no longer exists`);
-            this.cleanupProfile(profileId, processInfo);
-            return false;
-          }
-        } catch (error: any) {
-          // tasklist command failed, assume process is dead
-          console.log(`✗ Could not verify process ${profileId}, assuming dead`);
-          this.cleanupProfile(profileId, processInfo);
-          return false;
-        }
+        isAlive = this.getProfileStatusWindows(processInfo);
       } else {
-        // Linux: use kill with signal 0 to check without killing
-        try {
-          process.kill(processInfo.pid, 0);
-          return true;
-        } catch {
-          this.cleanupProfile(profileId, processInfo);
-          return false;
-        }
+        isAlive = this.getProfileStatusLinux(processInfo);
       }
+
+      if (!isAlive) {
+        this.cleanupProfile(profileId, processInfo);
+      }
+      
+      return isAlive;
     } catch (error) {
-      // Process is dead
       console.log(`Process ${profileId} is no longer alive, removing from tracking`);
       this.cleanupProfile(profileId, processInfo);
       return false;

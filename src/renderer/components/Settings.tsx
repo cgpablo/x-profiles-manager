@@ -166,7 +166,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
     const handleLaunchProfile = () => {};
     const handleCloseProfile = () => {};
     const handleOpenAllInBrowser = async (folderId: string) => {
-      const folderProfiles = profiles.filter(p => p.folderId === folderId);
+      const folderProfiles = profiles.filter(p => p.folderId === folderId || (folderId === 'ungrouped' && !p.folderId));
       for (const profile of folderProfiles) {
         try {
           await electronAPI.launcher.launch(profile.id, 'https://x.com');
@@ -292,36 +292,6 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
                 className="input-field"
               />
               <small>Where profile data is stored</small>
-            </div>
-          </div>
-
-          <div className="settings-section">
-            <h3>Preferences</h3>
-
-            <div className="setting-item">
-              <label>Window Layout</label>
-              <select
-                value={settings.windowLayout}
-                onChange={(e) => {
-                  const newSettings = {
-                    ...settings,
-                    windowLayout: e.target.value as 'floating' | 'tiled',
-                  };
-                  setSettings(newSettings);
-                  // Auto-save layout change
-                  electronAPI.settings.update(newSettings).then(() => {
-                    setOriginalSettings(newSettings);
-                    onSettingsSaved?.();
-                  }).catch(error => {
-                    console.error('Error saving settings:', error);
-                  });
-                }}
-                className="input-field"
-              >
-                <option value="floating">Floating</option>
-                <option value="tiled">Tiled</option>
-              </select>
-              <small>How Chrome windows are arranged</small>
             </div>
           </div>
 
