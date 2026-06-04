@@ -83,71 +83,26 @@ export class ChromeLauncher {
   private closeProcessWindows(processInfo: ProcessInfo): void {
     const { execSync } = require('child_process');
     try {
-      // First, try to gracefully close with Ctrl+W using koffi
-      try {
-        const api = this.getWin32Api();
-        const { FindWindowEx, PostMessageW, GetCurrentProcessId, SetForegroundWindow } = api;
-        
-        // Find Chrome window
-        let hwnd = FindWindowEx(null, null, 'Chrome_WidgetWin_1', null);
-        
-        if (hwnd) {
-          // Try to focus the window first
-          try {
-            SetForegroundWindow(hwnd);
-          } catch (e) {
-            // Ignore focus errors, proceed with close
-          }
-          
-          // Send Ctrl+W (WM_KEYDOWN for both Ctrl and W)
-          // VK_CONTROL = 0x11, VK_W = 0x57
-          const WM_KEYDOWN = 0x0100;
-          const WM_KEYUP = 0x0101;
-          
-          PostMessageW(hwnd, WM_KEYDOWN, 0x11, 0); // Ctrl down
-          PostMessageW(hwnd, WM_KEYDOWN, 0x57, 0); // W down
-          PostMessageW(hwnd, WM_KEYUP, 0x57, 0);   // W up
-          PostMessageW(hwnd, WM_KEYUP, 0x11, 0);   // Ctrl up
-          
-          console.log(`✓ Sent Ctrl+W to Chrome window via koffi`);
-          
-          // Give it a moment to close gracefully
-          const { execSync: execSync2 } = require('child_process');
-          setTimeout(() => {
-            try {
-              // If still running after 2 seconds, force kill
-              execSync2(`tasklist /FI "PID eq ${processInfo.pid}" /NH`, {
-                stdio: 'ignore',
-                timeout: 1000,
-              });
-              // If we get here, process is still alive, force kill it
-              execSync2(`taskkill /PID ${processInfo.pid} /T /F`, {
-                stdio: 'ignore',
-                timeout: 5000,
-              });
-            } catch (e) {
-              // Process already closed or other error, ignore
-            }
-          }, 2000);
-          return;
-        }
-      } catch (e) {
-        console.warn(`Could not close with Ctrl+W via koffi: ${e}`);
-      }
-      
-      // Fallback: force kill if graceful close didn't work
       if (processInfo.pid && processInfo.pid > 0) {
+        // Simply force kill Chrome - this will not show bubble
+        // Chrome handles this gracefully without asking to restore
         try {
           execSync(`taskkill /PID ${processInfo.pid} /T /F`, {
             stdio: 'ignore',
             timeout: 5000,
           });
+          console.log(`✓ Force killed Chrome process ${processInfo.pid}`);
         } catch (e) {
           console.warn(`Could not kill PID ${processInfo.pid}, trying by name...`);
-          execSync(`taskkill /IM chrome.exe /F`, {
-            stdio: 'ignore',
-            timeout: 5000,
-          });
+          try {
+            execSync(`taskkill /IM chrome.exe /F`, {
+              stdio: 'ignore',
+              timeout: 5000,
+            });
+            console.log(`✓ Force killed all Chrome processes`);
+          } catch (e2) {
+            console.error(`Failed to kill Chrome: ${e2}`);
+          }
         }
       }
     } catch (error) {
@@ -340,6 +295,7 @@ export class ChromeLauncher {
       if (process.platform === 'win32' || process.platform === 'linux') {
         // Windows & Linux: disable crash recovery prompt
         args.push('--disable-session-crashed-bubble');
+        args.push('--disable-session-restore');
       } else if (process.platform === 'darwin') {
         // macOS: suppress various crash/recovery prompts and session restoration
         args.push('--disable-session-crashed-bubble');
