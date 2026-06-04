@@ -21,6 +21,7 @@
     "adm-zip": "^0.5.17",
     "electron-is-dev": "^2.0.0",
     "electron-squirrel-startup": "1.0.1",
+    "koffi": "^3.0.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "uuid": "^9.0.0"
@@ -73,6 +74,7 @@
   "allowScripts": {
     "esbuild@0.18.20": true,
     "fsevents@2.3.3": true,
-    "electron@28.3.3": true
+    "electron@28.3.3": true,
+    "koffi@3.0.2": true
   }
 }
