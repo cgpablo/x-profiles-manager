@@ -378,15 +378,16 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
                         ...settings,
                         platformPreferences: {
                           ...prefs,
-                          focusMethodWindows: e.target.value as 'auto' | 'workaround',
+                          focusMethodWindows: e.target.value as 'auto' | 'winapi' | 'cdp',
                         },
                       };
                       setSettings(newSettings);
                     }}
                     className="input-field"
                   >
-                    <option value="auto">Auto (try standard first, then workaround)</option>
-                    <option value="workaround">Workaround (open/close tab)</option>
+                    <option value="auto">Auto (Windows API first, fallback to CDP)</option>
+                    <option value="winapi">Windows API (SetForegroundWindow only)</option>
+                    <option value="cdp">CDP (open/close tab - 100% reliable)</option>
                   </select>
                   <small>How to focus the Chrome window on Windows</small>
                 </div>

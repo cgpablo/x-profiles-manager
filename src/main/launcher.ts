@@ -562,13 +562,15 @@ if ($found) {
         const settings = storageManager.getSettings();
         const focusMethod = settings.platformPreferences?.focusMethodWindows || 'auto';
         
-        if (focusMethod === 'workaround') {
+        if (focusMethod === 'cdp') {
           return this.focusWindowWindowsWorkaround(profileId, processInfo);
+        } else if (focusMethod === 'winapi') {
+          return this.focusWindowWindows(profileId, processInfo, profile);
         } else {
-          // Try standard method first, then fallback to workaround
+          // 'auto': Try Windows API first, fallback to CDP if it fails
           const result = this.focusWindowWindows(profileId, processInfo, profile);
           if (!result) {
-            console.log(`[Focus] Standard method failed, trying workaround...`);
+            console.log(`[Focus] Windows API method failed, falling back to CDP...`);
             return this.focusWindowWindowsWorkaround(profileId, processInfo);
           }
           return result;

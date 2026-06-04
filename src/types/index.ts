@@ -35,7 +35,7 @@ export interface AppSettings {
   platformPreferences?: {
     enableFocusWindows?: boolean; // Enable/disable focus window feature
     developerMode?: boolean; // Show developer options (focus method selector, debug mode)
-    focusMethodWindows?: 'auto' | 'workaround'; // Windows: which method to use
+    focusMethodWindows?: 'auto' | 'winapi' | 'cdp'; // Windows: which method to use
     debugMode?: boolean; // Enable extra logging
   };
 }
