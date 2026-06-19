@@ -220,6 +220,14 @@
   flex-shrink: 0;
 }
 
+.profile-icon-img {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 .profile-label {
   flex: 1;
   white-space: nowrap;

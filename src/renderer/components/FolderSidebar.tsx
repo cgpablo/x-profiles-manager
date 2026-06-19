@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ProfileFolder, ChromeProfile } from '../../types';
+import ProfileAvatarIcon from './ProfileAvatarIcon';
 import './FolderSidebar.css';
 
 interface FolderSidebarProps {
@@ -296,7 +297,7 @@ export default function FolderSidebar({
                             }
                           }}
                         >
-                          <span className="profile-icon">{profile.name.charAt(0).toUpperCase()}</span>
+                          <ProfileAvatarIcon profile={profile} />
                           <span className="profile-label">{profile.name}</span>
 
                           {/* Profile Context Menu */}

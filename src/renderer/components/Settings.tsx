@@ -40,6 +40,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
   const [isClearing, setIsClearing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isDeletingIcons, setIsDeletingIcons] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [creatingFolderId, setCreatingFolderId] = useState<string | undefined>(undefined);
@@ -143,6 +144,18 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
       console.error(error);
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  const handleDeleteBackedUpIcons = async () => {
+    setIsDeletingIcons(true);
+    try {
+      await window.electronAPI.icons.deleteAll();
+      onBackupSuccess?.('Backed up icons deleted successfully');
+    } catch (error) {
+      onBackupError?.(error instanceof Error ? error.message : 'Error deleting backed up icons');
+    } finally {
+      setIsDeletingIcons(false);
     }
   };
 
@@ -525,34 +538,62 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
            */}
 
            <div className="settings-section">
-            <h3>Backup & Restore</h3>
-            <p className="section-description">
-              Export all your profiles, extensions, and settings to a backup file. Import a previously exported backup to restore everything.
-            </p>
-            <div className="backup-buttons">
-              <button
-                className="btn-primary"
-                onClick={handleExport}
-                disabled={isExporting}
-              >
-                {isExporting ? 'Exporting...' : '📦 Export Backup'}
-              </button>
-              <button
-                className="btn-secondary"
-                onClick={handleImport}
-                disabled={isImporting}
-              >
-                {isImporting ? 'Importing...' : '📂 Import Backup'}
-              </button>
-            </div>
-          </div>
+             <h3>Backup & Restore</h3>
 
-          <div className="settings-section danger-zone">
-            <h3>Danger Zone</h3>
-            <p className="danger-description">
-              Clear all application data including profiles, folders, and settings. This action cannot be undone.
-            </p>
-            <button
+             <div className="setting-item">
+               <label>Backup Profiles</label>
+               <p className="section-description">
+                 Export all your profiles, extensions, and settings to a backup file. Import a previously exported backup to restore everything.
+               </p>
+               <div className="backup-buttons">
+                 <button
+                   className="btn-primary"
+                   onClick={handleExport}
+                   disabled={isExporting}
+                 >
+                   {isExporting ? 'Exporting...' : '📦 Export'}
+                 </button>
+                 <button
+                   className="btn-secondary"
+                   onClick={handleImport}
+                   disabled={isImporting}
+                 >
+                   {isImporting ? 'Importing...' : '📂 Import'}
+                 </button>
+               </div>
+             </div>
+
+             <div className="setting-item">
+               <label>Backup Icons</label>
+               <div className="checkbox-group">
+                 <input
+                   type="checkbox"
+                   id="backupIcons"
+                   checked={settings.backupIcons || false}
+                   onChange={(e) => setSettings({ ...settings, backupIcons: e.target.checked })}
+                 />
+                 <label htmlFor="backupIcons" style={{ marginLeft: '8px' }}>
+                   Copy images to app data when a profile image is selected
+                 </label>
+               </div>
+               <small>Ensures images remain available even if the original files are moved or deleted</small>
+               <button
+                 className="btn-secondary"
+                 onClick={handleDeleteBackedUpIcons}
+                 disabled={isDeletingIcons}
+                 style={{ marginTop: '0.5rem' }}
+               >
+                 {isDeletingIcons ? 'Deleting...' : 'Delete icons'}
+               </button>
+             </div>
+           </div>
+
+           <div className="settings-section danger-zone">
+             <h3>Danger Zone</h3>
+             <p className="danger-description">
+               Clear all application data including profiles, folders, and settings. This action cannot be undone.
+             </p>
+             <button
               className="btn-danger"
               onClick={() => setShowClearConfirm(true)}
               disabled={isClearing}

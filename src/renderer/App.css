@@ -42,23 +42,140 @@ body,
 
 .app-nav {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 1rem 2rem;
+  padding: 0;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
 }
 
 .nav-title {
-   display: flex;
-   flex-direction: column;
-   gap: 0.25rem;
- }
+  width: 280px;
+  min-width: 280px;
+  flex-shrink: 0;
+  padding: 0.875rem 1.5rem;
+}
+
+.nav-center {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1.5rem;
+}
+
+.btn-show-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-show-active:hover {
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.btn-show-active.has-active {
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #10b981;
+}
+
+.btn-show-active-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.btn-show-active.has-active .btn-show-active-dot {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.btn-show-active-count {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.nav-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.nav-search-icon {
+  position: absolute;
+  left: 9px;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  pointer-events: none;
+  line-height: 1;
+}
+
+.nav-search-input {
+  width: 200px;
+  padding: 5px 10px 5px 28px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.nav-search-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.nav-search-input:focus {
+  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(99, 102, 241, 0.05);
+  width: 240px;
+}
+
+.nav-search-clear {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.nav-search-clear:hover {
+  color: var(--text-primary);
+}
 
 .nav-actions {
    display: flex;
    gap: 1rem;
    align-items: center;
+   margin-left: auto;
+   padding-right: 2rem;
  }
 
 .nav-saved-banner {
@@ -124,26 +241,27 @@ body,
  }
 
 .btn-close-all {
-   width: 36px;
-   height: 36px;
-   border-radius: 6px;
-   border: 1px solid var(--border);
-   background: transparent;
-   color: var(--text-secondary);
-   font-size: 1.25rem;
-   cursor: pointer;
-   transition: all 0.2s;
-   display: flex;
-   align-items: center;
-   justify-content: center;
-   flex-shrink: 0;
- }
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  background: transparent;
+  color: var(--danger);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 
 .btn-close-all:hover {
-   background: rgba(239, 68, 68, 0.1);
-   border-color: var(--danger);
-   color: var(--danger);
- }
+  border-color: var(--danger);
+  background: rgba(239, 68, 68, 0.12);
+}
 
 .btn-undo-order {
    width: 36px;
@@ -168,9 +286,13 @@ body,
  }
 
 .nav-title h1 {
-  font-size: 1.5rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text-primary);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nav-subtitle {

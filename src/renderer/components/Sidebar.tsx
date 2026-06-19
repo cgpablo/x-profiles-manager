@@ -33,6 +33,7 @@ interface SidebarProps {
   onGoToFolders?: () => void;
   onOpenSettings?: () => void;
   orderedProfiles?: Map<string | 'ungrouped', ChromeProfile[]>;
+  onToggleAllFolders?: (expand: boolean) => void;
 }
 
 export default function Sidebar({
@@ -59,6 +60,7 @@ export default function Sidebar({
   onGoToFolders,
   onOpenSettings,
   orderedProfiles,
+  onToggleAllFolders,
 }: SidebarProps) {
   return (
     <aside className="sidebar">
@@ -88,6 +90,7 @@ export default function Sidebar({
              onMoveProfileToFolder={onMoveProfileToFolder}
              onGoToFolders={onGoToFolders}
              orderedProfiles={orderedProfiles}
+             onToggleAllFolders={onToggleAllFolders}
            />
 
        {/* Settings Section */}

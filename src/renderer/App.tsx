@@ -22,7 +22,10 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [expandedOthers, setExpandedOthers] = useState(true);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null | 'ungrouped'>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null | 'ungrouped' | '__online__' | '__search__'>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchActive, setSearchActive] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
 
   // Order state — no initialization guard: every drag immediately shows the 💾 button
@@ -94,6 +97,26 @@ function App() {
       }
     }, [view, hasPendingOrder]);
 
+    // Clear search input when user navigates away from search mode
+    useEffect(() => {
+      if (selectedFolderId !== '__search__') {
+        setSearchQuery('');
+      }
+    }, [selectedFolderId]);
+
+    // Global keyboard shortcut: any printable key focuses search input
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.ctrlKey || e.altKey || e.metaKey) return;
+        if (e.key.length !== 1) return; // only single printable characters
+        const tag = (document.activeElement as HTMLElement)?.tagName?.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+        searchInputRef.current?.focus();
+      };
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
    // Central activeStatuses derived from profiles.isActive — no per-view polling needed
   const activeStatuses = useMemo(() => {
     const m = new Map<string, boolean>();
@@ -152,6 +175,19 @@ function App() {
   };
 
   const handleToggleOthers = () => setExpandedOthers(!expandedOthers);
+
+  const handleToggleAllFolders = (expand: boolean) => {
+    if (expand) {
+      const newExpanded = new Set(folders.map(f => f.id));
+      folders.forEach(f => autoExpandedFoldersRef.current.add(f.id));
+      setExpandedFolders(newExpanded);
+      setExpandedOthers(true);
+    } else {
+      autoExpandedFoldersRef.current.clear();
+      setExpandedFolders(new Set());
+      setExpandedOthers(false);
+    }
+  };
 
   const handleCloseAll = async () => {
     try {
@@ -225,11 +261,76 @@ function App() {
 
   const activeProfilesCount = profiles.filter(p => p.isActive).length;
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+    if (val.trim()) {
+      setView('folders');
+      setSelectedFolderId('__search__');
+    } else if (selectedFolderId === '__search__') {
+      setSelectedFolderId(null);
+    }
+  };
+
   return (
      <div className="app">
        <nav className="app-nav">
          <div className="nav-title">
            <h1>My X Profiles Manager</h1>
+         </div>
+         <div className="nav-center">
+             {activeProfilesCount > 0 && (
+               <button
+                 className={`btn-show-active${activeProfilesCount > 0 ? ' has-active' : ''}`}
+                 onClick={() => { setView('folders'); setSelectedFolderId('__online__'); }}
+                 title={`Show ${activeProfilesCount} active profile(s)`}
+               >
+                 <span className="btn-show-active-dot" />
+                 Show actives
+                 <span className="btn-show-active-count">{activeProfilesCount}</span>
+               </button>
+             )}
+            <div className="nav-search">
+              <span className="nav-search-icon">⌕</span>
+              <input
+                ref={searchInputRef}
+                className="nav-search-input"
+                type="text"
+                placeholder="Search profiles..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+                 onFocus={() => {
+                   setSearchActive(true);
+                   if (!searchQuery.trim()) {
+                     setView('folders');
+                     setSelectedFolderId(null);
+                   }
+                 }}
+                 onBlur={() => {
+                   // Intentionally empty — search mode only exits via ESC or navigation
+                 }}
+                 onKeyDown={(e) => {
+                   if (e.key === 'Escape') {
+                     setSearchQuery('');
+                     setSelectedFolderId(null);
+                     searchInputRef.current?.blur();
+                   }
+                 }}
+              />
+              {searchQuery && (
+                <button
+                  className="nav-search-clear"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setSearchQuery('');
+                    setSelectedFolderId(null);
+                  }}
+                  title="Clear search"
+                >
+                  ×
+                </button>
+              )}
+            </div>
          </div>
          {orderSavedMessage && (
            <div className="nav-saved-banner">Order saved!</div>
@@ -249,16 +350,14 @@ function App() {
           )}
          <div className="nav-actions">
             {activeProfilesCount > 0 && (
-              <Tooltip text="Close all profiles" position="bottom">
-                <button
-                  className="btn-close-all"
-                  onClick={handleCloseAll}
-                  title={`Close all ${activeProfilesCount} active profile(s)`}
-                >
-                  ✕
-                </button>
-              </Tooltip>
-            )}
+               <button
+                 className="btn-close-all"
+                 onClick={handleCloseAll}
+                 title={`Close all ${activeProfilesCount} active profile(s)`}
+               >
+                 ✕ Close actives
+               </button>
+             )}
             {hasPendingOrder && (
               <Tooltip text="Undo changes" position="bottom">
                 <button
@@ -315,11 +414,12 @@ function App() {
                  onToggleFolder={handleToggleFolder}
                  expandedOthers={expandedOthers}
                  onToggleOthers={handleToggleOthers}
-                  onGoToDashboard={() => setView('dashboard')}
-                  onGoToSettings={() => setView('settings')}
-                  onGoToFolders={() => setView('folders')}
+                  onGoToDashboard={() => { setView('dashboard'); setSearchActive(false); setSelectedFolderId(null); }}
+                   onGoToSettings={() => setView('settings')}
+                   onGoToFolders={() => { setView('folders'); setSearchActive(false); }}
                   onOrderChange={handleOrderChange}
                   activeStatuses={activeStatuses}
+                  onToggleAllFolders={handleToggleAllFolders}
                />
             </div>
 
@@ -335,10 +435,13 @@ function App() {
                 onToggleFolder={handleToggleFolder}
                 expandedOthers={expandedOthers}
                 onToggleOthers={handleToggleOthers}
-                onGoToDashboard={() => setView('dashboard')}
-                onGoToSettings={() => setView('settings')}
-                onGoToFolders={() => setView('folders')}
+                  onGoToDashboard={() => { setView('dashboard'); setSearchActive(false); setSelectedFolderId(null); }}
+                  onGoToSettings={() => setView('settings')}
+                  onGoToFolders={() => { setView('folders'); setSearchActive(false); }}
                 activeStatuses={activeStatuses}
+                searchQuery={searchQuery}
+                showAddCard={!searchActive}
+                onToggleAllFolders={handleToggleAllFolders}
               />
             )}
 

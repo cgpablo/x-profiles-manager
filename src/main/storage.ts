@@ -13,12 +13,14 @@ export class StorageManager {
   private profilesFile: string;
   private settingsFile: string;
   private foldersFile: string;
+  private iconsDir: string;
 
   constructor() {
     this.appDataDir = path.join(app.getPath('userData'), 'x-profiles-manager');
     this.profilesFile = path.join(this.appDataDir, 'profiles.json');
     this.settingsFile = path.join(this.appDataDir, 'settings.json');
     this.foldersFile = path.join(this.appDataDir, 'folders.json');
+    this.iconsDir = path.join(this.appDataDir, 'icons');
 
     this.ensureDirectories();
   }
@@ -26,6 +28,9 @@ export class StorageManager {
   private ensureDirectories(): void {
     if (!fs.existsSync(this.appDataDir)) {
       fs.mkdirSync(this.appDataDir, { recursive: true });
+    }
+    if (!fs.existsSync(this.iconsDir)) {
+      fs.mkdirSync(this.iconsDir, { recursive: true });
     }
   }
 
@@ -288,6 +293,7 @@ export class StorageManager {
       profilesDir,
       windowLayout: 'floating',
       autoLaunchOnStartup: false,
+      backupIcons: false,
     };
   }
 
@@ -319,6 +325,24 @@ export class StorageManager {
     } catch (error) {
       console.error('Error clearing data:', error);
       return false;
+    }
+  }
+
+  // ====== ICONS ======
+
+  backupIcon(originalPath: string): string {
+    const ext = path.extname(originalPath);
+    const destPath = path.join(this.iconsDir, `${uuid()}${ext}`);
+    fs.copyFileSync(originalPath, destPath);
+    return destPath;
+  }
+
+  deleteAllBackedUpIcons(): void {
+    if (fs.existsSync(this.iconsDir)) {
+      const files = fs.readdirSync(this.iconsDir);
+      for (const file of files) {
+        fs.unlinkSync(path.join(this.iconsDir, file));
+      }
     }
   }
 

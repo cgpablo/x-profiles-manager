@@ -84,9 +84,11 @@
 .folders-list {
   display: flex;
   flex-direction: column;
+  flex: 1;
   gap: 1rem;
   padding: 1rem;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .folder-card {
@@ -98,6 +100,7 @@
   overflow: hidden;
   transition: all 0.2s;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .folder-card:hover {
@@ -181,9 +184,11 @@
 .profiles-list {
   display: flex;
   flex-direction: column;
+  flex: 1;
   gap: 1rem;
   padding: 1rem;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .profile-card {

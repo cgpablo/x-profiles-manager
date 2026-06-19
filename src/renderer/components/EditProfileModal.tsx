@@ -2,7 +2,7 @@
  * EditProfileModal Component
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChromeProfile } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import { useModalClose } from '../hooks/useModalClose';
@@ -27,7 +27,16 @@ export default function EditProfileModal({
   const [name, setName] = useState(profile.name);
   const [color, setColor] = useState(profile.color);
   const [imagePath, setImagePath] = useState(profile.imagePath || '');
-  const [imagePreviewUrl, setImagePreviewUrl] = useState(profile.imagePath ? `file://${profile.imagePath}` : '');
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('');
+
+  // Load initial preview via IPC (avoids file:// CSP issues)
+  useEffect(() => {
+    if (profile.imagePath) {
+      window.electronAPI.dialog.fileToDataUrl(profile.imagePath)
+        .then(setImagePreviewUrl)
+        .catch(() => setImagePreviewUrl(`file://${profile.imagePath}`));
+    }
+  }, []);
   const [xAccount, setXAccount] = useState(profile.xAccount || '');
   const [folderId, setFolderId] = useState<string | undefined>(profile.folderId);
   const [loading, setLoading] = useState(false);
@@ -39,13 +48,21 @@ export default function EditProfileModal({
         filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'] }],
       });
       if (files && files.length > 0) {
-        const path = files[0];
-        setImagePath(path);
+        let finalPath = files[0];
         try {
-          const dataUrl = await window.electronAPI.dialog.fileToDataUrl(path);
+          const settings = await window.electronAPI.settings.get();
+          if (settings?.backupIcons) {
+            finalPath = await window.electronAPI.icons.backup(files[0]);
+          }
+        } catch {
+          // if settings/backup fails, continue with original path
+        }
+        setImagePath(finalPath);
+        try {
+          const dataUrl = await window.electronAPI.dialog.fileToDataUrl(finalPath);
           setImagePreviewUrl(dataUrl);
         } catch {
-          setImagePreviewUrl(`file://${path}`);
+          setImagePreviewUrl(`file://${finalPath}`);
         }
       }
     } catch (err) {

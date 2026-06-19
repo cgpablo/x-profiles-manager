@@ -369,6 +369,26 @@ export function setupIpcHandlers(): void {
     }
   });
 
+  // ====== ICONS HANDLERS ======
+
+  ipcMain.handle('icons:backup', async (_, filePath: string): Promise<IpcResponse<string>> => {
+    try {
+      const destPath = storageManager.backupIcon(filePath);
+      return { success: true, data: destPath };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('icons:deleteAll', async (): Promise<IpcResponse<boolean>> => {
+    try {
+      storageManager.deleteAllBackedUpIcons();
+      return { success: true, data: true };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
   // ====== SYSTEM HANDLERS ======
 
   ipcMain.handle('system:selectFile', async (): Promise<IpcResponse<string>> => {

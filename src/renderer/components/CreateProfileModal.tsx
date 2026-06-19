@@ -40,13 +40,21 @@ export default function CreateProfileModal({
         filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'] }],
       });
       if (files && files.length > 0) {
-        const path = files[0];
-        setImagePath(path);
+        let finalPath = files[0];
         try {
-          const dataUrl = await window.electronAPI.dialog.fileToDataUrl(path);
+          const settings = await window.electronAPI.settings.get();
+          if (settings?.backupIcons) {
+            finalPath = await window.electronAPI.icons.backup(files[0]);
+          }
+        } catch {
+          // if settings/backup fails, continue with original path
+        }
+        setImagePath(finalPath);
+        try {
+          const dataUrl = await window.electronAPI.dialog.fileToDataUrl(finalPath);
           setImagePreviewUrl(dataUrl);
         } catch {
-          setImagePreviewUrl(`file://${path}`);
+          setImagePreviewUrl(`file://${finalPath}`);
         }
       }
     } catch (err) {

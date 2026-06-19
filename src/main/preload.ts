@@ -47,6 +47,10 @@ interface ElectronAPI {
     export: () => Promise<boolean>;
     import: () => Promise<boolean>;
   };
+  icons: {
+    backup: (filePath: string) => Promise<string>;
+    deleteAll: () => Promise<boolean>;
+  };
 }
 
 /**
@@ -122,6 +126,12 @@ const electronAPI: ElectronAPI = {
          unwrapResponse(ipcRenderer.invoke('backup:export')),
        import: () =>
          unwrapResponse(ipcRenderer.invoke('backup:import')),
+     },
+     icons: {
+       backup: (filePath: string) =>
+         unwrapResponse<string>(ipcRenderer.invoke('icons:backup', filePath)),
+       deleteAll: () =>
+         unwrapResponse<boolean>(ipcRenderer.invoke('icons:deleteAll')),
      },
 };
 

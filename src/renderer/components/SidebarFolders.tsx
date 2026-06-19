@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ProfileFolder, ChromeProfile } from '../../types';
 import Tooltip from './Tooltip';
+import ProfileAvatarIcon from './ProfileAvatarIcon';
 import './SidebarFolders.css';
 
 interface SidebarFoldersProps {
@@ -30,6 +31,7 @@ interface SidebarFoldersProps {
   onMoveProfileToFolder?: (profileId: string, folderId: string | undefined) => void;
   onGoToFolders?: () => void;
   orderedProfiles?: Map<string | 'ungrouped', ChromeProfile[]>;
+  onToggleAllFolders?: (expand: boolean) => void;
 }
 
 export default function SidebarFolders({
@@ -54,6 +56,7 @@ export default function SidebarFolders({
   onMoveProfileToFolder,
   onGoToFolders,
   orderedProfiles,
+  onToggleAllFolders,
 }: SidebarFoldersProps) {
   const [showContextMenu, setShowContextMenu] = useState<string | null>(null);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
@@ -63,21 +66,43 @@ export default function SidebarFolders({
   const profileContextMenuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [draggedProfile, setDraggedProfile] = useState<ChromeProfile | null>(null);
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const [headerMenuPos, setHeaderMenuPos] = useState({ x: 0, y: 0 });
+  const headerMenuRef = useRef<HTMLDivElement | null>(null);
+  const [moveSectionExpanded, setMoveSectionExpanded] = useState(false);
 
-  // Close context menu on Esc key
+  // Close context menus on Esc key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setShowContextMenu(null);
         setProfileContextMenu(null);
+        setShowHeaderMenu(false);
       }
     };
 
-    if (showContextMenu || profileContextMenu) {
+    if (showContextMenu || profileContextMenu || showHeaderMenu) {
       document.addEventListener('keydown', handleKeyDown);
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
-  }, [showContextMenu, profileContextMenu]);
+  }, [showContextMenu, profileContextMenu, showHeaderMenu]);
+
+  // Close header context menu on click outside
+  useEffect(() => {
+    if (!showHeaderMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (headerMenuRef.current && !headerMenuRef.current.contains(e.target as Node)) {
+        setShowHeaderMenu(false);
+      }
+    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [showHeaderMenu]);
+
+  // Reset "Move to" section to collapsed whenever a profile context menu opens/closes
+  useEffect(() => {
+    setMoveSectionExpanded(false);
+  }, [profileContextMenu]);
 
   // Close context menu on click outside
   useEffect(() => {
@@ -134,19 +159,64 @@ export default function SidebarFolders({
     }
   };
 
+  const ungroupedForHeader = profiles.filter(p => !p.folderId).length;
+  const anyExpanded =
+    folders.some(f => expandedFolders.has(f.id)) ||
+    (ungroupedForHeader > 0 && expandedOthers);
+
+  const handleToggleAllFolders = () => {
+    onToggleAllFolders?.(!anyExpanded);
+  };
+
+  const handleHeaderMenuClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setHeaderMenuPos({ x: rect.left, y: rect.bottom + 4 });
+    setShowHeaderMenu(prev => !prev);
+  };
+
+  const openFolderContextMenu = (e: React.MouseEvent<HTMLButtonElement>, menuId: string) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    let x = rect.left;
+    let y = rect.bottom + 4;
+    const menuWidth = 160;
+    const menuHeight = 160;
+    const padding = 10;
+    if (x + menuWidth + padding > window.innerWidth) x = rect.right - menuWidth;
+    if (y + menuHeight + padding > window.innerHeight) y = rect.top - menuHeight - 4;
+    setContextMenuPos({ x, y });
+    setShowContextMenu(showContextMenu === menuId ? null : menuId);
+    setProfileContextMenu(null);
+  };
+
    return (
      <div className="sidebar-folders" ref={sidebarRef}>
        <div className="sidebar-section-header">
-         <h3>📁 FOLDERS</h3>
-         <Tooltip text="New Folder" position="right">
+         <button
+           className="sidebar-section-header-title"
+           onClick={() => { onSelectFolder(null); onGoToFolders?.(); }}
+           title="Show all profiles"
+         >
+           <h3>📁 FOLDERS</h3>
+         </button>
+         <div className="sidebar-header-actions">
            <button
              className="btn-add-folder"
-             onClick={onCreateFolder}
-             aria-label="New Folder"
+             onClick={handleToggleAllFolders}
+             title={anyExpanded ? 'Collapse all folders' : 'Expand all folders'}
+             aria-label={anyExpanded ? 'Collapse all' : 'Expand all'}
            >
-             +
+             {anyExpanded ? '−' : '+'}
            </button>
-         </Tooltip>
+           <button
+             className="btn-folder-menu"
+             onClick={handleHeaderMenuClick}
+             aria-label="Folder options"
+           >
+             ⋮
+           </button>
+         </div>
        </div>
 
       <nav className="sidebar-section-content folder-list">
@@ -237,20 +307,15 @@ export default function SidebarFolders({
                    >
                      <span className="folder-label">OTHERS</span>
                    </button>
-                   <span className="profile-count">{ungroupedCount}</span>
-                   <Tooltip text="New Profile" position="right">
-                     <button
-                       className="btn-add-folder"
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         onCreateProfile?.(undefined);
-                       }}
-                       aria-label="New Profile"
-                     >
-                       +
-                     </button>
-                   </Tooltip>
-                 </div>
+                    <span className="profile-count">{ungroupedCount}</span>
+                    <button
+                      className="btn-folder-menu"
+                      onClick={(e) => openFolderContextMenu(e, 'ungrouped')}
+                      aria-label="Folder options"
+                    >
+                      ⋮
+                    </button>
+                  </div>
                </div>
 
                {/* Expanded OTHERS profiles list */}
@@ -322,8 +387,8 @@ export default function SidebarFolders({
                             }
                           }}
                         >
-                          <span className="profile-icon">{profile.name.charAt(0).toUpperCase()}</span>
-                           <span className="profile-label">{profile.name}</span>
+                           <ProfileAvatarIcon profile={profile} />
+                            <span className="profile-label">{profile.name}</span>
 
                            {/* Profile Context Menu - Rendered via Portal */}
                            {isProfileContextOpen && createPortal(
@@ -339,45 +404,56 @@ export default function SidebarFolders({
                                   } else {
                                     profileContextMenuRefs.current.delete(profile.id);
                                   }
-                                }}
-                                >
-                                 {!isBrowserActive ? (
-                                     <button
-                                       onClick={() => {
+                                 }}
+                                 >
+                                  <div className="context-menu-label">Profile</div>
+                                  {!isBrowserActive ? (
+                                      <button
+                                        onClick={() => {
                                          onLaunchProfile?.(profile.id);
                                          setProfileContextMenu(null);
                                        }}
                                        className="context-menu-item"
-                                     >
-                                       🌐 Open in browser
-                                     </button>
+                                      >
+                                        🌐 Open
+                                      </button>
                                    ) : (
                                      <button
                                        onClick={() => {
-                                         onCloseProfile?.(profile.id);
-                                         setProfileContextMenu(null);
-                                      }}
-                                      className="context-menu-item"
-                                    >
-                                      ✕ Close browser
+                                          onCloseProfile?.(profile.id);
+                                          setProfileContextMenu(null);
+                                       }}
+                                       className="context-menu-item"
+                                     >
+                                       ✕ Close
                                     </button>
                                   )}
                                 {onMoveProfileToFolder && folders.length > 0 && (
                                   <>
                                     <div className="context-menu-divider" />
-                                    <div className="context-menu-section">Move to</div>
-                                    {folders.map((f) => (
-                                      <button
-                                        key={f.id}
-                                        className="context-menu-item"
-                                        onClick={() => {
-                                          onMoveProfileToFolder(profile.id, f.id);
-                                          setProfileContextMenu(null);
-                                        }}
-                                      >
-                                        {f.icon} {f.name}
-                                      </button>
-                                    ))}
+                                    <button
+                                      className="context-menu-section"
+                                      onClick={(e) => { e.stopPropagation(); setMoveSectionExpanded(p => !p); }}
+                                    >
+                                      <span className={`context-menu-section-arrow${moveSectionExpanded ? ' expanded' : ''}`}>▶</span>
+                                      Move to
+                                    </button>
+                                    {moveSectionExpanded && (
+                                      <div className="context-menu-move-items">
+                                        {folders.map((f) => (
+                                          <button
+                                            key={f.id}
+                                            className="context-menu-item"
+                                            onClick={() => {
+                                              onMoveProfileToFolder(profile.id, f.id);
+                                              setProfileContextMenu(null);
+                                            }}
+                                          >
+                                            {f.icon} {f.name}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
                                   </>
                                 )}
                               </div>
@@ -477,20 +553,15 @@ export default function SidebarFolders({
 
                   <span className="profile-count">{allProfileCount}</span>
 
-                <Tooltip text="New Profile" position="right">
                   <button
-                    className="btn-add-folder"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCreateProfile?.(folder.id);
-                    }}
-                    aria-label="New Profile"
+                    className="btn-folder-menu"
+                    onClick={(e) => openFolderContextMenu(e, folder.id)}
+                    aria-label="Folder options"
                   >
-                    +
+                    ⋮
                   </button>
-                </Tooltip>
 
-                </div>
+                 </div>
 
                {/* Expanded indicator line */}
                {isExpanded && allProfileCount > 0 && (
@@ -569,11 +640,11 @@ export default function SidebarFolders({
                              }
                            }}
                          >
-                            <span className="profile-icon">{profile.name.charAt(0).toUpperCase()}</span>
-                             <span className="profile-label">{profile.name}</span>
+                             <ProfileAvatarIcon profile={profile} />
+                              <span className="profile-label">{profile.name}</span>
 
-                              {/* Profile Context Menu - Rendered via Portal */}
-                              {isProfileContextOpen && createPortal(
+                               {/* Profile Context Menu - Rendered via Portal */}
+                               {isProfileContextOpen && createPortal(
                                 <div
                                   className="profile-context-menu"
                                   style={{
@@ -586,56 +657,69 @@ export default function SidebarFolders({
                                     } else {
                                       profileContextMenuRefs.current.delete(profile.id);
                                     }
-                                  }}
-                                 >
-                                   {!isBrowserActive ? (
-                                     <button
-                                      onClick={() => {
+                                   }}
+                                  >
+                                    <div className="context-menu-label">Profile</div>
+                                    {!isBrowserActive ? (
+                                      <button
+                                       onClick={() => {
                                         onLaunchProfile?.(profile.id);
                                         setProfileContextMenu(null);
                                       }}
                                       className="context-menu-item"
-                                    >
-                                      🌐 Open in browser
-                                    </button>
+                                     >
+                                       🌐 Open
+                                     </button>
                                   ) : (
                                     <button
                                       onClick={() => {
-                                        onCloseProfile?.(profile.id);
-                                        setProfileContextMenu(null);
-                                      }}
-                                      className="context-menu-item"
-                                    >
-                                      ✕ Close browser
+                                         onCloseProfile?.(profile.id);
+                                         setProfileContextMenu(null);
+                                       }}
+                                       className="context-menu-item"
+                                     >
+                                       ✕ Close
                                     </button>
                                   )}
                                 {onMoveProfileToFolder && folders.length > 0 && (
                                   <>
                                     <div className="context-menu-divider" />
-                                    <div className="context-menu-section">Move to</div>
-                                    {folders
-                                      .filter((f) => f.id !== folder.id)
-                                      .map((f) => (
+                                    <button
+                                      className="context-menu-section"
+                                      onClick={(e) => { e.stopPropagation(); setMoveSectionExpanded(p => !p); }}
+                                    >
+                                      <span className={`context-menu-section-arrow${moveSectionExpanded ? ' expanded' : ''}`}>▶</span>
+                                      Move to
+                                    </button>
+                                    {moveSectionExpanded && (
+                                      <>
                                         <button
-                                          key={f.id}
-                                          className="context-menu-item"
+                                          className="context-menu-item context-menu-others-sticky"
                                           onClick={() => {
-                                            onMoveProfileToFolder(profile.id, f.id);
+                                            onMoveProfileToFolder(profile.id, undefined);
                                             setProfileContextMenu(null);
                                           }}
                                         >
-                                          {f.icon} {f.name}
+                                          📌 OTHERS
                                         </button>
-                                      ))}
-                                     <button
-                                       className="context-menu-item"
-                                       onClick={() => {
-                                         onMoveProfileToFolder(profile.id, undefined);
-                                         setProfileContextMenu(null);
-                                       }}
-                                     >
-                                       📌 OTHERS
-                                     </button>
+                                        <div className="context-menu-move-items">
+                                          {folders
+                                            .filter((f) => f.id !== folder.id)
+                                            .map((f) => (
+                                              <button
+                                                key={f.id}
+                                                className="context-menu-item"
+                                                onClick={() => {
+                                                  onMoveProfileToFolder(profile.id, f.id);
+                                                  setProfileContextMenu(null);
+                                                }}
+                                              >
+                                                {f.icon} {f.name}
+                                              </button>
+                                            ))}
+                                        </div>
+                                      </>
+                                    )}
                                   </>
                                 )}
                               </div>
@@ -666,7 +750,22 @@ export default function SidebarFolders({
               contextMenuRefs.current.delete(showContextMenu || '');
             }
           }}
-         >
+          >
+            {onCreateProfile && (
+              <>
+                <div className="context-menu-label">Profiles</div>
+                <button
+                  className="context-menu-item"
+                  onClick={() => {
+                    const folderId = showContextMenu === 'ungrouped' ? undefined : (showContextMenu ?? undefined);
+                    onCreateProfile(folderId);
+                    setShowContextMenu(null);
+                  }}
+                >
+                   ✚ New Profile
+                </button>
+              </>
+            )}
             {onOpenAllInBrowser && (() => {
               const folderId = showContextMenu;
               const folderProfiles = folderId === 'ungrouped' 
@@ -687,7 +786,7 @@ export default function SidebarFolders({
                      }
                    }}
                  >
-                   🌐 Open All in Browser
+                     🌐 Open All
                  </button>
                ) : null;
             })()}
@@ -724,6 +823,7 @@ export default function SidebarFolders({
                 })()}
             {showContextMenu !== 'ungrouped' && (
               <>
+                <div className="context-menu-label">Folder</div>
                 <button
                   className="context-menu-item"
                   onClick={() => {
@@ -751,14 +851,31 @@ export default function SidebarFolders({
          </div>
        , document.body)}
 
-       {folders.length === 0 && (
-        <div className="sidebar-empty">
-          <p>No folders yet</p>
-          <button className="btn-primary-small" onClick={onCreateFolder}>
-            Create Folder
-          </button>
-        </div>
-      )}
-    </div>
-  );
+        {folders.length === 0 && (
+         <div className="sidebar-empty">
+           <p>No folders yet</p>
+           <button className="btn-primary-small" onClick={onCreateFolder}>
+             Create Folder
+           </button>
+         </div>
+       )}
+
+       {/* Header context menu — 3-dot button */}
+       {showHeaderMenu && createPortal(
+         <div
+           className="context-menu"
+           style={{ left: `${headerMenuPos.x}px`, top: `${headerMenuPos.y}px` }}
+           ref={(el) => { headerMenuRef.current = el; }}
+         >
+           <button
+             className="context-menu-item"
+             onClick={() => { setShowHeaderMenu(false); onCreateFolder(); }}
+           >
+             + Add folder
+           </button>
+         </div>,
+         document.body
+       )}
+     </div>
+   );
 }

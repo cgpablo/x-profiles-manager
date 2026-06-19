@@ -11,7 +11,7 @@ import './ProfilesPanel.css';
 interface ProfilesPanelProps {
   profiles: ChromeProfile[];
   folders: ProfileFolder[];
-  selectedFolderId: string | null | 'ungrouped';
+  selectedFolderId: string | null | 'ungrouped' | '__online__' | '__search__';
   expandedFolders: Set<string>;
   expandedOthers?: boolean;
   activeProfileId: string | null;
@@ -24,6 +24,8 @@ interface ProfilesPanelProps {
   onMoveProfileToFolder?: (profileId: string, folderId: string | undefined) => void;
   onSelectProfile?: (profile: ChromeProfile) => void;
   headerActions?: React.ReactNode;
+  searchQuery?: string;
+  showAddCard?: boolean;
 }
 
 export default function ProfilesPanel({
@@ -42,6 +44,8 @@ export default function ProfilesPanel({
   onMoveProfileToFolder,
   onSelectProfile,
   headerActions,
+  searchQuery = '',
+  showAddCard = true,
 }: ProfilesPanelProps) {
   // Group profiles by folder
   const profilesByFolder = new Map<string | undefined, ChromeProfile[]>();
@@ -58,6 +62,17 @@ export default function ProfilesPanel({
 
   // Get profiles to display based on selection
   const getProfilesToDisplay = () => {
+    if (selectedFolderId === '__online__') {
+      return profiles.filter(p => activeStatuses.get(p.id) === true);
+    }
+    if (selectedFolderId === '__search__') {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return [];
+      return profiles.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        (p.xAccount && p.xAccount.toLowerCase().includes(q))
+      );
+    }
     if (selectedFolderId === 'ungrouped') {
       return unfolderredProfiles;
     }
@@ -78,7 +93,11 @@ export default function ProfilesPanel({
   };
 
   const profilesToDisplay = getProfilesToDisplay();
-  const title = selectedFolderId === 'ungrouped'
+  const title = selectedFolderId === '__online__'
+    ? 'Active Profiles'
+    : selectedFolderId === '__search__'
+    ? 'Search'
+    : selectedFolderId === 'ungrouped'
     ? 'OTHERS'
     : selectedFolderId && folderObjects.has(selectedFolderId)
     ? folderObjects.get(selectedFolderId)!.name
@@ -93,7 +112,7 @@ export default function ProfilesPanel({
       )}
       {/* Scrollable Content */}
       <div className="panels-content">
-        {/* When viewing a specific folder or OTHERS */}
+        {/* When viewing a specific folder, OTHERS, or __online__ */}
         {selectedFolderId && (
           <>
             {/* Profiles Grid for specific folder */}
@@ -101,16 +120,22 @@ export default function ProfilesPanel({
               <div className="empty-state">
                 <h3>No profiles</h3>
                 <p>
-                  {selectedFolderId === 'ungrouped'
+                  {selectedFolderId === '__online__'
+                    ? 'No active profiles at the moment'
+                    : selectedFolderId === '__search__'
+                    ? 'No profiles match your search'
+                    : selectedFolderId === 'ungrouped'
                     ? 'Create a profile to get started'
                     : 'This folder has no profiles yet'}
                 </p>
-                <EmptyProfileCard 
-                  onCreateProfile={() => {
-                    const folderIdToCreate = selectedFolderId && selectedFolderId !== 'ungrouped' ? selectedFolderId : undefined;
-                    onCreateProfile(folderIdToCreate);
-                  }}
-                />
+                {showAddCard && selectedFolderId !== '__online__' && selectedFolderId !== '__search__' && (
+                  <EmptyProfileCard 
+                    onCreateProfile={() => {
+                      const folderIdToCreate = selectedFolderId && selectedFolderId !== 'ungrouped' ? selectedFolderId : undefined;
+                      onCreateProfile(folderIdToCreate);
+                    }}
+                  />
+                )}
               </div>
             ) : (
               <div className="profiles-grid">
@@ -129,12 +154,14 @@ export default function ProfilesPanel({
                         onSelect={onSelectProfile ? () => onSelectProfile(profile) : undefined}
                       />
                 ))}
-                <EmptyProfileCard 
-                  onCreateProfile={() => {
-                    const folderIdToCreate = selectedFolderId && selectedFolderId !== 'ungrouped' ? selectedFolderId : undefined;
-                    onCreateProfile(folderIdToCreate);
-                  }}
-                />
+                {showAddCard && selectedFolderId !== '__online__' && selectedFolderId !== '__search__' && (
+                  <EmptyProfileCard 
+                    onCreateProfile={() => {
+                      const folderIdToCreate = selectedFolderId && selectedFolderId !== 'ungrouped' ? selectedFolderId : undefined;
+                      onCreateProfile(folderIdToCreate);
+                    }}
+                  />
+                )}
               </div>
             )}
           </>
@@ -146,10 +173,11 @@ export default function ProfilesPanel({
             {/* OTHERS section */}
             {expandedOthers && unfolderredProfiles.length > 0 && (
               <div className="folder-section">
-                <div className="folder-section-header" style={{ backgroundColor: '#6b7280' }}>
+                <div className="folder-section-header">
                   <span className="folder-icon">📌</span>
                   <span className="folder-name">OTHERS</span>
-                  <span className="profile-count">({unfolderredProfiles.length})</span>
+                   <span className="profile-count">{unfolderredProfiles.length}</span>
+                  <div className="folder-section-color-strip" style={{ backgroundColor: '#6b7280' }} />
                 </div>
                 <div className="profiles-grid">
                   {unfolderredProfiles.map((profile) => (
@@ -167,11 +195,13 @@ export default function ProfilesPanel({
                       onSelect={onSelectProfile ? () => onSelectProfile(profile) : undefined}
                     />
                   ))}
-                  <EmptyProfileCard 
-                    onCreateProfile={() => {
-                      onCreateProfile(undefined);
-                    }}
-                  />
+                  {showAddCard && (
+                    <EmptyProfileCard 
+                      onCreateProfile={() => {
+                        onCreateProfile(undefined);
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             )}
@@ -185,10 +215,11 @@ export default function ProfilesPanel({
 
               return (
                 <div key={folder.id} className="folder-section">
-                  <div className="folder-section-header" style={{ backgroundColor: folder.color }}>
+                  <div className="folder-section-header">
                     <span className="folder-icon">{folder.icon}</span>
                     <span className="folder-name">{folder.name}</span>
-                    <span className="profile-count">({folderProfiles.length})</span>
+                     <span className="profile-count">{folderProfiles.length}</span>
+                    <div className="folder-section-color-strip" style={{ backgroundColor: folder.color }} />
                   </div>
                   <div className="profiles-grid">
                     {folderProfiles.map((profile) => (
@@ -206,11 +237,13 @@ export default function ProfilesPanel({
                         onSelect={onSelectProfile ? () => onSelectProfile(profile) : undefined}
                       />
                     ))}
-                    <EmptyProfileCard 
-                      onCreateProfile={() => {
-                        onCreateProfile(folder.id);
-                      }}
-                    />
+                    {showAddCard && (
+                      <EmptyProfileCard 
+                        onCreateProfile={() => {
+                          onCreateProfile(folder.id);
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
               );
@@ -221,11 +254,13 @@ export default function ProfilesPanel({
               <div className="empty-state">
                 <h3>No profiles</h3>
                 <p>Expand folders or create a profile to get started</p>
-                <EmptyProfileCard 
-                  onCreateProfile={() => {
-                    onCreateProfile(undefined);
-                  }}
-                />
+                {showAddCard && (
+                  <EmptyProfileCard 
+                    onCreateProfile={() => {
+                      onCreateProfile(undefined);
+                    }}
+                  />
+                )}
               </div>
             )}
           </>

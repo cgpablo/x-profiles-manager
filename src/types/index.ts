@@ -37,6 +37,7 @@ export interface AppSettings {
   profilesDir: string;
   windowLayout?: 'floating' | 'tiled';
   autoLaunchOnStartup?: boolean;
+  backupIcons?: boolean;
   platformPreferences?: {
     enableFocusWindows?: boolean; // Enable/disable focus window feature
     developerMode?: boolean; // Show developer options (focus method selector, debug mode)

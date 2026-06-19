@@ -17,8 +17,8 @@ import './Dashboard.css';
 interface DashboardProps {
   folders: ProfileFolder[];
   profiles: ChromeProfile[];
-  selectedFolderId: string | null | 'ungrouped';
-  onSelectFolder: (folderId: string | null | 'ungrouped') => void;
+  selectedFolderId: string | null | 'ungrouped' | '__online__' | '__search__';
+  onSelectFolder: (folderId: string | null | 'ungrouped' | '__online__' | '__search__') => void;
   onProfilesChange: () => void;
   onFoldersChange: () => void;
   expandedFolders: Set<string>;
@@ -30,9 +30,10 @@ interface DashboardProps {
   onGoToFolders?: () => void;
   onOrderChange?: (orderedProfiles: Map<string | 'ungrouped', ChromeProfile[]>, orderedFolders: ProfileFolder[]) => void;
   activeStatuses?: Map<string, boolean>;
+  onToggleAllFolders?: (expand: boolean) => void;
 }
 
-export default function Dashboard({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, onOrderChange, activeStatuses = new Map() }: DashboardProps) {
+export default function Dashboard({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, onOrderChange, activeStatuses = new Map(), onToggleAllFolders }: DashboardProps) {
   const electronAPI = useElectronAPI();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedFolderForCreate, setSelectedFolderForCreate] = useState<string | undefined>(undefined);
@@ -341,11 +342,12 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
               onOpenAllInBrowser={handleOpenAllInBrowser}
               activeStatuses={activeStatuses}
                onMoveProfileToFolder={handleMoveProfileToFolder}
-                onGoToDashboard={() => {}}
-                 onGoToFolders={onGoToFolders}
-                 onOpenSettings={onGoToSettings}
-                 orderedProfiles={orderedProfiles}
-                 onCloseAll={handleCloseAllInFolder}
+                 onGoToDashboard={() => {}}
+                  onGoToFolders={onGoToFolders}
+                  onOpenSettings={onGoToSettings}
+                  orderedProfiles={orderedProfiles}
+                  onCloseAll={handleCloseAllInFolder}
+                  onToggleAllFolders={onToggleAllFolders}
              />
 
           {/* Main Content - 2 Columns (or tabs on narrow screens) */}

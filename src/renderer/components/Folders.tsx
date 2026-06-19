@@ -18,8 +18,8 @@ import './FoldersView.css';
 interface FoldersProps {
   folders: ProfileFolder[];
   profiles: ChromeProfile[];
-  selectedFolderId: string | null | 'ungrouped';
-  onSelectFolder: (folderId: string | null | 'ungrouped') => void;
+  selectedFolderId: string | null | 'ungrouped' | '__online__' | '__search__';
+  onSelectFolder: (folderId: string | null | 'ungrouped' | '__online__' | '__search__') => void;
   onProfilesChange: () => void;
   onFoldersChange: () => void;
   expandedFolders: Set<string>;
@@ -30,9 +30,12 @@ interface FoldersProps {
   onGoToSettings?: () => void;
   onGoToFolders?: () => void;
   activeStatuses?: Map<string, boolean>;
+  searchQuery?: string;
+  showAddCard?: boolean;
+  onToggleAllFolders?: (expand: boolean) => void;
 }
 
-export default function Folders({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, activeStatuses = new Map() }: FoldersProps) {
+export default function Folders({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, activeStatuses = new Map(), searchQuery = '', showAddCard = true, onToggleAllFolders }: FoldersProps) {
   const electronAPI = useElectronAPI();
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -133,7 +136,14 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
   const selectedFolderHasBrowserActive = folderProfiles.some(p => activeStatuses.get(p.id));
 
   // Get the name of the selected folder
-  const selectedFolderName = selectedFolderId === 'ungrouped'
+  const isSearchMode = !showAddCard;
+  const selectedFolderName = (isSearchMode || selectedFolderId === '__search__')
+    ? 'SEARCH'
+    : selectedFolderId === null
+    ? 'ALL FOLDERS'
+    : selectedFolderId === '__online__'
+    ? 'ACTIVES'
+    : selectedFolderId === 'ungrouped'
     ? 'FOLDERS / OTHERS'
     : `FOLDERS / ${folders.find(f => f.id === selectedFolderId)?.name?.toUpperCase() || 'FOLDER'}`;
 
@@ -193,8 +203,9 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
                  activeStatuses={activeStatuses}
                  onMoveProfileToFolder={handleMoveProfileToFolder}
                  onGoToDashboard={onGoToDashboard}
-                 onGoToFolders={onGoToFolders}
-                 onOpenSettings={onGoToSettings}
+                  onGoToFolders={onGoToFolders}
+                  onOpenSettings={onGoToSettings}
+                  onToggleAllFolders={onToggleAllFolders}
              />
 
         {/* Main Panel with Browser Preview */}
@@ -214,25 +225,25 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
               onCreateProfile={handleCreateProfile}
                onMoveProfileToFolder={handleMoveProfileToFolder}
                  onSelectProfile={setBrowserPreviewProfile}
-                    headerActions={
-                      selectedFolderId ? (
-                        <div className="panel-header-content">
-                          <h3 className="panel-header-folder-name">{selectedFolderName}</h3>
-                          <div className="panel-header-actions">
-                            {selectedFolderHasBrowserActive && (
-                              <Tooltip text="Close all" position="left">
-                                <button
-                                  className="panel-header-btn"
-                                  onClick={() => handleCloseAllInFolder(selectedFolderId as string)}
-                                >
-                                  ✕
-                                </button>
-                              </Tooltip>
-                            )}
-                          </div>
-                        </div>
-                      ) : undefined
-                    }
+                 searchQuery={searchQuery}
+                 showAddCard={showAddCard}
+                     headerActions={
+                       <div className="panel-header-content">
+                         <h3 className="panel-header-folder-name">{selectedFolderName}</h3>
+                         <div className="panel-header-actions">
+                           {selectedFolderHasBrowserActive && selectedFolderId && (
+                             <Tooltip text="Close all" position="left">
+                               <button
+                                 className="panel-header-btn"
+                                 onClick={() => handleCloseAllInFolder(selectedFolderId as string)}
+                               >
+                                 ✕
+                               </button>
+                             </Tooltip>
+                           )}
+                         </div>
+                       </div>
+                     }
               />
 
           {browserPreviewProfile && (

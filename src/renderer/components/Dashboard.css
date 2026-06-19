@@ -185,6 +185,7 @@
    overflow: hidden;
    transition: all 0.2s;
    cursor: pointer;
+   flex-shrink: 0;
  }
 
  .folder-card:hover {
