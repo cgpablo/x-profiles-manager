@@ -12,12 +12,13 @@ import CreateProfileModal from './CreateProfileModal';
 import EditProfileModal from './EditProfileModal';
 import CreateFolderModal from './CreateFolderModal';
 import EditFolderModal from './EditFolderModal';
+import DeleteConfirmModal from './DeleteProfileConfirmModal';
 import './Dashboard.css';
 
 interface DashboardProps {
   folders: ProfileFolder[];
   profiles: ChromeProfile[];
-  selectedFolderId: string | null | 'ungrouped' | '__online__' | '__search__';
+  selectedFolderId: string | null | 'ungrouped' | '__online__' | '__search__' | '__starred__';
   onSelectFolder: (folderId: string | null | 'ungrouped' | '__online__' | '__search__') => void;
   onProfilesChange: () => void;
   onFoldersChange: () => void;
@@ -38,6 +39,8 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedFolderForCreate, setSelectedFolderForCreate] = useState<string | undefined>(undefined);
   const [editingProfile, setEditingProfile] = useState<ChromeProfile | null>(null);
+  const [profileToDelete, setProfileToDelete] = useState<ChromeProfile | null>(null);
+  const [folderToDelete, setFolderToDelete] = useState<ProfileFolder | null>(null);
   const [editingFolder, setEditingFolder] = useState<ProfileFolder | null>(null);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [orderedFolders, setOrderedFolders] = useState<ProfileFolder[]>([]);
@@ -118,18 +121,27 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
   }, [profiles, orderedFolders]);
 
   const handleDeleteProfile = async (profileId: string) => {
-    if (window.confirm('Are you sure you want to delete this profile?')) {
-      try {
-        await electronAPI.profiles.delete(profileId);
-        onProfilesChange();
-      } catch (error) {
-        console.error('Error deleting profile:', error);
-      }
+    try {
+      await electronAPI.profiles.delete(profileId);
+      onProfilesChange();
+    } catch (error) {
+      console.error('Error deleting profile:', error);
     }
   };
 
   const handleEditProfile = (profile: ChromeProfile) => {
     setEditingProfile(profile);
+  };
+
+  const handleToggleStar = async (profileId: string) => {
+    const profile = profiles.find(p => p.id === profileId);
+    if (!profile) return;
+    try {
+      await electronAPI.profiles.update(profileId, { starred: !profile.starred });
+      onProfilesChange();
+    } catch (error) {
+      console.error('Error toggling star:', error);
+    }
   };
 
   const handleFolderCreated = () => {
@@ -346,8 +358,11 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                   onGoToFolders={onGoToFolders}
                   onOpenSettings={onGoToSettings}
                   orderedProfiles={orderedProfiles}
-                  onCloseAll={handleCloseAllInFolder}
-                  onToggleAllFolders={onToggleAllFolders}
+                   onCloseAll={handleCloseAllInFolder}
+                   onToggleAllFolders={onToggleAllFolders}
+                   onEditProfile={(profile) => setEditingProfile(profile)}
+                   onDeleteProfile={handleDeleteProfile}
+                   onToggleStar={handleToggleStar}
              />
 
           {/* Main Content - 2 Columns (or tabs on narrow screens) */}
@@ -440,11 +455,11 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                            >
                              ✎
                            </button>
-                          <button
-                            className="action-btn delete-btn"
-                            onClick={() => handleDeleteFolder(folder.id)}
-                            title="Delete"
-                          >
+                           <button
+                             className="action-btn delete-btn"
+                             onClick={() => setFolderToDelete(folder)}
+                             title="Delete"
+                           >
                             🗑️
                           </button>
                         </div>
@@ -498,8 +513,9 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                            isDragging={draggedProfileId === profile.id}
                            onLaunch={() => handleLaunchProfile(profile.id)}
                            onClose={() => handleCloseProfile(profile.id)}
-                           onDelete={() => handleDeleteProfile(profile.id)}
-                           onEdit={() => handleEditProfile(profile)}
+                             onDelete={() => setProfileToDelete(profile)}
+                            onEdit={() => handleEditProfile(profile)}
+                            onToggleStar={() => handleToggleStar(profile.id)}
                            onMoveToFolder={handleMoveProfileToFolder}
                            folders={folders}
                            onDragStart={(e) => handleProfileDragStart(e, profile.id)}
@@ -556,6 +572,23 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
           folder={editingFolder}
           onClose={() => setEditingFolder(null)}
           onUpdated={handleFolderUpdated}
+        />
+      )}
+
+      {profileToDelete && (
+        <DeleteConfirmModal
+          title="Delete Profile"
+          itemName={profileToDelete.name}
+          onConfirm={() => { handleDeleteProfile(profileToDelete.id); setProfileToDelete(null); }}
+          onCancel={() => setProfileToDelete(null)}
+        />
+      )}
+      {folderToDelete && (
+        <DeleteConfirmModal
+          title="Delete Folder"
+          itemName={folderToDelete.name}
+          onConfirm={() => { handleDeleteFolder(folderToDelete.id); setFolderToDelete(null); }}
+          onCancel={() => setFolderToDelete(null)}
         />
       )}
     </div>

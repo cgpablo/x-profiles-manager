@@ -24,6 +24,7 @@ export interface ChromeProfile {
   lastAccessed?: number;
   isActive?: boolean;
   orderIndex?: number; // For sorting profiles
+  starred?: boolean; // Starred/favourited profile
   installedExtensions?: {
     ublockOriginLite?: boolean;
     twitterControl?: boolean;

@@ -13,12 +13,13 @@ import CreateProfileModal from './CreateProfileModal';
 import EditProfileModal from './EditProfileModal';
 import CreateFolderModal from './CreateFolderModal';
 import EditFolderModal from './EditFolderModal';
+import DeleteConfirmModal from './DeleteProfileConfirmModal';
 import './FoldersView.css';
 
 interface FoldersProps {
   folders: ProfileFolder[];
   profiles: ChromeProfile[];
-  selectedFolderId: string | null | 'ungrouped' | '__online__' | '__search__';
+  selectedFolderId: string | null | 'ungrouped' | '__online__' | '__search__' | '__starred__';
   onSelectFolder: (folderId: string | null | 'ungrouped' | '__online__' | '__search__') => void;
   onProfilesChange: () => void;
   onFoldersChange: () => void;
@@ -35,14 +36,14 @@ interface FoldersProps {
   onToggleAllFolders?: (expand: boolean) => void;
 }
 
-export default function Folders({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, activeStatuses = new Map(), searchQuery = '', showAddCard = true, onToggleAllFolders }: FoldersProps) {
-  const electronAPI = useElectronAPI();
+export default function Folders({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, activeStatuses = new Map(), searchQuery = '', showAddCard = true, onToggleAllFolders }: FoldersProps) {  const electronAPI = useElectronAPI();
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalFolderId, setCreateModalFolderId] = useState<string | undefined>(undefined);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [editingProfile, setEditingProfile] = useState<ChromeProfile | null>(null);
   const [editingFolder, setEditingFolder] = useState<ProfileFolder | null>(null);
+  const [profileToDelete, setProfileToDelete] = useState<ChromeProfile | null>(null);
   const [browserPreviewProfile, setBrowserPreviewProfile] = useState<ChromeProfile | null>(null);
 
   const handleLaunchProfile = async (profileId: string) => {
@@ -65,18 +66,16 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
   };
 
   const handleDeleteProfile = async (profileId: string) => {
-    if (window.confirm('Are you sure you want to delete this profile?')) {
-      try {
-        // Close if active
-        if (activeStatuses?.get(profileId)) {
-          await handleCloseProfile(profileId);
-        }
-        // Delete profile
-        await electronAPI.profiles.delete(profileId);
-        onProfilesChange();
-      } catch (error) {
-        console.error('Error deleting profile:', error);
+    try {
+      // Close if active
+      if (activeStatuses?.get(profileId)) {
+        await handleCloseProfile(profileId);
       }
+      // Delete profile
+      await electronAPI.profiles.delete(profileId);
+      onProfilesChange();
+    } catch (error) {
+      console.error('Error deleting profile:', error);
     }
   };
 
@@ -121,6 +120,17 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
     }
   };
 
+  const handleToggleStar = async (profileId: string) => {
+    const profile = profiles.find(p => p.id === profileId);
+    if (!profile) return;
+    try {
+      await electronAPI.profiles.update(profileId, { starred: !profile.starred });
+      onProfilesChange();
+    } catch (error) {
+      console.error('Error toggling star:', error);
+    }
+  };
+
   // Calculate profile count by folder
   const profileCountByFolder = new Map<string | undefined, number>();
   for (const profile of profiles) {
@@ -143,6 +153,8 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
     ? 'ALL FOLDERS'
     : selectedFolderId === '__online__'
     ? 'ACTIVES'
+    : selectedFolderId === '__starred__'
+    ? 'FAVORITES'
     : selectedFolderId === 'ungrouped'
     ? 'FOLDERS / OTHERS'
     : `FOLDERS / ${folders.find(f => f.id === selectedFolderId)?.name?.toUpperCase() || 'FOLDER'}`;
@@ -202,10 +214,17 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
                 onCloseAll={handleCloseAllInFolder}
                  activeStatuses={activeStatuses}
                  onMoveProfileToFolder={handleMoveProfileToFolder}
-                 onGoToDashboard={onGoToDashboard}
-                  onGoToFolders={onGoToFolders}
-                  onOpenSettings={onGoToSettings}
-                  onToggleAllFolders={onToggleAllFolders}
+                  onGoToDashboard={onGoToDashboard}
+                   onGoToFolders={onGoToFolders}
+                   onOpenSettings={onGoToSettings}
+                   onToggleAllFolders={onToggleAllFolders}
+                   onEditProfile={(profile) => setEditingProfile(profile)}
+                   onDeleteProfile={(profileId) => {
+                 const profile = profiles.find(p => p.id === profileId);
+                 if (profile) setProfileToDelete(profile);
+               }}
+                onToggleStar={handleToggleStar}
+               onToggleStar={handleToggleStar}
              />
 
         {/* Main Panel with Browser Preview */}
@@ -218,10 +237,14 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
               expandedOthers={expandedOthers}
               activeProfileId={activeProfileId}
               activeStatuses={activeStatuses}
-              onLaunchProfile={handleLaunchProfile}
-              onCloseProfile={handleCloseProfile}
-              onDeleteProfile={handleDeleteProfile}
-              onEditProfile={handleEditProfile}
+               onLaunchProfile={handleLaunchProfile}
+               onCloseProfile={handleCloseProfile}
+               onDeleteProfile={(profileId) => {
+                 const profile = profiles.find(p => p.id === profileId);
+                 if (profile) setProfileToDelete(profile);
+               }}
+               onEditProfile={handleEditProfile}
+               onToggleStar={handleToggleStar}
               onCreateProfile={handleCreateProfile}
                onMoveProfileToFolder={handleMoveProfileToFolder}
                  onSelectProfile={setBrowserPreviewProfile}
@@ -294,6 +317,15 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
           folder={editingFolder}
           onClose={() => setEditingFolder(null)}
           onUpdated={handleFolderUpdated}
+        />
+      )}
+
+      {profileToDelete && (
+        <DeleteConfirmModal
+          title="Delete Profile"
+          itemName={profileToDelete.name}
+          onConfirm={() => { handleDeleteProfile(profileToDelete.id); setProfileToDelete(null); }}
+          onCancel={() => setProfileToDelete(null)}
         />
       )}
     </div>

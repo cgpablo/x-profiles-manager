@@ -23,6 +23,7 @@ interface ProfilesPanelProps {
   onCreateProfile: (folderId?: string | undefined) => void;
   onMoveProfileToFolder?: (profileId: string, folderId: string | undefined) => void;
   onSelectProfile?: (profile: ChromeProfile) => void;
+  onToggleStar?: (profileId: string) => void;
   headerActions?: React.ReactNode;
   searchQuery?: string;
   showAddCard?: boolean;
@@ -43,6 +44,7 @@ export default function ProfilesPanel({
   onCreateProfile,
   onMoveProfileToFolder,
   onSelectProfile,
+  onToggleStar,
   headerActions,
   searchQuery = '',
   showAddCard = true,
@@ -64,6 +66,9 @@ export default function ProfilesPanel({
   const getProfilesToDisplay = () => {
     if (selectedFolderId === '__online__') {
       return profiles.filter(p => activeStatuses.get(p.id) === true);
+    }
+    if (selectedFolderId === '__starred__') {
+      return profiles.filter(p => p.starred === true);
     }
     if (selectedFolderId === '__search__') {
       const q = searchQuery.trim().toLowerCase();
@@ -122,20 +127,22 @@ export default function ProfilesPanel({
                 <p>
                   {selectedFolderId === '__online__'
                     ? 'No active profiles at the moment'
+                    : selectedFolderId === '__starred__'
+                    ? 'No favorite profiles yet'
                     : selectedFolderId === '__search__'
                     ? 'No profiles match your search'
                     : selectedFolderId === 'ungrouped'
                     ? 'Create a profile to get started'
                     : 'This folder has no profiles yet'}
                 </p>
-                {showAddCard && selectedFolderId !== '__online__' && selectedFolderId !== '__search__' && (
-                  <EmptyProfileCard 
-                    onCreateProfile={() => {
-                      const folderIdToCreate = selectedFolderId && selectedFolderId !== 'ungrouped' ? selectedFolderId : undefined;
-                      onCreateProfile(folderIdToCreate);
-                    }}
-                  />
-                )}
+                 {showAddCard && selectedFolderId !== '__online__' && selectedFolderId !== '__search__' && selectedFolderId !== '__starred__' && (
+                   <EmptyProfileCard 
+                     onCreateProfile={() => {
+                       const folderIdToCreate = selectedFolderId && selectedFolderId !== 'ungrouped' ? selectedFolderId : undefined;
+                       onCreateProfile(folderIdToCreate);
+                     }}
+                   />
+                 )}
               </div>
             ) : (
               <div className="profiles-grid">
@@ -148,13 +155,14 @@ export default function ProfilesPanel({
                      onClose={() => onCloseProfile(profile.id)}
                      onDelete={() => onDeleteProfile(profile.id)}
                      onEdit={() => onEditProfile(profile)}
+                     onToggleStar={onToggleStar ? () => onToggleStar(profile.id) : undefined}
                      isSelected={activeProfileId === profile.id}
                      folders={folders}
                       onMoveToFolder={onMoveProfileToFolder ? (folderId) => onMoveProfileToFolder(profile.id, folderId) : undefined}
                         onSelect={onSelectProfile ? () => onSelectProfile(profile) : undefined}
                       />
                 ))}
-                {showAddCard && selectedFolderId !== '__online__' && selectedFolderId !== '__search__' && (
+                {showAddCard && selectedFolderId !== '__online__' && selectedFolderId !== '__search__' && selectedFolderId !== '__starred__' && (
                   <EmptyProfileCard 
                     onCreateProfile={() => {
                       const folderIdToCreate = selectedFolderId && selectedFolderId !== 'ungrouped' ? selectedFolderId : undefined;
@@ -180,20 +188,21 @@ export default function ProfilesPanel({
                   <div className="folder-section-color-strip" style={{ backgroundColor: '#6b7280' }} />
                 </div>
                 <div className="profiles-grid">
-                  {unfolderredProfiles.map((profile) => (
-                    <ProfileTab
-                      key={profile.id}
-                      profile={profile}
-                      isActive={activeStatuses.get(profile.id) || false}
-                      onLaunch={() => onLaunchProfile(profile.id)}
-                      onClose={() => onCloseProfile(profile.id)}
-                      onDelete={() => onDeleteProfile(profile.id)}
-                      onEdit={() => onEditProfile(profile)}
-                      isSelected={activeProfileId === profile.id}
-                      folders={folders}
-                      onMoveToFolder={onMoveProfileToFolder ? (folderId) => onMoveProfileToFolder(profile.id, folderId) : undefined}
-                      onSelect={onSelectProfile ? () => onSelectProfile(profile) : undefined}
-                    />
+                   {unfolderredProfiles.map((profile) => (
+                     <ProfileTab
+                       key={profile.id}
+                       profile={profile}
+                       isActive={activeStatuses.get(profile.id) || false}
+                       onLaunch={() => onLaunchProfile(profile.id)}
+                       onClose={() => onCloseProfile(profile.id)}
+                       onDelete={() => onDeleteProfile(profile.id)}
+                       onEdit={() => onEditProfile(profile)}
+                       onToggleStar={onToggleStar ? () => onToggleStar(profile.id) : undefined}
+                       isSelected={activeProfileId === profile.id}
+                       folders={folders}
+                       onMoveToFolder={onMoveProfileToFolder ? (folderId) => onMoveProfileToFolder(profile.id, folderId) : undefined}
+                       onSelect={onSelectProfile ? () => onSelectProfile(profile) : undefined}
+                     />
                   ))}
                   {showAddCard && (
                     <EmptyProfileCard 
@@ -222,20 +231,21 @@ export default function ProfilesPanel({
                     <div className="folder-section-color-strip" style={{ backgroundColor: folder.color }} />
                   </div>
                   <div className="profiles-grid">
-                    {folderProfiles.map((profile) => (
-                      <ProfileTab
-                        key={profile.id}
-                        profile={profile}
-                        isActive={activeStatuses.get(profile.id) || false}
-                        onLaunch={() => onLaunchProfile(profile.id)}
-                        onClose={() => onCloseProfile(profile.id)}
-                        onDelete={() => onDeleteProfile(profile.id)}
-                        onEdit={() => onEditProfile(profile)}
-                        isSelected={activeProfileId === profile.id}
-                        folders={folders}
-                        onMoveToFolder={onMoveProfileToFolder ? (folderId) => onMoveProfileToFolder(profile.id, folderId) : undefined}
-                        onSelect={onSelectProfile ? () => onSelectProfile(profile) : undefined}
-                      />
+                     {folderProfiles.map((profile) => (
+                       <ProfileTab
+                         key={profile.id}
+                         profile={profile}
+                         isActive={activeStatuses.get(profile.id) || false}
+                         onLaunch={() => onLaunchProfile(profile.id)}
+                         onClose={() => onCloseProfile(profile.id)}
+                         onDelete={() => onDeleteProfile(profile.id)}
+                         onEdit={() => onEditProfile(profile)}
+                         onToggleStar={onToggleStar ? () => onToggleStar(profile.id) : undefined}
+                         isSelected={activeProfileId === profile.id}
+                         folders={folders}
+                         onMoveToFolder={onMoveProfileToFolder ? (folderId) => onMoveProfileToFolder(profile.id, folderId) : undefined}
+                         onSelect={onSelectProfile ? () => onSelectProfile(profile) : undefined}
+                       />
                     ))}
                     {showAddCard && (
                       <EmptyProfileCard 

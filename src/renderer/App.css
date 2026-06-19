@@ -114,6 +114,43 @@ body,
   font-weight: 700;
 }
 
+.btn-show-starred {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  background: transparent;
+  color: #f59e0b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-show-starred:hover {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.btn-show-starred-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.btn-show-starred-count {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
 .nav-search {
   position: relative;
   display: flex;

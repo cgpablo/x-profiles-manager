@@ -16,6 +16,7 @@ interface ProfileTabProps {
   onClose: () => void;
   onDelete: () => void;
   onEdit: () => void;
+  onToggleStar?: () => void;
   onMoveToFolder?: (folderId: string | undefined) => void;
   folders?: Array<{ id: string; name: string; icon: string }>;
   onSelect?: () => void;
@@ -36,6 +37,7 @@ export default function ProfileTab({
   onClose,
   onDelete,
   onEdit,
+  onToggleStar,
   onMoveToFolder,
   folders = [],
   onSelect,
@@ -190,7 +192,17 @@ export default function ProfileTab({
 
             <div className="profile-header">
               <div className="profile-info">
-                <h3>{profile.name}</h3>
+                <div className="profile-name-row">
+                  <h3>{profile.name}</h3>
+                  <button
+                    className={`btn-star${profile.starred ? ' starred' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); onToggleStar?.(); }}
+                    title={profile.starred ? 'Remove from starred' : 'Add to starred'}
+                    aria-label={profile.starred ? 'Unstar profile' : 'Star profile'}
+                  >
+                    {profile.starred ? '★' : '☆'}
+                  </button>
+                </div>
                 {profile.xAccount && <p className="profile-account">@{profile.xAccount}</p>}
                 <span className={`status-badge ${isActive ? 'online' : 'offline'}`}>
                   {isActive ? '● Online' : '○ Offline'}

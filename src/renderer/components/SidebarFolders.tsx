@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { ProfileFolder, ChromeProfile } from '../../types';
 import Tooltip from './Tooltip';
 import ProfileAvatarIcon from './ProfileAvatarIcon';
+import DeleteConfirmModal from './DeleteProfileConfirmModal';
 import './SidebarFolders.css';
 
 interface SidebarFoldersProps {
@@ -32,6 +33,9 @@ interface SidebarFoldersProps {
   onGoToFolders?: () => void;
   orderedProfiles?: Map<string | 'ungrouped', ChromeProfile[]>;
   onToggleAllFolders?: (expand: boolean) => void;
+  onEditProfile?: (profile: ChromeProfile) => void;
+  onDeleteProfile?: (profileId: string) => void;
+  onToggleStar?: (profileId: string) => void;
 }
 
 export default function SidebarFolders({
@@ -57,6 +61,9 @@ export default function SidebarFolders({
   onGoToFolders,
   orderedProfiles,
   onToggleAllFolders,
+  onEditProfile,
+  onDeleteProfile,
+  onToggleStar,
 }: SidebarFoldersProps) {
   const [showContextMenu, setShowContextMenu] = useState<string | null>(null);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
@@ -70,6 +77,8 @@ export default function SidebarFolders({
   const [headerMenuPos, setHeaderMenuPos] = useState({ x: 0, y: 0 });
   const headerMenuRef = useRef<HTMLDivElement | null>(null);
   const [moveSectionExpanded, setMoveSectionExpanded] = useState(false);
+  const [profileToDelete, setProfileToDelete] = useState<ChromeProfile | null>(null);
+  const [folderToDelete, setFolderToDelete] = useState<ProfileFolder | null>(null);
 
   // Close context menus on Esc key
   useEffect(() => {
@@ -153,8 +162,9 @@ export default function SidebarFolders({
   }, [showContextMenu, profileContextMenu]);
 
   const handleDeleteFolder = (folderId: string) => {
-    if (window.confirm('Are you sure you want to delete this folder? Any profiles in it will remain.')) {
-      onDeleteFolder(folderId);
+    const folder = folders.find(f => f.id === folderId);
+    if (folder) {
+      setFolderToDelete(folder);
       setShowContextMenu(null);
     }
   };
@@ -402,45 +412,70 @@ export default function SidebarFolders({
                                  if (el) {
                                    profileContextMenuRefs.current.set(profile.id, el);
                                   } else {
-                                    profileContextMenuRefs.current.delete(profile.id);
-                                  }
-                                 }}
-                                 >
-                                  <div className="context-menu-label">Profile</div>
-                                  {!isBrowserActive ? (
+                                     profileContextMenuRefs.current.delete(profile.id);
+                                   }
+                                  }}
+                                   onClick={(e) => e.stopPropagation()}
+                                   >
+                                    <div className="context-menu-label">Profile</div>
+                                   {!isBrowserActive ? (
+                                       <button
+                                         onClick={() => {
+                                          onLaunchProfile?.(profile.id);
+                                          setProfileContextMenu(null);
+                                        }}
+                                        className="context-menu-item"
+                                       >
+                                         🌐 Open
+                                       </button>
+                                    ) : (
                                       <button
                                         onClick={() => {
-                                         onLaunchProfile?.(profile.id);
-                                         setProfileContextMenu(null);
-                                       }}
-                                       className="context-menu-item"
+                                           onCloseProfile?.(profile.id);
+                                           setProfileContextMenu(null);
+                                        }}
+                                        className="context-menu-item"
                                       >
-                                        🌐 Open
-                                      </button>
-                                   ) : (
-                                     <button
-                                       onClick={() => {
-                                          onCloseProfile?.(profile.id);
-                                          setProfileContextMenu(null);
-                                       }}
-                                       className="context-menu-item"
-                                     >
-                                       ✕ Close
+                                        ✕ Close
+                                     </button>
+                                    )}
+                                  {onToggleStar && (
+                                    <button
+                                      className="context-menu-item"
+                                      onClick={() => { onToggleStar(profile.id); setProfileContextMenu(null); }}
+                                    >
+                                      {profile.starred ? '★ Remove favorite' : '☆ Add favorite'}
                                     </button>
                                   )}
-                                {onMoveProfileToFolder && folders.length > 0 && (
-                                  <>
-                                    <div className="context-menu-divider" />
+                                  {onEditProfile && (
                                     <button
-                                      className="context-menu-section"
-                                      onClick={(e) => { e.stopPropagation(); setMoveSectionExpanded(p => !p); }}
+                                      className="context-menu-item"
+                                      onClick={() => { onEditProfile(profile); setProfileContextMenu(null); }}
                                     >
-                                      <span className={`context-menu-section-arrow${moveSectionExpanded ? ' expanded' : ''}`}>▶</span>
-                                      Move to
+                                      ✎ Edit
                                     </button>
-                                    {moveSectionExpanded && (
-                                      <div className="context-menu-move-items">
-                                        {folders.map((f) => (
+                                  )}
+                                  {onDeleteProfile && (
+                                    <button
+                                      className="context-menu-item context-menu-delete"
+                                      onClick={() => { setProfileToDelete(profile); setProfileContextMenu(null); }}
+                                    >
+                                      🗑️ Delete
+                                    </button>
+                                  )}
+                                  {onMoveProfileToFolder && folders.length > 0 && (
+                                    <>
+                                      <div className="context-menu-divider" />
+                                      <button
+                                        className="context-menu-section"
+                                        onClick={(e) => { e.stopPropagation(); setMoveSectionExpanded(p => !p); }}
+                                     >
+                                       <span className={`context-menu-section-arrow${moveSectionExpanded ? ' expanded' : ''}`}>▶</span>
+                                       Move to
+                                     </button>
+                                     {moveSectionExpanded && (
+                                       <div className="context-menu-move-items">
+                                         {folders.map((f) => (
                                           <button
                                             key={f.id}
                                             className="context-menu-item"
@@ -656,32 +691,57 @@ export default function SidebarFolders({
                                       profileContextMenuRefs.current.set(profile.id, el);
                                     } else {
                                       profileContextMenuRefs.current.delete(profile.id);
-                                    }
-                                   }}
-                                  >
-                                    <div className="context-menu-label">Profile</div>
-                                    {!isBrowserActive ? (
-                                      <button
-                                       onClick={() => {
-                                        onLaunchProfile?.(profile.id);
-                                        setProfileContextMenu(null);
-                                      }}
-                                      className="context-menu-item"
-                                     >
-                                       🌐 Open
-                                     </button>
-                                  ) : (
-                                    <button
-                                      onClick={() => {
-                                         onCloseProfile?.(profile.id);
+                                     }
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <div className="context-menu-label">Profile</div>
+                                      {!isBrowserActive ? (
+                                       <button
+                                        onClick={() => {
+                                         onLaunchProfile?.(profile.id);
                                          setProfileContextMenu(null);
                                        }}
                                        className="context-menu-item"
+                                      >
+                                        🌐 Open
+                                      </button>
+                                   ) : (
+                                     <button
+                                       onClick={() => {
+                                          onCloseProfile?.(profile.id);
+                                          setProfileContextMenu(null);
+                                        }}
+                                        className="context-menu-item"
+                                      >
+                                        ✕ Close
+                                     </button>
+                                   )}
+                                  {onToggleStar && (
+                                     <button
+                                       className="context-menu-item"
+                                       onClick={() => { onToggleStar(profile.id); setProfileContextMenu(null); }}
                                      >
-                                       ✕ Close
+                                       {profile.starred ? '★ Remove favorite' : '☆ Add favorite'}
+                                     </button>
+                                   )}
+                                  {onEditProfile && (
+                                    <button
+                                      className="context-menu-item"
+                                      onClick={() => { onEditProfile(profile); setProfileContextMenu(null); }}
+                                    >
+                                      ✎ Edit
                                     </button>
                                   )}
-                                {onMoveProfileToFolder && folders.length > 0 && (
+                                   {onDeleteProfile && (
+                                     <button
+                                       className="context-menu-item context-menu-delete"
+                                       onClick={() => { setProfileToDelete(profile); setProfileContextMenu(null); }}
+                                     >
+                                       🗑️ Delete
+                                     </button>
+                                   )}
+                                  {onMoveProfileToFolder && folders.length > 0 && (
                                   <>
                                     <div className="context-menu-divider" />
                                     <button
@@ -860,22 +920,40 @@ export default function SidebarFolders({
          </div>
        )}
 
-       {/* Header context menu — 3-dot button */}
-       {showHeaderMenu && createPortal(
-         <div
-           className="context-menu"
-           style={{ left: `${headerMenuPos.x}px`, top: `${headerMenuPos.y}px` }}
-           ref={(el) => { headerMenuRef.current = el; }}
-         >
-           <button
-             className="context-menu-item"
-             onClick={() => { setShowHeaderMenu(false); onCreateFolder(); }}
-           >
-             + Add folder
-           </button>
-         </div>,
-         document.body
-       )}
-     </div>
-   );
+        {/* Header context menu — 3-dot button */}
+        {showHeaderMenu && createPortal(
+          <div
+            className="context-menu"
+            style={{ left: `${headerMenuPos.x}px`, top: `${headerMenuPos.y}px` }}
+            ref={(el) => { headerMenuRef.current = el; }}
+          >
+            <button
+              className="context-menu-item"
+              onClick={() => { setShowHeaderMenu(false); onCreateFolder(); }}
+            >
+              + Add folder
+            </button>
+          </div>,
+          document.body
+        )}
+
+        {/* Delete Profile Confirmation Modal */}
+        {folderToDelete && (
+          <DeleteConfirmModal
+            title="Delete Folder"
+            itemName={folderToDelete.name}
+            onConfirm={() => { onDeleteFolder(folderToDelete.id); setFolderToDelete(null); }}
+            onCancel={() => setFolderToDelete(null)}
+          />
+        )}
+        {profileToDelete && (
+          <DeleteConfirmModal
+            title="Delete Profile"
+            itemName={profileToDelete.name}
+            onConfirm={() => { onDeleteProfile?.(profileToDelete.id); setProfileToDelete(null); }}
+            onCancel={() => setProfileToDelete(null)}
+          />
+        )}
+      </div>
+    );
 }

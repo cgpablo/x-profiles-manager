@@ -34,6 +34,9 @@ interface SidebarProps {
   onOpenSettings?: () => void;
   orderedProfiles?: Map<string | 'ungrouped', ChromeProfile[]>;
   onToggleAllFolders?: (expand: boolean) => void;
+  onEditProfile?: (profile: ChromeProfile) => void;
+  onDeleteProfile?: (profileId: string) => void;
+  onToggleStar?: (profileId: string) => void;
 }
 
 export default function Sidebar({
@@ -61,6 +64,9 @@ export default function Sidebar({
   onOpenSettings,
   orderedProfiles,
   onToggleAllFolders,
+  onEditProfile,
+  onDeleteProfile,
+  onToggleStar,
 }: SidebarProps) {
   return (
     <aside className="sidebar">
@@ -91,6 +97,9 @@ export default function Sidebar({
              onGoToFolders={onGoToFolders}
              orderedProfiles={orderedProfiles}
              onToggleAllFolders={onToggleAllFolders}
+             onEditProfile={onEditProfile}
+             onDeleteProfile={onDeleteProfile}
+             onToggleStar={onToggleStar}
            />
 
        {/* Settings Section */}

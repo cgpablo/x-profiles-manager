@@ -22,7 +22,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [expandedOthers, setExpandedOthers] = useState(true);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null | 'ungrouped' | '__online__' | '__search__'>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null | 'ungrouped' | '__online__' | '__search__' | '__starred__'>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchActive, setSearchActive] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -260,6 +260,7 @@ function App() {
   }, [profiles]);
 
   const activeProfilesCount = profiles.filter(p => p.isActive).length;
+  const starredProfilesCount = profiles.filter(p => p.starred).length;
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -279,17 +280,28 @@ function App() {
            <h1>My X Profiles Manager</h1>
          </div>
          <div className="nav-center">
-             {activeProfilesCount > 0 && (
-               <button
-                 className={`btn-show-active${activeProfilesCount > 0 ? ' has-active' : ''}`}
-                 onClick={() => { setView('folders'); setSelectedFolderId('__online__'); }}
-                 title={`Show ${activeProfilesCount} active profile(s)`}
-               >
-                 <span className="btn-show-active-dot" />
-                 Show actives
-                 <span className="btn-show-active-count">{activeProfilesCount}</span>
-               </button>
-             )}
+              {activeProfilesCount > 0 && (
+                <button
+                  className={`btn-show-active${activeProfilesCount > 0 ? ' has-active' : ''}`}
+                  onClick={() => { setView('folders'); setSelectedFolderId('__online__'); setSearchActive(false); }}
+                  title={`Show ${activeProfilesCount} active profile(s)`}
+                >
+                  <span className="btn-show-active-dot" />
+                  Show actives
+                  <span className="btn-show-active-count">{activeProfilesCount}</span>
+                </button>
+              )}
+              <button
+                className="btn-show-starred"
+                onClick={() => { setView('folders'); setSelectedFolderId('__starred__'); setSearchActive(false); }}
+                title={starredProfilesCount > 0 ? `Show ${starredProfilesCount} favorite profile(s)` : 'No favorites yet'}
+              >
+                <span className="btn-show-starred-icon">★</span>
+                Show favorites
+                {starredProfilesCount > 0 && (
+                  <span className="btn-show-starred-count">{starredProfilesCount}</span>
+                )}
+              </button>
             <div className="nav-search">
               <span className="nav-search-icon">⌕</span>
               <input
