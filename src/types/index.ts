@@ -2,6 +2,26 @@
  * Types compartidos entre main y renderer
  */
 
+export interface PasswordEntry {
+  id: string;
+  name: string;
+  encryptedValue: string; // "iv_hex:data_hex"
+  profileIds: string[];
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export interface FCLink {
+  text: string;
+  url: string;
+}
+
+export interface FCCharacterInfo {
+  ig?: string[];
+  x?: string[];
+  sc?: FCLink[];
+}
+
 export interface ProfileFolder {
   id: string;
   name: string;
@@ -25,6 +45,7 @@ export interface ChromeProfile {
   isActive?: boolean;
   orderIndex?: number; // For sorting profiles
   starred?: boolean; // Starred/favourited profile
+  fcInfo?: FCCharacterInfo; // Fan Character info
   installedExtensions?: {
     ublockOriginLite?: boolean;
     twitterControl?: boolean;
@@ -48,6 +69,10 @@ export interface AppSettings {
       ublockOriginLite?: boolean;
       twitterControl?: boolean;
     };
+    showPasswordManager?: boolean; // Show Password Manager in sidebar
+    showCharacterHub?: boolean; // Show Character Hub in sidebar
+    showFreedcamp?: boolean; // Show Freedcamp in sidebar
+    showDashboard?: boolean; // Show Dashboard button in sidebar (default true)
   };
 }
 

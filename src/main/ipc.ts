@@ -2,11 +2,12 @@
  * IPC Handlers - Comunicación entre main y renderer
  */
 
-import { ipcMain, dialog } from 'electron';
+import { ipcMain, dialog, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { storageManager } from './storage';
 import { chromeLauncher } from './launcher';
+import { passwordManager } from './passwordManager';
 import { ChromeProfile, AppSettings, IpcResponse, ProfileFolder } from '../types';
 
 export function setupIpcHandlers(): void {
@@ -430,5 +431,74 @@ export function setupIpcHandlers(): void {
       return { success: false, error: String(error) };
     }
   });
+
+  // ====== SHELL HANDLERS ======
+
+  ipcMain.handle('shell:openExternal', async (_, url: string): Promise<IpcResponse<boolean>> => {
+    try {
+      await shell.openExternal(url);
+      return { success: true, data: true };
+    } catch (error) {
+      console.error('Error opening external URL:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // ====== PASSWORD MANAGER HANDLERS ======
+
+  ipcMain.handle('passwords:getAll', async (): Promise<IpcResponse<any[]>> => {
+    try {
+      const entries = passwordManager.getAll();
+      return { success: true, data: entries };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle(
+    'passwords:create',
+    async (_, name: string, value: string, profileIds: string[]): Promise<IpcResponse<any>> => {
+      try {
+        const entry = passwordManager.create(name, value, profileIds);
+        return { success: true, data: entry };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    'passwords:update',
+    async (_, id: string, updates: { name?: string; value?: string; profileIds?: string[] }): Promise<IpcResponse<any>> => {
+      try {
+        const entry = passwordManager.update(id, updates);
+        if (!entry) return { success: false, error: 'Entry not found' };
+        return { success: true, data: entry };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    }
+  );
+
+  ipcMain.handle('passwords:delete', async (_, id: string): Promise<IpcResponse<boolean>> => {
+    try {
+      const ok = passwordManager.delete(id);
+      return { success: ok, data: ok };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle(
+    'passwords:getDecryptedForProfile',
+    async (_, profileId: string): Promise<IpcResponse<string | null>> => {
+      try {
+        const pw = passwordManager.getDecryptedForProfile(profileId);
+        return { success: true, data: pw };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    }
+  );
 
 }

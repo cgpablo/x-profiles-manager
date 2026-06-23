@@ -8,10 +8,12 @@ import { useElectronAPI } from './hooks/useElectronAPI';
 import Dashboard from './components/Dashboard';
 import Folders from './components/Folders';
 import Settings from './components/Settings';
+import CharacterHub from './components/CharacterHub';
+import PasswordManagerView from './components/PasswordManagerView';
 import Tooltip from './components/Tooltip';
 import './App.css';
 
-type View = 'dashboard' | 'folders' | 'settings';
+type View = 'dashboard' | 'folders' | 'settings' | 'character-hub' | 'password-manager';
 
 function App() {
   const electronAPI = useElectronAPI();
@@ -47,12 +49,17 @@ function App() {
   const [dashboardKey, setDashboardKey] = useState(0); // Force Dashboard remount on undo
   const settingsSaveRef = useRef<() => void>(() => {});
   const [settingsIsDirty, setSettingsIsDirty] = useState(false);
+  const [showPasswordManager, setShowPasswordManager] = useState(false);
+  const [showCharacterHub, setShowCharacterHub] = useState(false);
+  const [showFreedcamp, setShowFreedcamp] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(true);
   // Track which folders have been auto-expanded to avoid repeatedly expanding after manual collapse
   const autoExpandedFoldersRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     loadProfiles();
     loadFolders();
+    loadSidebarSettings();
    }, []);
 
    // Poll for active profile status (enriches profiles[].isActive every 2s)
@@ -123,6 +130,18 @@ function App() {
     profiles.forEach(p => m.set(p.id, !!p.isActive));
     return m;
   }, [profiles]);
+
+  const loadSidebarSettings = async () => {
+    try {
+      const result = await electronAPI.settings.get();
+      setShowPasswordManager(result.platformPreferences?.showPasswordManager ?? false);
+      setShowCharacterHub(result.platformPreferences?.showCharacterHub ?? false);
+      setShowFreedcamp(result.platformPreferences?.showFreedcamp ?? false);
+      setShowDashboard(result.platformPreferences?.showDashboard ?? true);
+    } catch (error) {
+      console.error('Error loading sidebar settings:', error);
+    }
+  };
 
   const loadProfiles = async () => {
     try {
@@ -426,13 +445,20 @@ function App() {
                  onToggleFolder={handleToggleFolder}
                  expandedOthers={expandedOthers}
                  onToggleOthers={handleToggleOthers}
-                  onGoToDashboard={() => { setView('dashboard'); setSearchActive(false); setSelectedFolderId(null); }}
-                   onGoToSettings={() => setView('settings')}
-                   onGoToFolders={() => { setView('folders'); setSearchActive(false); }}
-                  onOrderChange={handleOrderChange}
-                  activeStatuses={activeStatuses}
-                  onToggleAllFolders={handleToggleAllFolders}
-               />
+                   onGoToDashboard={() => { setView('dashboard'); setSearchActive(false); setSelectedFolderId(null); }}
+                    onGoToSettings={() => setView('settings')}
+                    onGoToFolders={() => { setView('folders'); setSearchActive(false); }}
+                   onOrderChange={handleOrderChange}
+                   activeStatuses={activeStatuses}
+                   onToggleAllFolders={handleToggleAllFolders}
+                     showPasswordManager={showPasswordManager}
+                     showCharacterHub={showCharacterHub}
+                     showFreedcamp={showFreedcamp}
+                     showDashboard={showDashboard}
+                     onGoToCharacterHub={() => setView('character-hub')}
+                     onGoToFreedcamp={() => {}}
+                     onGoToPasswordManager={() => setView('password-manager')}
+                  />
             </div>
 
             {view === 'folders' && (
@@ -448,14 +474,21 @@ function App() {
                 expandedOthers={expandedOthers}
                 onToggleOthers={handleToggleOthers}
                   onGoToDashboard={() => { setView('dashboard'); setSearchActive(false); setSelectedFolderId(null); }}
-                  onGoToSettings={() => setView('settings')}
-                  onGoToFolders={() => { setView('folders'); setSearchActive(false); }}
-                activeStatuses={activeStatuses}
-                searchQuery={searchQuery}
-                showAddCard={!searchActive}
-                onToggleAllFolders={handleToggleAllFolders}
-              />
-            )}
+                   onGoToSettings={() => setView('settings')}
+                   onGoToFolders={() => { setView('folders'); setSearchActive(false); }}
+                 activeStatuses={activeStatuses}
+                 searchQuery={searchQuery}
+                 showAddCard={!searchActive}
+                 onToggleAllFolders={handleToggleAllFolders}
+                   showPasswordManager={showPasswordManager}
+                   showCharacterHub={showCharacterHub}
+                   showFreedcamp={showFreedcamp}
+                   showDashboard={showDashboard}
+                   onGoToCharacterHub={() => setView('character-hub')}
+                   onGoToFreedcamp={() => {}}
+                   onGoToPasswordManager={() => setView('password-manager')}
+                  />
+             )}
 
             {view === 'settings' && (
               <Settings
@@ -468,14 +501,18 @@ function App() {
                 onToggleFolder={handleToggleFolder}
                 expandedOthers={expandedOthers}
                 onToggleOthers={handleToggleOthers}
-                onGoToDashboard={() => setView('dashboard')}
-                onGoToFolders={() => setView('folders')}
-                activeStatuses={activeStatuses}
-                onSettingsSaved={() => {
-                  setSettingsSavedMessage(true);
-                  setSettingsIsDirty(false);
-                  setTimeout(() => setSettingsSavedMessage(false), 3000);
-                }}
+                 onGoToDashboard={() => setView('dashboard')}
+                 onGoToFolders={() => setView('folders')}
+                 onGoToCharacterHub={() => setView('character-hub')}
+                 onGoToFreedcamp={() => {}}
+                 onGoToPasswordManager={() => setView('password-manager')}
+                 activeStatuses={activeStatuses}
+                 onSettingsSaved={() => {
+                   setSettingsSavedMessage(true);
+                   setSettingsIsDirty(false);
+                   loadSidebarSettings();
+                   setTimeout(() => setSettingsSavedMessage(false), 3000);
+                 }}
                 onBackupSuccess={(message) => {
                   setIsBackingUp(false);
                   setBackupOperation(null);
@@ -495,12 +532,61 @@ function App() {
                 saveRef={settingsSaveRef}
                 onDirtyChange={setSettingsIsDirty}
               />
-            )}
-          </>
-        )}
-      </main>
-    </div>
-  );
-}
+             )}
+
+             {view === 'character-hub' && (
+               <CharacterHub
+                 folders={folders}
+                 profiles={profiles}
+                 selectedFolderId={selectedFolderId}
+                 onSelectFolder={setSelectedFolderId}
+                 expandedFolders={expandedFolders}
+                 onToggleFolder={handleToggleFolder}
+                 expandedOthers={expandedOthers}
+                 onToggleOthers={handleToggleOthers}
+                 onGoToDashboard={() => setView('dashboard')}
+                 onGoToSettings={() => setView('settings')}
+                 onGoToFolders={() => setView('folders')}
+                 onGoToCharacterHub={() => setView('character-hub')}
+                  activeStatuses={activeStatuses}
+                  onProfilesChange={handleProfilesChange}
+                   showPasswordManager={showPasswordManager}
+                   showCharacterHub={showCharacterHub}
+                   showFreedcamp={showFreedcamp}
+                   showDashboard={showDashboard}
+                   onToggleAllFolders={handleToggleAllFolders}
+                   onGoToPasswordManager={() => setView('password-manager')}
+                />
+              )}
+
+              {view === 'password-manager' && (
+                <PasswordManagerView
+                  folders={folders}
+                  profiles={profiles}
+                  selectedFolderId={selectedFolderId}
+                  onSelectFolder={setSelectedFolderId}
+                  expandedFolders={expandedFolders}
+                  onToggleFolder={handleToggleFolder}
+                  expandedOthers={expandedOthers}
+                  onToggleOthers={handleToggleOthers}
+                  onGoToDashboard={() => setView('dashboard')}
+                  onGoToSettings={() => setView('settings')}
+                  onGoToFolders={() => setView('folders')}
+                  onGoToCharacterHub={() => setView('character-hub')}
+                  onGoToPasswordManager={() => setView('password-manager')}
+                  activeStatuses={activeStatuses}
+                  showPasswordManager={showPasswordManager}
+                  showCharacterHub={showCharacterHub}
+                  showFreedcamp={showFreedcamp}
+                  showDashboard={showDashboard}
+                  onToggleAllFolders={handleToggleAllFolders}
+                />
+              )}
+           </>
+         )}
+       </main>
+     </div>
+   );
+ }
 
 export default App;

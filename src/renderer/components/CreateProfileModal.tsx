@@ -78,6 +78,12 @@ export default function CreateProfileModal({
       return;
     }
 
+    if (!xAccount.trim()) {
+      setError('X Account is required');
+      setLoading(false);
+      return;
+    }
+
     try {
       await electronAPI.profiles.create(name, color, imagePath || '', xAccount || undefined, folderId);
       onCreated();
@@ -111,7 +117,7 @@ export default function CreateProfileModal({
           </div>
 
           <div className="form-group">
-            <label>X Account (optional)</label>
+            <label>X Account *</label>
             <input
               type="text"
               value={xAccount}
@@ -119,6 +125,7 @@ export default function CreateProfileModal({
               onKeyDown={(e) => e.key === 'Enter' && !loading && handleSubmit(e as any)}
               placeholder="e.g., @yourhandle"
               disabled={loading}
+              required
             />
           </div>
 

@@ -51,6 +51,8 @@ export default function ProfileTab({
 }: ProfileTabProps) {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
+  const [copiedXAccount, setCopiedXAccount] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('');
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -123,6 +125,28 @@ export default function ProfileTab({
       return () => document.removeEventListener('click', handleClickOutside, true);
     }
   }, [showContextMenu]);
+
+  const handleCopyXAccount = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!profile.xAccount) return;
+    navigator.clipboard.writeText(profile.xAccount).then(() => {
+      setCopiedXAccount(true);
+      setTimeout(() => setCopiedXAccount(false), 1500);
+    }).catch(console.error);
+  };
+
+  const handleCopyPassword = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const pw = await window.electronAPI.passwords.getDecryptedForProfile(profile.id);
+      if (!pw) return;
+      await navigator.clipboard.writeText(pw);
+      setCopiedPassword(true);
+      setTimeout(() => setCopiedPassword(false), 1500);
+    } catch (err) {
+      console.error('Error copying password:', err);
+    }
+  };
 
    return (
       <div
@@ -203,7 +227,31 @@ export default function ProfileTab({
                     {profile.starred ? '★' : '☆'}
                   </button>
                 </div>
-                {profile.xAccount && <p className="profile-account">@{profile.xAccount}</p>}
+                <div className="profile-account-row">
+                  {profile.xAccount ? (
+                    <p
+                      className="profile-account"
+                      onClick={handleCopyXAccount}
+                      title="Click to copy @handle"
+                    >
+                      <span className={`profile-account-handle${copiedXAccount ? ' handle-copied' : ''}`}>
+                        {copiedXAccount ? '✓ Copied!' : `@${profile.xAccount}`}
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="profile-account profile-account-empty">
+                      —
+                    </p>
+                  )}
+                  <button
+                    className={`btn-profile-key${copiedPassword ? ' key-copied' : ''}`}
+                    onClick={handleCopyPassword}
+                    title="Copy password"
+                    aria-label="Copy password"
+                  >
+                    {copiedPassword ? '✓' : '🔑'}
+                  </button>
+                </div>
                 <span className={`status-badge ${isActive ? 'online' : 'offline'}`}>
                   {isActive ? '● Online' : '○ Offline'}
                 </span>

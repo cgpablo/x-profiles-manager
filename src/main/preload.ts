@@ -51,6 +51,16 @@ interface ElectronAPI {
     backup: (filePath: string) => Promise<string>;
     deleteAll: () => Promise<boolean>;
   };
+  shell: {
+    openExternal: (url: string) => Promise<boolean>;
+  };
+  passwords: {
+    getAll: () => Promise<Array<{ id: string; name: string; profileIds: string[]; createdAt: number; updatedAt?: number }>>;
+    create: (name: string, value: string, profileIds: string[]) => Promise<any>;
+    update: (id: string, updates: { name?: string; value?: string; profileIds?: string[] }) => Promise<any>;
+    delete: (id: string) => Promise<boolean>;
+    getDecryptedForProfile: (profileId: string) => Promise<string | null>;
+  };
 }
 
 /**
@@ -127,12 +137,28 @@ const electronAPI: ElectronAPI = {
        import: () =>
          unwrapResponse(ipcRenderer.invoke('backup:import')),
      },
-     icons: {
-       backup: (filePath: string) =>
-         unwrapResponse<string>(ipcRenderer.invoke('icons:backup', filePath)),
-       deleteAll: () =>
-         unwrapResponse<boolean>(ipcRenderer.invoke('icons:deleteAll')),
-     },
+      icons: {
+        backup: (filePath: string) =>
+          unwrapResponse<string>(ipcRenderer.invoke('icons:backup', filePath)),
+        deleteAll: () =>
+          unwrapResponse<boolean>(ipcRenderer.invoke('icons:deleteAll')),
+      },
+       shell: {
+         openExternal: (url: string) =>
+           unwrapResponse<boolean>(ipcRenderer.invoke('shell:openExternal', url)),
+       },
+       passwords: {
+         getAll: () =>
+           unwrapResponse(ipcRenderer.invoke('passwords:getAll')),
+         create: (name: string, value: string, profileIds: string[]) =>
+           unwrapResponse(ipcRenderer.invoke('passwords:create', name, value, profileIds)),
+         update: (id: string, updates: { name?: string; value?: string; profileIds?: string[] }) =>
+           unwrapResponse(ipcRenderer.invoke('passwords:update', id, updates)),
+         delete: (id: string) =>
+           unwrapResponse<boolean>(ipcRenderer.invoke('passwords:delete', id)),
+         getDecryptedForProfile: (profileId: string) =>
+           unwrapResponse<string | null>(ipcRenderer.invoke('passwords:getDecryptedForProfile', profileId)),
+       },
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

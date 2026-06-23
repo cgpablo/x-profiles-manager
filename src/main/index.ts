@@ -2,7 +2,7 @@
  * Main Process - Electron app entry point
  */
 
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, shell } from 'electron';
 import * as path from 'path';
 import isDev from 'electron-is-dev';
 import { setupIpcHandlers } from './ipc';
@@ -44,6 +44,22 @@ const createWindow = (): void => {
     : `file://${path.join(__dirname, '../renderer/index.html')}`;
 
   mainWindow.loadURL(startUrl);
+
+  // Intercept window.open / target="_blank" links — open in the OS default browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url && url !== 'about:blank' && !url.startsWith('devtools://')) {
+      shell.openExternal(url).catch(console.error);
+    }
+    return { action: 'deny' };
+  });
+
+  // Also intercept top-level navigation away from the app
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!url.startsWith('http://localhost') && !url.startsWith('file://')) {
+      event.preventDefault();
+      shell.openExternal(url).catch(console.error);
+    }
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;

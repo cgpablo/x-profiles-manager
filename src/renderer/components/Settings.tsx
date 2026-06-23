@@ -22,6 +22,9 @@ interface SettingsProps {
   onToggleOthers: () => void;
   onGoToDashboard?: () => void;
   onGoToFolders?: () => void;
+  onGoToCharacterHub?: () => void;
+  onGoToFreedcamp?: () => void;
+  onGoToPasswordManager?: () => void;
   activeStatuses?: Map<string, boolean>;
   onSettingsSaved?: () => void;
   onBackupStart?: (operation: 'export' | 'import') => void;
@@ -31,7 +34,7 @@ interface SettingsProps {
   onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export default function Settings({ folders, profiles, selectedFolderId, onSelectFolder, onSettingsChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToFolders, activeStatuses = new Map(), onSettingsSaved, onBackupStart, onBackupSuccess, onBackupError, saveRef, onDirtyChange }: SettingsProps) {
+export default function Settings({ folders, profiles, selectedFolderId, onSelectFolder, onSettingsChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToFolders, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, activeStatuses = new Map(), onSettingsSaved, onBackupStart, onBackupSuccess, onBackupError, saveRef, onDirtyChange }: SettingsProps) {
   const electronAPI = useElectronAPI();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [originalSettings, setOriginalSettings] = useState<AppSettings | null>(null);
@@ -254,7 +257,14 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
              onGoToDashboard={onGoToDashboard}
             onGoToFolders={onGoToFolders}
             onOpenSettings={() => {}}
-         />
+             showPasswordManager={settings.platformPreferences?.showPasswordManager ?? false}
+             showCharacterHub={settings.platformPreferences?.showCharacterHub ?? false}
+             showFreedcamp={settings.platformPreferences?.showFreedcamp ?? false}
+             showDashboard={settings.platformPreferences?.showDashboard ?? true}
+             onGoToCharacterHub={onGoToCharacterHub}
+             onGoToFreedcamp={onGoToFreedcamp}
+             onGoToPasswordManager={onGoToPasswordManager}
+          />
 
       <div className="settings">
         <div className="settings-header" style={{ display: 'none' }}></div>
@@ -466,6 +476,111 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
                 <small>Useful for troubleshooting focus and process issues</small>
               </div>
              )}
+
+           </div>
+
+           <div className="settings-section">
+             <h3>Sidebar Configuration</h3>
+
+             <div className="setting-item">
+               <label>Show Dashboard</label>
+               <div className="checkbox-group">
+                 <input
+                   type="checkbox"
+                   id="showDashboard"
+                   checked={settings.platformPreferences?.showDashboard ?? true}
+                   onChange={(e) => {
+                     const prefs = settings.platformPreferences || {};
+                     setSettings({
+                       ...settings,
+                       platformPreferences: {
+                         ...prefs,
+                         showDashboard: e.target.checked,
+                       },
+                     });
+                   }}
+                 />
+                 <label htmlFor="showDashboard" style={{ marginLeft: '8px' }}>
+                   Show Dashboard button in sidebar
+                 </label>
+               </div>
+               <small>When disabled, the Dashboard button is hidden from the sidebar</small>
+             </div>
+
+             <div className="setting-item">
+               <label>Show Password Manager</label>
+               <div className="checkbox-group">
+                 <input
+                   type="checkbox"
+                   id="showPasswordManager"
+                   checked={settings.platformPreferences?.showPasswordManager ?? false}
+                   onChange={(e) => {
+                     const prefs = settings.platformPreferences || {};
+                     setSettings({
+                       ...settings,
+                       platformPreferences: {
+                         ...prefs,
+                         showPasswordManager: e.target.checked,
+                       },
+                     });
+                   }}
+                 />
+                 <label htmlFor="showPasswordManager" style={{ marginLeft: '8px' }}>
+                   Show Password Manager section in sidebar
+                 </label>
+               </div>
+               <small>When enabled, a Password Manager shortcut appears above Settings</small>
+             </div>
+
+             <div className="setting-item">
+               <label>Show Character Hub</label>
+               <div className="checkbox-group">
+                 <input
+                   type="checkbox"
+                   id="showCharacterHub"
+                   checked={settings.platformPreferences?.showCharacterHub ?? false}
+                   onChange={(e) => {
+                     const prefs = settings.platformPreferences || {};
+                     setSettings({
+                       ...settings,
+                       platformPreferences: {
+                         ...prefs,
+                         showCharacterHub: e.target.checked,
+                       },
+                     });
+                   }}
+                 />
+                 <label htmlFor="showCharacterHub" style={{ marginLeft: '8px' }}>
+                   Show Character Hub section in sidebar
+                 </label>
+               </div>
+               <small>When enabled, a Character Hub shortcut appears above Settings</small>
+             </div>
+
+             <div className="setting-item">
+               <label>Show Freedcamp</label>
+               <div className="checkbox-group">
+                 <input
+                   type="checkbox"
+                   id="showFreedcamp"
+                   checked={settings.platformPreferences?.showFreedcamp ?? false}
+                   onChange={(e) => {
+                     const prefs = settings.platformPreferences || {};
+                     setSettings({
+                       ...settings,
+                       platformPreferences: {
+                         ...prefs,
+                         showFreedcamp: e.target.checked,
+                       },
+                     });
+                   }}
+                 />
+                 <label htmlFor="showFreedcamp" style={{ marginLeft: '8px' }}>
+                   Show Freedcamp section in sidebar
+                 </label>
+               </div>
+               <small>When enabled, a Freedcamp shortcut appears above Settings</small>
+             </div>
            </div>
 
            {/* Extensions Section - DISABLED */}

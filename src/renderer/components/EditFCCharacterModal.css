@@ -1,0 +1,196 @@
+/**
+ * EditFCCharacterModal CSS
+ */
+
+.fc-modal {
+  width: 520px;
+  max-width: 95vw;
+}
+
+.fc-modal-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0.6rem 0 0 0;
+}
+
+.fc-modal-account {
+  color: var(--primary);
+}
+
+.fc-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+/* Field group */
+.fc-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fc-field-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* Input row */
+.fc-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.fc-input-row-sc {
+  flex-wrap: wrap;
+}
+
+.fc-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  padding: 0.45rem 0.65rem;
+  transition: border-color 0.15s;
+}
+
+.fc-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.fc-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.btn-fc-add {
+  padding: 0.45rem 0.85rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-fc-add:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.btn-fc-add:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Tag chips */
+.fc-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-height: 28px;
+  align-items: center;
+}
+
+.fc-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.btn-fc-remove {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.6rem;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.15s;
+  display: flex;
+  align-items: center;
+}
+
+.btn-fc-remove:hover {
+  color: var(--danger, #ef4444);
+}
+
+/* Link list */
+.fc-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-height: 28px;
+}
+
+.fc-link-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.3rem 0.6rem;
+}
+
+.fc-link-text {
+  font-weight: 600;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.fc-link-sep {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.fc-link-url {
+  color: var(--primary);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.fc-link-url:hover {
+  text-decoration: underline;
+}
+
+/* btn-link: looks like a link but is a <button> */
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  text-align: left;
+}
+
+.fc-hint {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  opacity: 0.55;
+  font-style: italic;
+}

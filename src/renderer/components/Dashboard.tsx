@@ -32,9 +32,16 @@ interface DashboardProps {
   onOrderChange?: (orderedProfiles: Map<string | 'ungrouped', ChromeProfile[]>, orderedFolders: ProfileFolder[]) => void;
   activeStatuses?: Map<string, boolean>;
   onToggleAllFolders?: (expand: boolean) => void;
+  showPasswordManager?: boolean;
+  showCharacterHub?: boolean;
+  showFreedcamp?: boolean;
+  showDashboard?: boolean;
+  onGoToCharacterHub?: () => void;
+  onGoToFreedcamp?: () => void;
+  onGoToPasswordManager?: () => void;
 }
 
-export default function Dashboard({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, onOrderChange, activeStatuses = new Map(), onToggleAllFolders }: DashboardProps) {
+export default function Dashboard({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, onOrderChange, activeStatuses = new Map(), onToggleAllFolders, showPasswordManager = false, showCharacterHub = false, showFreedcamp = false, showDashboard = true, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager }: DashboardProps) {
   const electronAPI = useElectronAPI();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedFolderForCreate, setSelectedFolderForCreate] = useState<string | undefined>(undefined);
@@ -355,14 +362,21 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
               activeStatuses={activeStatuses}
                onMoveProfileToFolder={handleMoveProfileToFolder}
                  onGoToDashboard={() => {}}
-                  onGoToFolders={onGoToFolders}
-                  onOpenSettings={onGoToSettings}
-                  orderedProfiles={orderedProfiles}
-                   onCloseAll={handleCloseAllInFolder}
-                   onToggleAllFolders={onToggleAllFolders}
-                   onEditProfile={(profile) => setEditingProfile(profile)}
-                   onDeleteProfile={handleDeleteProfile}
-                   onToggleStar={handleToggleStar}
+                    onGoToFolders={onGoToFolders}
+                   onOpenSettings={onGoToSettings}
+                   orderedProfiles={orderedProfiles}
+                    onCloseAll={handleCloseAllInFolder}
+                    onToggleAllFolders={onToggleAllFolders}
+                    onEditProfile={(profile) => setEditingProfile(profile)}
+                    onDeleteProfile={handleDeleteProfile}
+                    onToggleStar={handleToggleStar}
+                      showPasswordManager={showPasswordManager}
+                      showCharacterHub={showCharacterHub}
+                      showFreedcamp={showFreedcamp}
+                      showDashboard={showDashboard}
+                      onGoToCharacterHub={onGoToCharacterHub}
+                      onGoToFreedcamp={onGoToFreedcamp}
+                      onGoToPasswordManager={onGoToPasswordManager}
              />
 
           {/* Main Content - 2 Columns (or tabs on narrow screens) */}

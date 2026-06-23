@@ -1,0 +1,24 @@
+/**
+ * ProfileAvatar CSS
+ * Only structural styles — sizing/shape come from the consumer's className.
+ */
+
+.profile-avatar-wrap {
+  overflow: hidden;
+}
+
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-avatar-letter {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}

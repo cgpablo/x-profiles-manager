@@ -34,9 +34,16 @@ interface FoldersProps {
   searchQuery?: string;
   showAddCard?: boolean;
   onToggleAllFolders?: (expand: boolean) => void;
+  showPasswordManager?: boolean;
+  showCharacterHub?: boolean;
+  showFreedcamp?: boolean;
+  showDashboard?: boolean;
+  onGoToCharacterHub?: () => void;
+  onGoToFreedcamp?: () => void;
+  onGoToPasswordManager?: () => void;
 }
 
-export default function Folders({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, activeStatuses = new Map(), searchQuery = '', showAddCard = true, onToggleAllFolders }: FoldersProps) {  const electronAPI = useElectronAPI();
+export default function Folders({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, activeStatuses = new Map(), searchQuery = '', showAddCard = true, onToggleAllFolders, showPasswordManager = false, showCharacterHub = false, showFreedcamp = false, showDashboard = true, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager }: FoldersProps) {  const electronAPI = useElectronAPI();
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalFolderId, setCreateModalFolderId] = useState<string | undefined>(undefined);
@@ -215,17 +222,23 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
                  activeStatuses={activeStatuses}
                  onMoveProfileToFolder={handleMoveProfileToFolder}
                   onGoToDashboard={onGoToDashboard}
-                   onGoToFolders={onGoToFolders}
-                   onOpenSettings={onGoToSettings}
-                   onToggleAllFolders={onToggleAllFolders}
-                   onEditProfile={(profile) => setEditingProfile(profile)}
-                   onDeleteProfile={(profileId) => {
-                 const profile = profiles.find(p => p.id === profileId);
-                 if (profile) setProfileToDelete(profile);
-               }}
-                onToggleStar={handleToggleStar}
-               onToggleStar={handleToggleStar}
-             />
+                    onGoToFolders={onGoToFolders}
+                    onOpenSettings={onGoToSettings}
+                    onToggleAllFolders={onToggleAllFolders}
+                    onEditProfile={(profile) => setEditingProfile(profile)}
+                    onDeleteProfile={(profileId) => {
+                  const profile = profiles.find(p => p.id === profileId);
+                  if (profile) setProfileToDelete(profile);
+                }}
+                 onToggleStar={handleToggleStar}
+                 showPasswordManager={showPasswordManager}
+                 showCharacterHub={showCharacterHub}
+                 showFreedcamp={showFreedcamp}
+                 showDashboard={showDashboard}
+                 onGoToCharacterHub={onGoToCharacterHub}
+                 onGoToFreedcamp={onGoToFreedcamp}
+                 onGoToPasswordManager={onGoToPasswordManager}
+              />
 
         {/* Main Panel with Browser Preview */}
           <div className="folders-view-main">

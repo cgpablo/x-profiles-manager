@@ -86,6 +86,12 @@ export default function EditProfileModal({
       return;
     }
 
+    if (!xAccount.trim()) {
+      setError('X Account is required');
+      setLoading(false);
+      return;
+    }
+
     try {
       await electronAPI.profiles.update(profile.id, {
         name,
@@ -125,13 +131,14 @@ export default function EditProfileModal({
           </div>
 
           <div className="form-group">
-            <label>X Account (optional)</label>
+            <label>X Account *</label>
             <input
               type="text"
               value={xAccount}
               onChange={(e) => setXAccount(e.target.value)}
               placeholder="e.g., @yourhandle"
               disabled={loading}
+              required
             />
           </div>
 

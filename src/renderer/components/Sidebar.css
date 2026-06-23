@@ -21,17 +21,27 @@
   border-bottom: 1px solid var(--border);
 }
 
-.sidebar > div:last-child {
-  border-top: 1px solid var(--border);
+/* Bottom group (PM, CH, Freedcamp, Settings) sticks to the bottom */
+.sidebar-bottom-group {
   margin-top: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Common styles for all sections */
 .sidebar-dashboard,
 .sidebar-folders,
-.sidebar-settings {
+.sidebar-settings,
+.sidebar-password-manager,
+.sidebar-character-hub {
   display: flex;
   flex-direction: column;
+}
+
+.sidebar-password-manager,
+.sidebar-character-hub,
+.sidebar-freedcamp {
+  border-top: 1px solid var(--border);
 }
 
 .sidebar-section-header {

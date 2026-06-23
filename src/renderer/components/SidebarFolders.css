@@ -10,6 +10,7 @@
   overflow: hidden;
 }
 
+
 .sidebar-section-header-btn {
   display: flex;
   justify-content: space-between;
@@ -44,9 +45,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 1.5rem 0.75rem 0.75rem;
+  padding: 0.75rem 1.5rem 0.75rem 0.25rem;
   flex-shrink: 0;
 }
+
 
 .sidebar-section-header h3 {
   font-size: 0.75rem;
@@ -76,6 +78,30 @@
 
 .sidebar-section-header-title:hover h3 {
   color: var(--text-primary);
+}
+
+.btn-section-collapse {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.btn-section-collapse:hover {
+  color: var(--text-primary);
+}
+
+.btn-section-collapse.expanded {
+  transform: rotate(90deg);
 }
 
 .folder-list {
@@ -149,7 +175,7 @@
 .folder-item-wrapper {
   position: relative;
   width: 100%;
-  padding: 0 0.5rem;
+  padding: 0 0.5rem 0 calc(0.5rem + 10px);
 }
 
 .folder-item {

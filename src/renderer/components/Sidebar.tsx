@@ -6,6 +6,9 @@ import React from 'react';
 import { ChromeProfile, ProfileFolder } from '../../types';
 import SidebarDashboard from './SidebarDashboard';
 import SidebarFolders from './SidebarFolders';
+import SidebarPasswordManager from './SidebarPasswordManager';
+import SidebarCharacterHub from './SidebarCharacterHub';
+import SidebarFreedcamp from './SidebarFreedcamp';
 import SidebarSettings from './SidebarSettings';
 import './Sidebar.css';
 
@@ -32,6 +35,13 @@ interface SidebarProps {
   onGoToDashboard?: () => void;
   onGoToFolders?: () => void;
   onOpenSettings?: () => void;
+  onGoToPasswordManager?: () => void;
+  onGoToCharacterHub?: () => void;
+  onGoToFreedcamp?: () => void;
+  showPasswordManager?: boolean;
+  showCharacterHub?: boolean;
+  showFreedcamp?: boolean;
+  showDashboard?: boolean;
   orderedProfiles?: Map<string | 'ungrouped', ChromeProfile[]>;
   onToggleAllFolders?: (expand: boolean) => void;
   onEditProfile?: (profile: ChromeProfile) => void;
@@ -62,6 +72,13 @@ export default function Sidebar({
   onGoToDashboard,
   onGoToFolders,
   onOpenSettings,
+  onGoToPasswordManager,
+  onGoToCharacterHub,
+  onGoToFreedcamp,
+  showPasswordManager = false,
+  showCharacterHub = false,
+  showFreedcamp = false,
+  showDashboard = true,
   orderedProfiles,
   onToggleAllFolders,
   onEditProfile,
@@ -71,7 +88,7 @@ export default function Sidebar({
   return (
     <aside className="sidebar">
       {/* Dashboard Section */}
-      <SidebarDashboard onGoToDashboard={onGoToDashboard} />
+      {showDashboard !== false && <SidebarDashboard onGoToDashboard={onGoToDashboard} />}
 
       {/* Folders Section */}
        <SidebarFolders
@@ -103,7 +120,12 @@ export default function Sidebar({
            />
 
        {/* Settings Section */}
-       <SidebarSettings onOpenSettings={onOpenSettings} />
+       <div className="sidebar-bottom-group">
+         {showPasswordManager && <SidebarPasswordManager onNavigate={onGoToPasswordManager} />}
+         {showCharacterHub && <SidebarCharacterHub onNavigate={onGoToCharacterHub} />}
+         {showFreedcamp && <SidebarFreedcamp onNavigate={onGoToFreedcamp} />}
+         <SidebarSettings onOpenSettings={onOpenSettings} />
+       </div>
      </aside>
    );
  }
