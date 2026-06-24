@@ -52,6 +52,8 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
   const [editingFolder, setEditingFolder] = useState<ProfileFolder | null>(null);
   const [profileToDelete, setProfileToDelete] = useState<ChromeProfile | null>(null);
   const [browserPreviewProfile, setBrowserPreviewProfile] = useState<ChromeProfile | null>(null);
+  const [sortOrderStarred, setSortOrderStarred] = useState<'asc' | 'desc'>('asc');
+  const [sortOrderOnline, setSortOrderOnline] = useState<'asc' | 'desc'>('asc');
 
   const handleLaunchProfile = async (profileId: string) => {
     try {
@@ -197,6 +199,19 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
     onProfilesChange();
   };
 
+  const isVirtualView = selectedFolderId === '__starred__' || selectedFolderId === '__online__';
+  const currentSortOrder = selectedFolderId === '__starred__' ? sortOrderStarred : sortOrderOnline;
+  const toggleSortOrder = selectedFolderId === '__starred__'
+    ? () => setSortOrderStarred(o => o === 'asc' ? 'desc' : 'asc')
+    : () => setSortOrderOnline(o => o === 'asc' ? 'desc' : 'asc');
+  const profilesToDisplay = isVirtualView
+    ? [...profiles].sort((a, b) =>
+        currentSortOrder === 'asc'
+          ? a.name.localeCompare(b.name)
+          : b.name.localeCompare(a.name)
+      )
+    : profiles;
+
   return (
     <div className="dashboard">
       <div className="dashboard-container">
@@ -243,7 +258,7 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
         {/* Main Panel with Browser Preview */}
           <div className="folders-view-main">
            <ProfilesPanel
-             profiles={profiles}
+             profiles={profilesToDisplay}
              folders={folders}
              selectedFolderId={selectedFolderId}
               expandedFolders={expandedFolders}
@@ -267,6 +282,15 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
                        <div className="panel-header-content">
                          <h3 className="panel-header-folder-name">{selectedFolderName}</h3>
                          <div className="panel-header-actions">
+                            {isVirtualView && (
+                              <button
+                                className="panel-header-btn active"
+                                onClick={toggleSortOrder}
+                                title={currentSortOrder === 'asc' ? 'A→Z (click for Z→A)' : 'Z→A (click for A→Z)'}
+                              >
+                                {currentSortOrder === 'desc' ? 'Z↓' : 'A↓'}
+                              </button>
+                            )}
                            {selectedFolderHasBrowserActive && selectedFolderId && (
                              <Tooltip text="Close all" position="left">
                                <button

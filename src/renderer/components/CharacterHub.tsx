@@ -4,9 +4,14 @@
 
 import React, { useState, useMemo } from 'react';
 import { ChromeProfile, ProfileFolder } from '../../types';
+import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
 import EditFCCharacterModal from './EditFCCharacterModal';
 import ProfileAvatar from './ProfileAvatar';
+import CreateProfileModal from './CreateProfileModal';
+import EditProfileModal from './EditProfileModal';
+import CreateFolderModal from './CreateFolderModal';
+import EditFolderModal from './EditFolderModal';
 import './CharacterHub.css';
 import './ProfilesPanel.css';
 
@@ -26,6 +31,7 @@ interface CharacterHubProps {
   onGoToPasswordManager?: () => void;
   activeStatuses?: Map<string, boolean>;
   onProfilesChange: () => void;
+  onFoldersChange: () => void;
   showPasswordManager?: boolean;
   showCharacterHub?: boolean;
   showFreedcamp?: boolean;
@@ -49,6 +55,7 @@ export default function CharacterHub({
   onGoToPasswordManager,
   activeStatuses = new Map(),
   onProfilesChange,
+  onFoldersChange,
   showPasswordManager = false,
   showCharacterHub = true,
   showFreedcamp = false,
@@ -57,6 +64,102 @@ export default function CharacterHub({
 }: CharacterHubProps) {
   const [editingProfile, setEditingProfile] = useState<ChromeProfile | null>(null);
   const [search, setSearch] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const electronAPI = useElectronAPI();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createModalFolderId, setCreateModalFolderId] = useState<string | undefined>(undefined);
+  const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
+  const [profileForEdit, setProfileForEdit] = useState<ChromeProfile | null>(null);
+  const [editingFolder, setEditingFolder] = useState<ProfileFolder | null>(null);
+
+  const handleLaunchProfile = async (profileId: string) => {
+    try {
+      await electronAPI.launcher.launch(profileId, 'https://x.com');
+      onProfilesChange();
+    } catch (error) {
+      console.error('Error launching profile:', error);
+    }
+  };
+
+  const handleCloseProfile = async (profileId: string) => {
+    try {
+      await electronAPI.launcher.close(profileId);
+      onProfilesChange();
+    } catch (error) {
+      console.error('Error closing profile:', error);
+    }
+  };
+
+  const handleDeleteProfile = async (profileId: string) => {
+    try {
+      await electronAPI.profiles.delete(profileId);
+      onProfilesChange();
+    } catch (error) {
+      console.error('Error deleting profile:', error);
+    }
+  };
+
+  const handleCreateProfile = (folderId?: string) => {
+    setCreateModalFolderId(folderId);
+    setShowCreateModal(true);
+  };
+
+  const handleDeleteFolder = async (folderId: string) => {
+    try {
+      await electronAPI.folders.delete(folderId);
+      onFoldersChange();
+    } catch (error) {
+      console.error('Error deleting folder:', error);
+    }
+  };
+
+  const handleMoveProfileToFolder = async (profileId: string, folderId: string | undefined) => {
+    try {
+      await electronAPI.profiles.update(profileId, { folderId });
+      onProfilesChange();
+    } catch (error) {
+      console.error('Error moving profile to folder:', error);
+    }
+  };
+
+  const handleToggleStar = async (profileId: string) => {
+    const profile = profiles.find(p => p.id === profileId);
+    if (!profile) return;
+    try {
+      await electronAPI.profiles.update(profileId, { starred: !profile.starred });
+      onProfilesChange();
+    } catch (error) {
+      console.error('Error toggling star:', error);
+    }
+  };
+
+  const handleOpenAllInBrowser = async (folderId: string) => {
+    const folderProfiles = profiles.filter(p => p.folderId === folderId || (folderId === 'ungrouped' && !p.folderId));
+    for (const profile of folderProfiles) {
+      try {
+        await electronAPI.launcher.launch(profile.id, 'https://x.com');
+      } catch (error) {
+        console.error('Error launching profile:', profile.id, error);
+      }
+    }
+    onProfilesChange();
+  };
+
+  const handleCloseAllInFolder = async (folderId: string | null) => {
+    if (!folderId || typeof folderId !== 'string') return;
+    const folderProfiles = profiles.filter(p => p.folderId === folderId || (folderId === 'ungrouped' && !p.folderId));
+    for (const profile of folderProfiles) {
+      if (activeStatuses.get(profile.id)) {
+        try {
+          await electronAPI.launcher.close(profile.id);
+        } catch (error) {
+          console.error('Error closing profile:', profile.id, error);
+        }
+      }
+    }
+    onProfilesChange();
+  };
 
   const profileCountByFolder = useMemo(() => {
     const map = new Map<string | undefined, number>();
@@ -68,18 +171,27 @@ export default function CharacterHub({
 
   const filteredProfiles = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return profiles;
-    return profiles.filter((p) => {
-      if (p.name.toLowerCase().includes(q)) return true;
-      if (p.fcInfo?.ig?.some(tag => tag.toLowerCase().includes(q))) return true;
-      if (p.fcInfo?.x?.some(tag => tag.toLowerCase().includes(q))) return true;
-      if (p.fcInfo?.sc?.some(link =>
-        link.text.toLowerCase().includes(q) || link.url.toLowerCase().includes(q)
-      )) return true;
-      return false;
-    });
-  }, [profiles, search]);
-
+    let result = profiles;
+    if (q) {
+      result = profiles.filter((p) => {
+        if (p.name.toLowerCase().includes(q)) return true;
+        if (p.fcInfo?.ig?.some(tag => tag.toLowerCase().includes(q))) return true;
+        if (p.fcInfo?.x?.some(tag => tag.toLowerCase().includes(q))) return true;
+        if (p.fcInfo?.sc?.some(link =>
+          link.text.toLowerCase().includes(q) || link.url.toLowerCase().includes(q)
+        )) return true;
+        return false;
+      });
+    }
+    if (sortOrder) {
+      result = [...result].sort((a, b) =>
+        sortOrder === 'asc'
+          ? a.name.localeCompare(b.name)
+          : b.name.localeCompare(a.name)
+      );
+    }
+    return result;
+  }, [profiles, search, sortOrder]);
   const openExternal = (url: string) => {
     window.open(url, '_blank');
   };
@@ -95,9 +207,18 @@ export default function CharacterHub({
         onSelectFolder={onSelectFolder}
         onToggleFolder={onToggleFolder}
         onToggleOthers={onToggleOthers}
-        onCreateFolder={() => {}}
-        onEditFolder={() => {}}
-        onDeleteFolder={() => {}}
+        onCreateFolder={() => setShowCreateFolderModal(true)}
+        onEditFolder={setEditingFolder}
+        onDeleteFolder={handleDeleteFolder}
+        onCreateProfile={handleCreateProfile}
+        onEditProfile={setProfileForEdit}
+        onDeleteProfile={handleDeleteProfile}
+        onToggleStar={handleToggleStar}
+        onLaunchProfile={handleLaunchProfile}
+        onCloseProfile={handleCloseProfile}
+        onOpenAllInBrowser={handleOpenAllInBrowser}
+        onCloseAll={handleCloseAllInFolder}
+        onMoveProfileToFolder={handleMoveProfileToFolder}
         profileCountByFolder={profileCountByFolder}
         activeStatuses={activeStatuses}
         onGoToDashboard={onGoToDashboard}
@@ -135,7 +256,14 @@ export default function CharacterHub({
                 </button>
               )}
             </div>
-            <span className="character-hub-count">{filteredProfiles.length} profiles</span>
+            <span className="character-hub-count">{filteredProfiles.length}</span>
+            <button
+              className="panel-header-btn active"
+              onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')}
+              title={sortOrder === 'asc' ? 'A→Z (click for Z→A)' : 'Z→A (click for A→Z)'}
+            >
+              {sortOrder === 'desc' ? 'Z↓' : 'A↓'}
+            </button>
           </div>
         </div>
 
@@ -193,7 +321,7 @@ export default function CharacterHub({
                           {profile.fcInfo!.sc!.map((item, i) => (
                             <button
                               key={i}
-                              className="ch-fc-link btn-link"
+                              className="ch-fc-tag ch-fc-tag-link"
                               onClick={() => openExternal(item.url)}
                               title={item.url}
                             >
@@ -237,6 +365,52 @@ export default function CharacterHub({
           onSaved={() => {
             setEditingProfile(null);
             onProfilesChange();
+          }}
+        />
+      )}
+
+      {showCreateModal && (
+        <CreateProfileModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={() => {
+            setShowCreateModal(false);
+            setCreateModalFolderId(undefined);
+            onProfilesChange();
+          }}
+          selectedFolderId={createModalFolderId || selectedFolderId}
+          folders={folders}
+        />
+      )}
+
+      {profileForEdit && (
+        <EditProfileModal
+          profile={profileForEdit}
+          onClose={() => setProfileForEdit(null)}
+          onUpdated={() => {
+            setProfileForEdit(null);
+            onProfilesChange();
+          }}
+          folders={folders}
+        />
+      )}
+
+      {showCreateFolderModal && (
+        <CreateFolderModal
+          onClose={() => setShowCreateFolderModal(false)}
+          onCreated={() => {
+            setShowCreateFolderModal(false);
+            onFoldersChange();
+          }}
+        />
+      )}
+
+      {editingFolder && (
+        <EditFolderModal
+          folder={editingFolder}
+          onClose={() => setEditingFolder(null)}
+          onUpdated={() => {
+            setEditingFolder(null);
+            onFoldersChange();
           }}
         />
       )}

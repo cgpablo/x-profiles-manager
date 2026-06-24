@@ -4,9 +4,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChromeProfile, ProfileFolder } from '../../types';
+import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
 import CreatePasswordModal from './CreatePasswordModal';
 import ProfileAvatar from './ProfileAvatar';
+import CreateProfileModal from './CreateProfileModal';
+import EditProfileModal from './EditProfileModal';
+import CreateFolderModal from './CreateFolderModal';
+import EditFolderModal from './EditFolderModal';
 import './PasswordManagerView.css';
 import './ProfilesPanel.css';
 
@@ -38,6 +43,7 @@ interface PasswordManagerViewProps {
   showFreedcamp?: boolean;
   showDashboard?: boolean;
   onToggleAllFolders?: (expand: boolean) => void;
+  onFoldersChange?: () => void;
 }
 
 export default function PasswordManagerView({
@@ -60,11 +66,100 @@ export default function PasswordManagerView({
   showFreedcamp = false,
   showDashboard = true,
   onToggleAllFolders,
+  onFoldersChange,
 }: PasswordManagerViewProps) {
   const [entries, setEntries] = useState<PasswordEntry[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingEntry, setEditingEntry] = useState<PasswordEntry | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const electronAPI = useElectronAPI();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createModalFolderId, setCreateModalFolderId] = useState<string | undefined>(undefined);
+  const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
+  const [profileForEdit, setProfileForEdit] = useState<ChromeProfile | null>(null);
+  const [editingFolder, setEditingFolder] = useState<ProfileFolder | null>(null);
+
+  const handleLaunchProfile = async (profileId: string) => {
+    try {
+      await electronAPI.launcher.launch(profileId, 'https://x.com');
+    } catch (error) {
+      console.error('Error launching profile:', error);
+    }
+  };
+
+  const handleCloseProfile = async (profileId: string) => {
+    try {
+      await electronAPI.launcher.close(profileId);
+    } catch (error) {
+      console.error('Error closing profile:', error);
+    }
+  };
+
+  const handleDeleteProfile = async (profileId: string) => {
+    try {
+      await electronAPI.profiles.delete(profileId);
+    } catch (error) {
+      console.error('Error deleting profile:', error);
+    }
+  };
+
+  const handleCreateProfile = (folderId?: string) => {
+    setCreateModalFolderId(folderId);
+    setShowCreateModal(true);
+  };
+
+  const handleDeleteFolder = async (folderId: string) => {
+    try {
+      await electronAPI.folders.delete(folderId);
+      onFoldersChange?.();
+    } catch (error) {
+      console.error('Error deleting folder:', error);
+    }
+  };
+
+  const handleMoveProfileToFolder = async (profileId: string, folderId: string | undefined) => {
+    try {
+      await electronAPI.profiles.update(profileId, { folderId });
+    } catch (error) {
+      console.error('Error moving profile to folder:', error);
+    }
+  };
+
+  const handleToggleStar = async (profileId: string) => {
+    const profile = profiles.find(p => p.id === profileId);
+    if (!profile) return;
+    try {
+      await electronAPI.profiles.update(profileId, { starred: !profile.starred });
+    } catch (error) {
+      console.error('Error toggling star:', error);
+    }
+  };
+
+  const handleOpenAllInBrowser = async (folderId: string) => {
+    const folderProfiles = profiles.filter(p => p.folderId === folderId || (folderId === 'ungrouped' && !p.folderId));
+    for (const profile of folderProfiles) {
+      try {
+        await electronAPI.launcher.launch(profile.id, 'https://x.com');
+      } catch (error) {
+        console.error('Error launching profile:', profile.id, error);
+      }
+    }
+  };
+
+  const handleCloseAllInFolder = async (folderId: string | null) => {
+    if (!folderId || typeof folderId !== 'string') return;
+    const folderProfiles = profiles.filter(p => p.folderId === folderId || (folderId === 'ungrouped' && !p.folderId));
+    for (const profile of folderProfiles) {
+      if (activeStatuses.get(profile.id)) {
+        try {
+          await electronAPI.launcher.close(profile.id);
+        } catch (error) {
+          console.error('Error closing profile:', profile.id, error);
+        }
+      }
+    }
+  };
 
   const profileCountByFolder = useMemo(() => {
     const map = new Map<string | undefined, number>();
@@ -112,9 +207,18 @@ export default function PasswordManagerView({
         onSelectFolder={onSelectFolder}
         onToggleFolder={onToggleFolder}
         onToggleOthers={onToggleOthers}
-        onCreateFolder={() => {}}
-        onEditFolder={() => {}}
-        onDeleteFolder={() => {}}
+        onCreateFolder={() => setShowCreateFolderModal(true)}
+        onEditFolder={setEditingFolder}
+        onDeleteFolder={handleDeleteFolder}
+        onCreateProfile={handleCreateProfile}
+        onEditProfile={setProfileForEdit}
+        onDeleteProfile={handleDeleteProfile}
+        onToggleStar={handleToggleStar}
+        onLaunchProfile={handleLaunchProfile}
+        onCloseProfile={handleCloseProfile}
+        onOpenAllInBrowser={handleOpenAllInBrowser}
+        onCloseAll={handleCloseAllInFolder}
+        onMoveProfileToFolder={handleMoveProfileToFolder}
         profileCountByFolder={profileCountByFolder}
         activeStatuses={activeStatuses}
         onGoToDashboard={onGoToDashboard}
@@ -161,7 +265,10 @@ export default function PasswordManagerView({
               return (
                 <div key={entry.id} className="pw-entry-card">
                   <div className="pw-entry-body">
-                    <div className="pw-entry-name">{entry.name}</div>
+                    <div className="pw-entry-name">
+                      <span className="pw-entry-name-text">{entry.name}</span>
+                      <span className="pw-entry-count">{linked.length}</span>
+                    </div>
                     <div className="pw-entry-profiles">
                       {linked.length === 0 ? (
                         <span className="pw-entry-no-profiles">No profiles linked</span>
@@ -212,6 +319,50 @@ export default function PasswordManagerView({
           onSaved={() => {
             setShowModal(false);
             loadEntries();
+          }}
+        />
+      )}
+
+      {showCreateModal && (
+        <CreateProfileModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={() => {
+            setShowCreateModal(false);
+            setCreateModalFolderId(undefined);
+          }}
+          selectedFolderId={createModalFolderId || selectedFolderId}
+          folders={folders}
+        />
+      )}
+
+      {profileForEdit && (
+        <EditProfileModal
+          profile={profileForEdit}
+          onClose={() => setProfileForEdit(null)}
+          onUpdated={() => {
+            setProfileForEdit(null);
+          }}
+          folders={folders}
+        />
+      )}
+
+      {showCreateFolderModal && (
+        <CreateFolderModal
+          onClose={() => setShowCreateFolderModal(false)}
+          onCreated={() => {
+            setShowCreateFolderModal(false);
+            onFoldersChange?.();
+          }}
+        />
+      )}
+
+      {editingFolder && (
+        <EditFolderModal
+          folder={editingFolder}
+          onClose={() => setEditingFolder(null)}
+          onUpdated={() => {
+            setEditingFolder(null);
+            onFoldersChange?.();
           }}
         />
       )}

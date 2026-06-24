@@ -13,7 +13,7 @@ export default function SidebarCharacterHub({ onNavigate }: SidebarCharacterHubP
   return (
     <div className="sidebar-character-hub">
       <button className="sidebar-section-header-btn" onClick={onNavigate}>
-        <h3>🎭 CHARACTER HUB</h3>
+        <h3><span>🎭</span><span>CHARACTER HUB</span></h3>
       </button>
     </div>
   );

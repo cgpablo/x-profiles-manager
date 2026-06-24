@@ -46,6 +46,7 @@ export interface ChromeProfile {
   orderIndex?: number; // For sorting profiles
   starred?: boolean; // Starred/favourited profile
   fcInfo?: FCCharacterInfo; // Fan Character info
+  hasPassword?: boolean; // True if a password entry is linked to this profile
   installedExtensions?: {
     ublockOriginLite?: boolean;
     twitterControl?: boolean;

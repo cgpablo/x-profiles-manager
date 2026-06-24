@@ -1,6 +1,6 @@
 {
   "name": "x-profiles-manager",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "description": "Local profile manager for multiple X (Twitter) accounts",
   "main": "dist/main/index.js",
   "homepage": "./",

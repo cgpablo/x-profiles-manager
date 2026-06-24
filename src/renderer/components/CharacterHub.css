@@ -28,6 +28,7 @@
   margin: 0;
   flex-shrink: 0;
   white-space: nowrap;
+  text-transform: uppercase;
 }
 
 /* Search */
@@ -82,11 +83,17 @@
 }
 
 .character-hub-count {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--bg-tertiary);
   color: var(--text-secondary);
-  background: var(--bg-secondary);
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+  border-radius: 3px;
+  flex-shrink: 0;
 }
 
 .character-hub-list {
@@ -178,10 +185,10 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   background: var(--bg-tertiary);
-  padding: 0.1rem 0.4rem;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid transparent;
   border-radius: 3px;
   flex-shrink: 0;
-  margin-top: 1px;
 }
 
 .ch-fc-tags {
@@ -254,21 +261,25 @@
 }
 
 .btn-ch-edit {
-  font-size: 0.75rem;
-  padding: 0.3rem 0.65rem;
+  width: 30px;
+  height: 30px;
+  padding: 0;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: transparent;
+  background: var(--bg-tertiary);
   color: var(--text-secondary);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: all 0.15s;
-  white-space: nowrap;
 }
 
 .btn-ch-edit:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
+  background: var(--primary);
   border-color: var(--primary);
+  color: white;
 }
 
 .character-hub-empty {

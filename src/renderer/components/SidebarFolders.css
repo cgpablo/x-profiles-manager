@@ -41,20 +41,24 @@
   margin: 0;
 }
 
-.sidebar-section-header {
+.sidebar-folders .sidebar-section-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  width: 100%;
+  background: var(--bg-primary);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 1.5rem 0.75rem 0.25rem;
+  padding: 0.75rem 1.5rem 0.75rem 1rem;
   flex-shrink: 0;
 }
 
 
-.sidebar-section-header h3 {
-  font-size: 0.75rem;
+.sidebar-folders .sidebar-section-header h3 {
+  font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text-secondary);
-  letter-spacing: 0.05em;
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -68,11 +72,13 @@
 }
 
 .sidebar-section-header-title h3 {
-  font-size: 0.75rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text-secondary);
-  letter-spacing: 0.05em;
+  color: var(--text-primary);
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   transition: color 0.15s;
 }
 
@@ -112,12 +118,13 @@
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+  padding: 0 0 0.5rem 0;
 }
 
 .sidebar-header-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 10px;
 }
 
 .btn-add-folder {
@@ -139,6 +146,14 @@
   background: var(--bg-secondary);
   color: var(--text-primary);
   border-color: var(--primary);
+}
+
+.folder-item-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 10px;
+  flex-shrink: 0;
 }
 
 .btn-folder-menu {
@@ -175,7 +190,7 @@
 .folder-item-wrapper {
   position: relative;
   width: 100%;
-  padding: 0 0.5rem 0 calc(0.5rem + 10px);
+  padding: 0 0.75rem 0 calc(0.5rem + 10px);
 }
 
 .folder-item {
