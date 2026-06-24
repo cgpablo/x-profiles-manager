@@ -183,6 +183,8 @@ export default function SidebarFolders({
     const rect = e.currentTarget.getBoundingClientRect();
     setHeaderMenuPos({ x: rect.left, y: rect.bottom + 4 });
     setShowHeaderMenu(prev => !prev);
+    setShowContextMenu(null);
+    setProfileContextMenu(null);
   };
 
   const openFolderContextMenu = (e: React.MouseEvent<HTMLButtonElement>, menuId: string) => {
@@ -317,14 +319,16 @@ export default function SidebarFolders({
                    >
                      <span className="folder-label">OTHERS</span>
                    </button>
-                    <span className="profile-count">{ungroupedCount}</span>
-                    <button
-                      className="btn-folder-menu"
-                      onClick={(e) => openFolderContextMenu(e, 'ungrouped')}
-                      aria-label="Folder options"
-                    >
-                      ⋮
-                    </button>
+                     <div className="folder-item-right">
+                       <span className="profile-count">{ungroupedCount}</span>
+                       <button
+                         className="btn-folder-menu"
+                         onClick={(e) => openFolderContextMenu(e, 'ungrouped')}
+                         aria-label="Folder options"
+                       >
+                         ⋮
+                       </button>
+                     </div>
                   </div>
                </div>
 
@@ -586,15 +590,17 @@ export default function SidebarFolders({
                     {/* Badge moved to profile level - active indicator now shows per profile, not per folder */}
                   </button>
 
-                  <span className="profile-count">{allProfileCount}</span>
+                   <div className="folder-item-right">
+                     <span className="profile-count">{allProfileCount}</span>
 
-                  <button
-                    className="btn-folder-menu"
-                    onClick={(e) => openFolderContextMenu(e, folder.id)}
-                    aria-label="Folder options"
-                  >
-                    ⋮
-                  </button>
+                     <button
+                       className="btn-folder-menu"
+                       onClick={(e) => openFolderContextMenu(e, folder.id)}
+                       aria-label="Folder options"
+                     >
+                       ⋮
+                     </button>
+                   </div>
 
                  </div>
 
@@ -927,6 +933,7 @@ export default function SidebarFolders({
             style={{ left: `${headerMenuPos.x}px`, top: `${headerMenuPos.y}px` }}
             ref={(el) => { headerMenuRef.current = el; }}
           >
+            <div className="context-menu-label">FOLDERS</div>
             <button
               className="context-menu-item"
               onClick={() => { setShowHeaderMenu(false); onCreateFolder(); }}

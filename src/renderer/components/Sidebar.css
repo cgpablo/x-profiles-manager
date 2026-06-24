@@ -17,7 +17,7 @@
   padding: 0;
 }
 
-.sidebar > div:nth-child(1) {
+.sidebar-dashboard {
   border-bottom: 1px solid var(--border);
 }
 

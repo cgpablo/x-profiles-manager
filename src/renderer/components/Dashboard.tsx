@@ -399,9 +399,9 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
 
             {/* Left Column - Folders */}
             <div className={`folders-column ${activeTab === 'folders' ? 'active' : ''}`}>
-             <div className="column-header">
-               <p className="column-title">{folders.length} Folders</p>
-               <Tooltip text="Create new folder" position="left">
+              <div className="column-header">
+                <p className="column-title">Folders <span className="profile-count">{folders.length}</span></p>
+                <Tooltip text="Create new folder" position="left">
                  <button
                    className="btn-add-new"
                    onClick={() => setShowCreateFolderModal(true)}
@@ -424,17 +424,13 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                       className={`folder-card others-card ${selectedFolderId === 'ungrouped' ? 'selected' : ''}`}
                       onClick={() => onSelectFolder('ungrouped')}
                     >
-                      <div className="folder-card-header">
-                        <div className="folder-info">
-                          <span className="folder-icon">📌</span>
-                          <div>
-                            <h4>OTHERS</h4>
-                            <p className="folder-count">
-                              {profileCountByFolder.get(undefined) || 0} profiles
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                       <div className="folder-card-header">
+                         <div className="folder-info">
+                           <span className="folder-icon">📌</span>
+                           <h4>OTHERS</h4>
+                           <span className="profile-count">{profileCountByFolder.get(undefined) || 0}</span>
+                         </div>
+                       </div>
                       <div className="folder-color" style={{ backgroundColor: '#6b7280' }}></div>
                     </div>
                   )}
@@ -452,32 +448,28 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                       onClick={() => onSelectFolder(folder.id)}
                     >
                      <div className="folder-card-header">
-                       <div className="folder-info">
-                         <span className="folder-icon">📁</span>
-                         <div>
-                           <h4>{folder.name}</h4>
-                           <p className="folder-count">
-                             {profileCountByFolder.get(folder.id) || 0} profiles
-                           </p>
-                         </div>
-                       </div>
-                         <div className="folder-actions">
-                           <button
-                             className="action-btn edit-btn"
-                             onClick={() => setEditingFolder(folder)}
-                             title="Edit"
-                           >
-                             ✎
-                           </button>
-                           <button
-                             className="action-btn delete-btn"
-                             onClick={() => setFolderToDelete(folder)}
-                             title="Delete"
-                           >
-                            🗑️
-                          </button>
+                        <div className="folder-info">
+                          <span className="folder-icon">📁</span>
+                          <h4>{folder.name}</h4>
+                          <span className="profile-count">{profileCountByFolder.get(folder.id) || 0}</span>
                         </div>
-                     </div>
+                          <div className="folder-actions">
+                            <button
+                              className="action-btn edit-btn"
+                              onClick={() => setEditingFolder(folder)}
+                              title="Edit"
+                            >
+                              ✎
+                            </button>
+                            <button
+                              className="action-btn delete-btn"
+                              onClick={() => setFolderToDelete(folder)}
+                              title="Delete"
+                            >
+                             🗑️
+                           </button>
+                         </div>
+                      </div>
                      <div className="folder-color" style={{ backgroundColor: folder.color }}></div>
                    </div>
                  ))}
@@ -487,10 +479,12 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
 
             {/* Right Column - Profiles */}
             <div className={`profiles-column ${activeTab === 'profiles' ? 'active' : ''}`}>
-             <div className="column-header">
-               <p className="column-title">
-                 {selectedFolderId ? `${selectedFolderProfiles.length} Profiles` : 'No folder selected'}
-               </p>
+              <div className="column-header">
+                <p className="column-title">
+                  {selectedFolderId ? (
+                    <>Profiles <span className="profile-count">{selectedFolderProfiles.length}</span></>
+                  ) : 'No folder selected'}
+                </p>
                {selectedFolderId && (
                  <Tooltip text="Create new profile" position="left">
                    <button

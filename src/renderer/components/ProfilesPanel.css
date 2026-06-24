@@ -69,6 +69,12 @@
   border-color: var(--primary);
 }
 
+.panel-header-btn.active {
+  background: var(--bg-tertiary);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
 .panel-title-section {
   display: none;
 }

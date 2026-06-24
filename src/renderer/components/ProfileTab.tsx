@@ -243,14 +243,16 @@ export default function ProfileTab({
                       —
                     </p>
                   )}
-                  <button
-                    className={`btn-profile-key${copiedPassword ? ' key-copied' : ''}`}
-                    onClick={handleCopyPassword}
-                    title="Copy password"
-                    aria-label="Copy password"
-                  >
-                    {copiedPassword ? '✓' : '🔑'}
-                  </button>
+                  {profile.hasPassword && (
+                    <button
+                      className={`btn-profile-key${copiedPassword ? ' key-copied' : ''}`}
+                      onClick={handleCopyPassword}
+                      title="Copy password"
+                      aria-label="Copy password"
+                    >
+                      {copiedPassword ? '✓' : '🔑'}
+                    </button>
+                  )}
                 </div>
                 <span className={`status-badge ${isActive ? 'online' : 'offline'}`}>
                   {isActive ? '● Online' : '○ Offline'}

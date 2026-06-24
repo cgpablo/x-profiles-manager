@@ -36,11 +36,12 @@ export default function CreatePasswordModal({
     editingEntry?.profileIds ?? []
   );
   const [profileSearch, setProfileSearch] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const filteredProfiles = profiles.filter((p) => {
     if (selectedProfileIds.includes(p.id)) return false;
-    if (!profileSearch.trim()) return false;
+    if (!profileSearch.trim()) return true;
     const q = profileSearch.toLowerCase();
     return (
       p.name.toLowerCase().includes(q) ||
@@ -51,6 +52,7 @@ export default function CreatePasswordModal({
   const addProfile = (profileId: string) => {
     setSelectedProfileIds([...selectedProfileIds, profileId]);
     setProfileSearch('');
+    setDropdownOpen(false);
   };
 
   const removeProfile = (profileId: string) => {
@@ -174,12 +176,14 @@ export default function CreatePasswordModal({
                 className="pm-input"
                 value={profileSearch}
                 onChange={(e) => setProfileSearch(e.target.value)}
-                placeholder="Type to search and link profiles..."
+                onClick={() => setDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setDropdownOpen(false), 150)}
+                placeholder="Click to search and link profiles..."
                 disabled={loading}
               />
-              {profileSearch.trim() && filteredProfiles.length > 0 && (
+              {dropdownOpen && filteredProfiles.length > 0 && (
                 <div className="pm-profile-dropdown">
-                  {filteredProfiles.slice(0, 6).map((p) => (
+                  {filteredProfiles.slice(0, 8).map((p) => (
                     <button
                       key={p.id}
                       type="button"
@@ -197,7 +201,7 @@ export default function CreatePasswordModal({
                   ))}
                 </div>
               )}
-              {profileSearch.trim() && filteredProfiles.length === 0 && (
+              {dropdownOpen && profileSearch.trim() && filteredProfiles.length === 0 && (
                 <div className="pm-profile-dropdown pm-profile-dropdown-empty">
                   <span>No matches</span>
                 </div>

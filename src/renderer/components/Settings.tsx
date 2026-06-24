@@ -2,7 +2,7 @@
  * Settings Component
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AppSettings, ChromeProfile, ProfileFolder } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
@@ -30,11 +30,9 @@ interface SettingsProps {
   onBackupStart?: (operation: 'export' | 'import') => void;
   onBackupSuccess?: (message: string) => void;
   onBackupError?: (error: string) => void;
-  saveRef?: React.MutableRefObject<() => void>;
-  onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export default function Settings({ folders, profiles, selectedFolderId, onSelectFolder, onSettingsChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToFolders, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, activeStatuses = new Map(), onSettingsSaved, onBackupStart, onBackupSuccess, onBackupError, saveRef, onDirtyChange }: SettingsProps) {
+export default function Settings({ folders, profiles, selectedFolderId, onSelectFolder, onSettingsChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToFolders, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, activeStatuses = new Map(), onSettingsSaved, onBackupStart, onBackupSuccess, onBackupError }: SettingsProps) {
   const electronAPI = useElectronAPI();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [originalSettings, setOriginalSettings] = useState<AppSettings | null>(null);
@@ -47,6 +45,16 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [creatingFolderId, setCreatingFolderId] = useState<string | undefined>(undefined);
+  const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showStatus = (text: string, type: 'success' | 'error' = 'success') => {
+    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+    setStatusMsg({ text, type });
+    statusTimerRef.current = setTimeout(() => setStatusMsg(null), 3000);
+  };
+
+  useEffect(() => () => { if (statusTimerRef.current) clearTimeout(statusTimerRef.current); }, []);
 
   const isDirty = settings && originalSettings
     ? JSON.stringify(settings) !== JSON.stringify(originalSettings)
@@ -68,42 +76,36 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
     }
   };
 
+  // Notify parent when settings are saved
   const handleSave = async () => {
     if (!settings) return;
-
     try {
       await electronAPI.settings.update(settings);
       setOriginalSettings(settings);
+      showStatus('Settings saved!');
       onSettingsSaved?.();
     } catch (error) {
+      showStatus('Error saving settings', 'error');
       console.error(error);
     }
   };
-
-  // Register save function (no deps — always keeps fresh handleSave reference)
-  useEffect(() => {
-    if (saveRef) saveRef.current = handleSave;
-  });
-
-  // Notify parent of dirty state only when isDirty actually changes
-  useEffect(() => {
-    onDirtyChange?.(!!isDirty);
-  }, [isDirty]);
 
   const handleClearAllData = async () => {
     setIsClearing(true);
     try {
       const success = await electronAPI.system.clearAllData();
       if (success) {
+        showStatus('Clearing data... App will restart.');
         onBackupSuccess?.('All data has been cleared. The app will now restart.');
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
+        setTimeout(() => { window.location.reload(); }, 2000);
       } else {
+        showStatus('Failed to clear data', 'error');
         onBackupError?.('Failed to clear data');
       }
     } catch (error) {
-      onBackupError?.(error instanceof Error ? error.message : 'Error clearing data');
+      const msg = error instanceof Error ? error.message : 'Error clearing data';
+      showStatus(msg, 'error');
+      onBackupError?.(msg);
       console.error(error);
     } finally {
       setIsClearing(false);
@@ -117,12 +119,16 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
     try {
       const success = await electronAPI.backup.export();
       if (success) {
+        showStatus('Backup exported!');
         onBackupSuccess?.('Backup exported successfully!');
       } else {
+        showStatus('Export cancelled', 'error');
         onBackupError?.('Backup export was cancelled');
       }
     } catch (error) {
-      onBackupError?.(error instanceof Error ? error.message : 'Error exporting backup');
+      const msg = error instanceof Error ? error.message : 'Error exporting backup';
+      showStatus(msg, 'error');
+      onBackupError?.(msg);
       console.error(error);
     } finally {
       setIsExporting(false);
@@ -135,15 +141,17 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
     try {
       const success = await electronAPI.backup.import();
       if (success) {
+        showStatus('Backup imported! Restarting...');
         onBackupSuccess?.('Backup imported successfully! The app will now restart.');
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
+        setTimeout(() => { window.location.reload(); }, 2000);
       } else {
+        showStatus('Import cancelled', 'error');
         onBackupError?.('Backup import was cancelled');
       }
     } catch (error) {
-      onBackupError?.(error instanceof Error ? error.message : 'Error importing backup');
+      const msg = error instanceof Error ? error.message : 'Error importing backup';
+      showStatus(msg, 'error');
+      onBackupError?.(msg);
       console.error(error);
     } finally {
       setIsImporting(false);
@@ -154,9 +162,12 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
     setIsDeletingIcons(true);
     try {
       await window.electronAPI.icons.deleteAll();
+      showStatus('Icons deleted');
       onBackupSuccess?.('Backed up icons deleted successfully');
     } catch (error) {
-      onBackupError?.(error instanceof Error ? error.message : 'Error deleting backed up icons');
+      const msg = error instanceof Error ? error.message : 'Error deleting backed up icons';
+      showStatus(msg, 'error');
+      onBackupError?.(msg);
     } finally {
       setIsDeletingIcons(false);
     }
@@ -234,8 +245,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
 
   return (
     <div className="settings-container">
-       <Sidebar
-            folders={folders}
+       <Sidebar            folders={folders}
             profiles={profiles}
             selectedFolderId={selectedFolderId}
              expandedFolders={expandedFolders}
@@ -264,10 +274,29 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
              onGoToCharacterHub={onGoToCharacterHub}
              onGoToFreedcamp={onGoToFreedcamp}
              onGoToPasswordManager={onGoToPasswordManager}
-          />
+           />
 
-      <div className="settings">
-        <div className="settings-header" style={{ display: 'none' }}></div>
+      <div className="settings-main">
+        <div className="panel-header settings-panel-header">
+          <div className="panel-header-content">
+            <h3 className="panel-header-folder-name">SETTINGS</h3>
+            <button
+              className="panel-header-btn"
+              onClick={handleSave}
+              title="Save settings"
+              style={{ visibility: isDirty ? 'visible' : 'hidden' }}
+            >
+              💾
+            </button>
+          </div>
+          {statusMsg && (
+            <span className={`settings-status-msg settings-status-${statusMsg.type}`}>
+              {statusMsg.text}
+            </span>
+          )}
+        </div>
+
+        <div className="settings">
 
         <div className="settings-grid">
           <div className="settings-section">
@@ -354,15 +383,11 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
             <h3>About</h3>
             <div className="info-item">
               <strong>App Version</strong>
-              <span>0.1.0</span>
+              <span>1.1.0</span>
             </div>
             <div className="info-item">
               <strong>Storage Location</strong>
               <span className="mono">{settings.profilesDir}</span>
-            </div>
-            <div className="info-item">
-              <strong>Platform</strong>
-              <span className="mono">{window.electronAPI.platform}</span>
             </div>
           </div>
 
@@ -788,6 +813,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
           }}
         />
       )}
+      </div>{/* settings-main */}
     </div>
   );
 }

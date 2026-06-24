@@ -117,7 +117,8 @@
 .sidebar-header-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 10px;
+  margin-left: -10px;
 }
 
 .btn-add-folder {
@@ -139,6 +140,14 @@
   background: var(--bg-secondary);
   color: var(--text-primary);
   border-color: var(--primary);
+}
+
+.folder-item-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 10px;
+  flex-shrink: 0;
 }
 
 .btn-folder-menu {
@@ -175,7 +184,7 @@
 .folder-item-wrapper {
   position: relative;
   width: 100%;
-  padding: 0 0.5rem 0 calc(0.5rem + 10px);
+  padding: 0 0.75rem 0 calc(0.5rem + 10px);
 }
 
 .folder-item {
