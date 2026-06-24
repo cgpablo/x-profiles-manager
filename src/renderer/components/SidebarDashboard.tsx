@@ -13,7 +13,7 @@ export default function SidebarDashboard({ onGoToDashboard }: SidebarDashboardPr
   return (
     <div className="sidebar-dashboard">
       <button className="sidebar-section-header-btn" onClick={onGoToDashboard}>
-        <h3>📊 DASHBOARD</h3>
+        <h3><span>📊</span><span>DASHBOARD</span></h3>
       </button>
     </div>
   );

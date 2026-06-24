@@ -13,7 +13,7 @@ export default function SidebarSettings({ onOpenSettings }: SidebarSettingsProps
   return (
     <div className="sidebar-settings">
       <button className="sidebar-section-header-btn" onClick={onOpenSettings}>
-        <h3>⚙️ SETTINGS</h3>
+        <h3><span>⚙️</span><span>SETTINGS</span></h3>
       </button>
     </div>
   );

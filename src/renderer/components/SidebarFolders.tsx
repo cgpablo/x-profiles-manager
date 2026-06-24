@@ -200,38 +200,39 @@ export default function SidebarFolders({
     setContextMenuPos({ x, y });
     setShowContextMenu(showContextMenu === menuId ? null : menuId);
     setProfileContextMenu(null);
+    setShowHeaderMenu(false);
   };
 
    return (
      <div className="sidebar-folders" ref={sidebarRef}>
-       <div className="sidebar-section-header">
-         <button
-           className="sidebar-section-header-title"
-           onClick={() => { onSelectFolder(null); onGoToFolders?.(); }}
-           title="Show all profiles"
-         >
-           <h3>📁 FOLDERS</h3>
-         </button>
-         <div className="sidebar-header-actions">
+       <nav className="sidebar-section-content folder-list">
+         {/* Header sticky inside the scroll container — same width as items (incl. scrollbar) */}
+         <div className="sidebar-section-header">
            <button
-             className="btn-add-folder"
-             onClick={handleToggleAllFolders}
-             title={anyExpanded ? 'Collapse all folders' : 'Expand all folders'}
-             aria-label={anyExpanded ? 'Collapse all' : 'Expand all'}
+             className="sidebar-section-header-title"
+             onClick={() => { onSelectFolder(null); onGoToFolders?.(); }}
+             title="Show all profiles"
            >
-             {anyExpanded ? '−' : '+'}
+              <h3><span>📁</span><span>FOLDERS</span></h3>
            </button>
-           <button
-             className="btn-folder-menu"
-             onClick={handleHeaderMenuClick}
-             aria-label="Folder options"
-           >
-             ⋮
-           </button>
+           <div className="sidebar-header-actions">
+             <button
+               className="btn-add-folder"
+               onClick={handleToggleAllFolders}
+               title={anyExpanded ? 'Collapse all folders' : 'Expand all folders'}
+               aria-label={anyExpanded ? 'Collapse all' : 'Expand all'}
+             >
+               {anyExpanded ? '−' : '+'}
+             </button>
+             <button
+               className="btn-folder-menu"
+               onClick={handleHeaderMenuClick}
+               aria-label="Folder options"
+             >
+               ⋮
+             </button>
+           </div>
          </div>
-       </div>
-
-      <nav className="sidebar-section-content folder-list">
          {/* OTHERS - Mostrar solo si hay profiles sin folder */}
            {(() => {
              const ungroupedCount = profiles.filter((p) => !p.folderId).length;
@@ -306,7 +307,8 @@ export default function SidebarFolders({
                          setContextMenuPos({ x, y });
                          setShowContextMenu(isContextMenuOpen ? null : 'ungrouped');
                          setProfileContextMenu(null);
-                      }}
+                         setShowHeaderMenu(false);
+                       }}
                      style={{
                        flex: 1,
                        textAlign: 'left',
@@ -381,8 +383,8 @@ export default function SidebarFolders({
                               setProfileContextMenuPos({ x, y });
                               setProfileContextMenu(isProfileContextOpen ? null : profile.id);
                               setShowContextMenu(null);
-                            setShowContextMenu(null);
-                          }}
+                              setShowHeaderMenu(false);
+                            }}
                           draggable
                           onDragStart={() => {
                             setDraggedProfile(profile);
@@ -583,7 +585,8 @@ export default function SidebarFolders({
                        setContextMenuPos({ x, y });
                        setShowContextMenu(isContextMenuOpen ? null : folder.id);
                        setProfileContextMenu(null);
-                    }}
+                       setShowHeaderMenu(false);
+                     }}
                   >
                     <span className="folder-icon">📁</span>
                     <span className="folder-label">{folder.name}</span>
@@ -662,6 +665,7 @@ export default function SidebarFolders({
                               setProfileContextMenuPos({ x, y });
                               setProfileContextMenu(isProfileContextOpen ? null : profile.id);
                               setShowContextMenu(null);
+                              setShowHeaderMenu(false);
                             }}
                            draggable
                            onDragStart={() => {
