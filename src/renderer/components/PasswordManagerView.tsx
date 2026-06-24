@@ -265,7 +265,10 @@ export default function PasswordManagerView({
               return (
                 <div key={entry.id} className="pw-entry-card">
                   <div className="pw-entry-body">
-                    <div className="pw-entry-name">{entry.name}</div>
+                    <div className="pw-entry-name">
+                      <span className="pw-entry-name-text">{entry.name}</span>
+                      <span className="pw-entry-count">{linked.length}</span>
+                    </div>
                     <div className="pw-entry-profiles">
                       {linked.length === 0 ? (
                         <span className="pw-entry-no-profiles">No profiles linked</span>
