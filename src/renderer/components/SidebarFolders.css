@@ -8,6 +8,7 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  background: var(--bg-primary);
 }
 
 
@@ -42,15 +43,13 @@
 }
 
 .sidebar-folders .sidebar-section-header {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   width: 100%;
   background: var(--bg-primary);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 1.5rem 0.75rem 1rem;
+  /* right padding accounts for the 6px scrollbar gutter reserved in .folder-list */
+  padding: 0.75rem calc(1.5rem + 6px) 0.75rem 1rem;
   flex-shrink: 0;
 }
 
@@ -113,12 +112,14 @@
 .folder-list {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   width: 100%;
   flex: 1;
   overflow-y: auto;
+  /* always reserve scrollbar gutter so header buttons above stay aligned */
+  scrollbar-gutter: stable;
   min-height: 0;
   padding: 0 0 0.5rem 0;
+  background: var(--bg-primary);
 }
 
 .sidebar-header-actions {

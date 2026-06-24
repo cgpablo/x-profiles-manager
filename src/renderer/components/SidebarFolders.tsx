@@ -205,34 +205,34 @@ export default function SidebarFolders({
 
    return (
      <div className="sidebar-folders" ref={sidebarRef}>
-       <nav className="sidebar-section-content folder-list">
-         {/* Header sticky inside the scroll container — same width as items (incl. scrollbar) */}
-         <div className="sidebar-section-header">
+       {/* Header outside scroll container — always visible as fixed flex item */}
+       <div className="sidebar-section-header">
+         <button
+           className="sidebar-section-header-title"
+           onClick={() => { onSelectFolder(null); onGoToFolders?.(); }}
+           title="Show all profiles"
+         >
+            <h3><span>📁</span><span>FOLDERS</span></h3>
+         </button>
+         <div className="sidebar-header-actions">
            <button
-             className="sidebar-section-header-title"
-             onClick={() => { onSelectFolder(null); onGoToFolders?.(); }}
-             title="Show all profiles"
+             className="btn-add-folder"
+             onClick={handleToggleAllFolders}
+             title={anyExpanded ? 'Collapse all folders' : 'Expand all folders'}
+             aria-label={anyExpanded ? 'Collapse all' : 'Expand all'}
            >
-              <h3><span>📁</span><span>FOLDERS</span></h3>
+             {anyExpanded ? '−' : '+'}
            </button>
-           <div className="sidebar-header-actions">
-             <button
-               className="btn-add-folder"
-               onClick={handleToggleAllFolders}
-               title={anyExpanded ? 'Collapse all folders' : 'Expand all folders'}
-               aria-label={anyExpanded ? 'Collapse all' : 'Expand all'}
-             >
-               {anyExpanded ? '−' : '+'}
-             </button>
-             <button
-               className="btn-folder-menu"
-               onClick={handleHeaderMenuClick}
-               aria-label="Folder options"
-             >
-               ⋮
-             </button>
-           </div>
+           <button
+             className="btn-folder-menu"
+             onClick={handleHeaderMenuClick}
+             aria-label="Folder options"
+           >
+             ⋮
+           </button>
          </div>
+       </div>
+       <nav className="sidebar-section-content folder-list">
          {/* OTHERS - Mostrar solo si hay profiles sin folder */}
            {(() => {
              const ungroupedCount = profiles.filter((p) => !p.folderId).length;
