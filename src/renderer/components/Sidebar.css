@@ -39,6 +39,7 @@
 }
 
 .sidebar-password-manager,
+.sidebar-mail-manager,
 .sidebar-character-hub,
 .sidebar-freedcamp {
   border-top: 1px solid var(--border);

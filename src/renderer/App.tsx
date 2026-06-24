@@ -10,10 +10,11 @@ import Folders from './components/Folders';
 import Settings from './components/Settings';
 import CharacterHub from './components/CharacterHub';
 import PasswordManagerView from './components/PasswordManagerView';
+import MailManagerView from './components/MailManagerView';
 import Tooltip from './components/Tooltip';
 import './App.css';
 
-type View = 'dashboard' | 'folders' | 'settings' | 'character-hub' | 'password-manager';
+type View = 'dashboard' | 'folders' | 'settings' | 'character-hub' | 'password-manager' | 'mail-manager';
 
 function App() {
   const electronAPI = useElectronAPI();
@@ -46,6 +47,7 @@ function App() {
   const [backupOperation, setBackupOperation] = useState<'export' | 'import' | null>(null);
   const [dashboardKey, setDashboardKey] = useState(0); // Force Dashboard remount on undo
   const [showPasswordManager, setShowPasswordManager] = useState(false);
+  const [showMailManager, setShowMailManager] = useState(false);
   const [showCharacterHub, setShowCharacterHub] = useState(false);
   const [showFreedcamp, setShowFreedcamp] = useState(false);
   const [showDashboard, setShowDashboard] = useState(true);
@@ -131,6 +133,7 @@ function App() {
     try {
       const result = await electronAPI.settings.get();
       setShowPasswordManager(result.platformPreferences?.showPasswordManager ?? false);
+      setShowMailManager(result.platformPreferences?.showMailManager ?? false);
       setShowCharacterHub(result.platformPreferences?.showCharacterHub ?? false);
       setShowFreedcamp(result.platformPreferences?.showFreedcamp ?? false);
       setShowDashboard(result.platformPreferences?.showDashboard ?? true);
@@ -436,14 +439,16 @@ function App() {
                    onOrderChange={handleOrderChange}
                    activeStatuses={activeStatuses}
                    onToggleAllFolders={handleToggleAllFolders}
-                     showPasswordManager={showPasswordManager}
-                     showCharacterHub={showCharacterHub}
-                     showFreedcamp={showFreedcamp}
-                     showDashboard={showDashboard}
-                     onGoToCharacterHub={() => setView('character-hub')}
-                     onGoToFreedcamp={() => {}}
-                     onGoToPasswordManager={() => setView('password-manager')}
-                  />
+                      showPasswordManager={showPasswordManager}
+                      showMailManager={showMailManager}
+                      showCharacterHub={showCharacterHub}
+                      showFreedcamp={showFreedcamp}
+                      showDashboard={showDashboard}
+                   onGoToCharacterHub={() => setView('character-hub')}
+                   onGoToFreedcamp={() => {}}
+                    onGoToPasswordManager={() => setView('password-manager')}
+                    onGoToMailManager={() => setView('mail-manager')}
+                   />
             </div>
 
             {/* Folders - kept mounted to avoid sidebar flicker */}
@@ -466,13 +471,15 @@ function App() {
                  searchQuery={searchQuery}
                  showAddCard={!searchActive}
                  onToggleAllFolders={handleToggleAllFolders}
-                   showPasswordManager={showPasswordManager}
-                   showCharacterHub={showCharacterHub}
-                   showFreedcamp={showFreedcamp}
-                   showDashboard={showDashboard}
-                   onGoToCharacterHub={() => setView('character-hub')}
-                   onGoToFreedcamp={() => {}}
-                   onGoToPasswordManager={() => setView('password-manager')}
+                    showPasswordManager={showPasswordManager}
+                    showMailManager={showMailManager}
+                    showCharacterHub={showCharacterHub}
+                    showFreedcamp={showFreedcamp}
+                    showDashboard={showDashboard}
+                    onGoToCharacterHub={() => setView('character-hub')}
+                    onGoToFreedcamp={() => {}}
+                    onGoToPasswordManager={() => setView('password-manager')}
+                    onGoToMailManager={() => setView('mail-manager')}
                   />
             </div>
 
@@ -492,9 +499,10 @@ function App() {
                   onGoToFolders={() => setView('folders')}
                   onGoToCharacterHub={() => setView('character-hub')}
                   onGoToFreedcamp={() => {}}
-                  onGoToPasswordManager={() => setView('password-manager')}
-                  activeStatuses={activeStatuses}
-                   onSettingsSaved={() => { loadSidebarSettings(); }}
+                   onGoToPasswordManager={() => setView('password-manager')}
+                   onGoToMailManager={() => setView('mail-manager')}
+                   activeStatuses={activeStatuses}
+                    onSettingsSaved={() => { loadSidebarSettings(); }}
                   onBackupSuccess={() => {
                     setIsBackingUp(false);
                     setBackupOperation(null);
@@ -528,12 +536,14 @@ function App() {
                    activeStatuses={activeStatuses}
                    onProfilesChange={handleProfilesChange}
                    onFoldersChange={handleFoldersChange}
-                    showPasswordManager={showPasswordManager}
-                    showCharacterHub={showCharacterHub}
-                    showFreedcamp={showFreedcamp}
-                    showDashboard={showDashboard}
-                    onToggleAllFolders={handleToggleAllFolders}
-                    onGoToPasswordManager={() => setView('password-manager')}
+                     showPasswordManager={showPasswordManager}
+                     showMailManager={showMailManager}
+                     showCharacterHub={showCharacterHub}
+                     showFreedcamp={showFreedcamp}
+                     showDashboard={showDashboard}
+                     onToggleAllFolders={handleToggleAllFolders}
+                     onGoToPasswordManager={() => setView('password-manager')}
+                     onGoToMailManager={() => setView('mail-manager')}
                  />
             </div>
 
@@ -552,16 +562,46 @@ function App() {
                    onGoToSettings={() => setView('settings')}
                    onGoToFolders={() => setView('folders')}
                    onGoToCharacterHub={() => setView('character-hub')}
-                   onGoToPasswordManager={() => setView('password-manager')}
-                   activeStatuses={activeStatuses}
-                   onFoldersChange={handleFoldersChange}
-                   showPasswordManager={showPasswordManager}
-                   showCharacterHub={showCharacterHub}
-                   showFreedcamp={showFreedcamp}
-                   showDashboard={showDashboard}
-                   onToggleAllFolders={handleToggleAllFolders}
-                 />
-            </div>
+                    onGoToPasswordManager={() => setView('password-manager')}
+                    onGoToMailManager={() => setView('mail-manager')}
+                    activeStatuses={activeStatuses}
+                    onFoldersChange={handleFoldersChange}
+                    showPasswordManager={showPasswordManager}
+                    showMailManager={showMailManager}
+                    showCharacterHub={showCharacterHub}
+                    showFreedcamp={showFreedcamp}
+                    showDashboard={showDashboard}
+                    onToggleAllFolders={handleToggleAllFolders}
+                  />
+             </div>
+
+             {/* Mail Manager - kept mounted to avoid sidebar flicker */}
+             <div style={{ display: view === 'mail-manager' ? 'flex' : 'none', flex: 1, overflow: 'hidden' }}>
+                  <MailManagerView
+                    folders={folders}
+                    profiles={profiles}
+                    selectedFolderId={selectedFolderId}
+                    onSelectFolder={setSelectedFolderId}
+                    expandedFolders={expandedFolders}
+                    onToggleFolder={handleToggleFolder}
+                    expandedOthers={expandedOthers}
+                    onToggleOthers={handleToggleOthers}
+                    onGoToDashboard={() => setView('dashboard')}
+                    onGoToSettings={() => setView('settings')}
+                    onGoToFolders={() => setView('folders')}
+                    onGoToCharacterHub={() => setView('character-hub')}
+                    onGoToPasswordManager={() => setView('password-manager')}
+                    onGoToMailManager={() => setView('mail-manager')}
+                    activeStatuses={activeStatuses}
+                    onFoldersChange={handleFoldersChange}
+                    showPasswordManager={showPasswordManager}
+                    showMailManager={showMailManager}
+                    showCharacterHub={showCharacterHub}
+                    showFreedcamp={showFreedcamp}
+                    showDashboard={showDashboard}
+                    onToggleAllFolders={handleToggleAllFolders}
+                  />
+             </div>
            </>
          )}
        </main>

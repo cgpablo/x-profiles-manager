@@ -37,8 +37,10 @@ interface PasswordManagerViewProps {
   onGoToFolders?: () => void;
   onGoToCharacterHub?: () => void;
   onGoToPasswordManager?: () => void;
+  onGoToMailManager?: () => void;
   activeStatuses?: Map<string, boolean>;
   showPasswordManager?: boolean;
+  showMailManager?: boolean;
   showCharacterHub?: boolean;
   showFreedcamp?: boolean;
   showDashboard?: boolean;
@@ -60,8 +62,10 @@ export default function PasswordManagerView({
   onGoToFolders,
   onGoToCharacterHub,
   onGoToPasswordManager,
+  onGoToMailManager,
   activeStatuses = new Map(),
   showPasswordManager = true,
+  showMailManager = false,
   showCharacterHub = false,
   showFreedcamp = false,
   showDashboard = true,
@@ -226,7 +230,9 @@ export default function PasswordManagerView({
         onOpenSettings={onGoToSettings}
         onGoToCharacterHub={onGoToCharacterHub}
         onGoToPasswordManager={onGoToPasswordManager}
+        onGoToMailManager={onGoToMailManager}
         showPasswordManager={showPasswordManager}
+        showMailManager={showMailManager}
         showCharacterHub={showCharacterHub}
         showFreedcamp={showFreedcamp}
         showDashboard={showDashboard}

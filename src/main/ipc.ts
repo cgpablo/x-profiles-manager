@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import { storageManager } from './storage';
 import { chromeLauncher } from './launcher';
 import { passwordManager } from './passwordManager';
+import { mailManager } from './mailManager';
 import { ChromeProfile, AppSettings, IpcResponse, ProfileFolder } from '../types';
 
 export function setupIpcHandlers(): void {
@@ -500,5 +501,50 @@ export function setupIpcHandlers(): void {
       }
     }
   );
+
+  // ====== MAIL MANAGER HANDLERS ======
+
+  ipcMain.handle('mails:getAll', async (): Promise<IpcResponse<any[]>> => {
+    try {
+      const entries = mailManager.getAll();
+      return { success: true, data: entries };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle(
+    'mails:create',
+    async (_, email: string, profileIds: string[]): Promise<IpcResponse<any>> => {
+      try {
+        const entry = mailManager.create(email, profileIds);
+        return { success: true, data: entry };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    'mails:update',
+    async (_, id: string, updates: { email?: string; profileIds?: string[] }): Promise<IpcResponse<any>> => {
+      try {
+        const entry = mailManager.update(id, updates);
+        if (!entry) return { success: false, error: 'Entry not found' };
+        return { success: true, data: entry };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    }
+  );
+
+  ipcMain.handle('mails:delete', async (_, id: string): Promise<IpcResponse<boolean>> => {
+    try {
+      const ok = mailManager.delete(id);
+      return { success: ok, data: ok };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
 
 }

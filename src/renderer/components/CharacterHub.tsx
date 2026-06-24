@@ -29,10 +29,12 @@ interface CharacterHubProps {
   onGoToFolders?: () => void;
   onGoToCharacterHub?: () => void;
   onGoToPasswordManager?: () => void;
+  onGoToMailManager?: () => void;
   activeStatuses?: Map<string, boolean>;
   onProfilesChange: () => void;
   onFoldersChange: () => void;
   showPasswordManager?: boolean;
+  showMailManager?: boolean;
   showCharacterHub?: boolean;
   showFreedcamp?: boolean;
   showDashboard?: boolean;
@@ -53,10 +55,12 @@ export default function CharacterHub({
   onGoToFolders,
   onGoToCharacterHub,
   onGoToPasswordManager,
+  onGoToMailManager,
   activeStatuses = new Map(),
   onProfilesChange,
   onFoldersChange,
   showPasswordManager = false,
+  showMailManager = false,
   showCharacterHub = true,
   showFreedcamp = false,
   showDashboard = true,
@@ -226,11 +230,13 @@ export default function CharacterHub({
         onOpenSettings={onGoToSettings}
         onGoToCharacterHub={onGoToCharacterHub}
         showPasswordManager={showPasswordManager}
+        showMailManager={showMailManager}
         showCharacterHub={showCharacterHub}
         showFreedcamp={showFreedcamp}
         showDashboard={showDashboard}
         onToggleAllFolders={onToggleAllFolders}
         onGoToPasswordManager={onGoToPasswordManager}
+        onGoToMailManager={onGoToMailManager}
       />
 
       <div className="character-hub-content">

@@ -25,6 +25,7 @@ interface SettingsProps {
   onGoToCharacterHub?: () => void;
   onGoToFreedcamp?: () => void;
   onGoToPasswordManager?: () => void;
+  onGoToMailManager?: () => void;
   activeStatuses?: Map<string, boolean>;
   onSettingsSaved?: () => void;
   onBackupStart?: (operation: 'export' | 'import') => void;
@@ -32,7 +33,7 @@ interface SettingsProps {
   onBackupError?: (error: string) => void;
 }
 
-export default function Settings({ folders, profiles, selectedFolderId, onSelectFolder, onSettingsChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToFolders, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, activeStatuses = new Map(), onSettingsSaved, onBackupStart, onBackupSuccess, onBackupError }: SettingsProps) {
+export default function Settings({ folders, profiles, selectedFolderId, onSelectFolder, onSettingsChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToFolders, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, onGoToMailManager, activeStatuses = new Map(), onSettingsSaved, onBackupStart, onBackupSuccess, onBackupError }: SettingsProps) {
   const electronAPI = useElectronAPI();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [originalSettings, setOriginalSettings] = useState<AppSettings | null>(null);
@@ -282,12 +283,14 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
             onGoToFolders={onGoToFolders}
             onOpenSettings={() => {}}
              showPasswordManager={settings.platformPreferences?.showPasswordManager ?? false}
+             showMailManager={settings.platformPreferences?.showMailManager ?? false}
              showCharacterHub={settings.platformPreferences?.showCharacterHub ?? false}
              showFreedcamp={settings.platformPreferences?.showFreedcamp ?? false}
              showDashboard={settings.platformPreferences?.showDashboard ?? true}
              onGoToCharacterHub={onGoToCharacterHub}
              onGoToFreedcamp={onGoToFreedcamp}
              onGoToPasswordManager={onGoToPasswordManager}
+             onGoToMailManager={onGoToMailManager}
            />
 
       <div className="settings-main">
@@ -569,6 +572,31 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
                  </label>
                </div>
                <small>When enabled, a Password Manager shortcut appears above Settings</small>
+             </div>
+
+             <div className="setting-item">
+               <label>Show Mail Manager</label>
+               <div className="checkbox-group">
+                 <input
+                   type="checkbox"
+                   id="showMailManager"
+                   checked={settings.platformPreferences?.showMailManager ?? false}
+                   onChange={(e) => {
+                     const prefs = settings.platformPreferences || {};
+                     setSettings({
+                       ...settings,
+                       platformPreferences: {
+                         ...prefs,
+                         showMailManager: e.target.checked,
+                       },
+                     });
+                   }}
+                 />
+                 <label htmlFor="showMailManager" style={{ marginLeft: '8px' }}>
+                   Show Mail Manager section in sidebar
+                 </label>
+               </div>
+               <small>When enabled, a Mail Manager shortcut appears above Settings</small>
              </div>
 
              <div className="setting-item">

@@ -35,15 +35,17 @@ interface FoldersProps {
   showAddCard?: boolean;
   onToggleAllFolders?: (expand: boolean) => void;
   showPasswordManager?: boolean;
+  showMailManager?: boolean;
   showCharacterHub?: boolean;
   showFreedcamp?: boolean;
   showDashboard?: boolean;
   onGoToCharacterHub?: () => void;
   onGoToFreedcamp?: () => void;
   onGoToPasswordManager?: () => void;
+  onGoToMailManager?: () => void;
 }
 
-export default function Folders({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, activeStatuses = new Map(), searchQuery = '', showAddCard = true, onToggleAllFolders, showPasswordManager = false, showCharacterHub = false, showFreedcamp = false, showDashboard = true, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager }: FoldersProps) {  const electronAPI = useElectronAPI();
+export default function Folders({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, activeStatuses = new Map(), searchQuery = '', showAddCard = true, onToggleAllFolders, showPasswordManager = false, showMailManager = false, showCharacterHub = false, showFreedcamp = false, showDashboard = true, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, onGoToMailManager }: FoldersProps) {  const electronAPI = useElectronAPI();
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalFolderId, setCreateModalFolderId] = useState<string | undefined>(undefined);
@@ -247,12 +249,14 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
                 }}
                  onToggleStar={handleToggleStar}
                  showPasswordManager={showPasswordManager}
+                 showMailManager={showMailManager}
                  showCharacterHub={showCharacterHub}
                  showFreedcamp={showFreedcamp}
                  showDashboard={showDashboard}
                  onGoToCharacterHub={onGoToCharacterHub}
                  onGoToFreedcamp={onGoToFreedcamp}
                  onGoToPasswordManager={onGoToPasswordManager}
+                 onGoToMailManager={onGoToMailManager}
               />
 
         {/* Main Panel with Browser Preview */}

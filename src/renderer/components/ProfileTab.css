@@ -168,6 +168,14 @@
   margin: 0;
 }
 
+.profile-account-handle {
+  transition: color 0.15s;
+}
+
+.profile-account-handle.handle-copied {
+  color: var(--success, #22c55e);
+}
+
 .profile-status {
   display: none;
 }

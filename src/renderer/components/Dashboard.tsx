@@ -33,15 +33,17 @@ interface DashboardProps {
   activeStatuses?: Map<string, boolean>;
   onToggleAllFolders?: (expand: boolean) => void;
   showPasswordManager?: boolean;
+  showMailManager?: boolean;
   showCharacterHub?: boolean;
   showFreedcamp?: boolean;
   showDashboard?: boolean;
   onGoToCharacterHub?: () => void;
   onGoToFreedcamp?: () => void;
   onGoToPasswordManager?: () => void;
+  onGoToMailManager?: () => void;
 }
 
-export default function Dashboard({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, onOrderChange, activeStatuses = new Map(), onToggleAllFolders, showPasswordManager = false, showCharacterHub = false, showFreedcamp = false, showDashboard = true, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager }: DashboardProps) {
+export default function Dashboard({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, onOrderChange, activeStatuses = new Map(), onToggleAllFolders, showPasswordManager = false, showMailManager = false, showCharacterHub = false, showFreedcamp = false, showDashboard = true, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, onGoToMailManager }: DashboardProps) {
   const electronAPI = useElectronAPI();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedFolderForCreate, setSelectedFolderForCreate] = useState<string | undefined>(undefined);
@@ -371,12 +373,14 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                     onDeleteProfile={handleDeleteProfile}
                     onToggleStar={handleToggleStar}
                       showPasswordManager={showPasswordManager}
+                      showMailManager={showMailManager}
                       showCharacterHub={showCharacterHub}
                       showFreedcamp={showFreedcamp}
                       showDashboard={showDashboard}
                       onGoToCharacterHub={onGoToCharacterHub}
                       onGoToFreedcamp={onGoToFreedcamp}
                       onGoToPasswordManager={onGoToPasswordManager}
+                      onGoToMailManager={onGoToMailManager}
              />
 
           {/* Main Content - 2 Columns (or tabs on narrow screens) */}

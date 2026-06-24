@@ -7,6 +7,7 @@ import { ChromeProfile, ProfileFolder } from '../../types';
 import SidebarDashboard from './SidebarDashboard';
 import SidebarFolders from './SidebarFolders';
 import SidebarPasswordManager from './SidebarPasswordManager';
+import SidebarMailManager from './SidebarMailManager';
 import SidebarCharacterHub from './SidebarCharacterHub';
 import SidebarFreedcamp from './SidebarFreedcamp';
 import SidebarSettings from './SidebarSettings';
@@ -36,9 +37,11 @@ interface SidebarProps {
   onGoToFolders?: () => void;
   onOpenSettings?: () => void;
   onGoToPasswordManager?: () => void;
+  onGoToMailManager?: () => void;
   onGoToCharacterHub?: () => void;
   onGoToFreedcamp?: () => void;
   showPasswordManager?: boolean;
+  showMailManager?: boolean;
   showCharacterHub?: boolean;
   showFreedcamp?: boolean;
   showDashboard?: boolean;
@@ -73,9 +76,11 @@ export default function Sidebar({
   onGoToFolders,
   onOpenSettings,
   onGoToPasswordManager,
+  onGoToMailManager,
   onGoToCharacterHub,
   onGoToFreedcamp,
   showPasswordManager = false,
+  showMailManager = false,
   showCharacterHub = false,
   showFreedcamp = false,
   showDashboard = true,
@@ -122,6 +127,7 @@ export default function Sidebar({
        {/* Settings Section */}
        <div className="sidebar-bottom-group">
          {showPasswordManager && <SidebarPasswordManager onNavigate={onGoToPasswordManager} />}
+         {showMailManager && <SidebarMailManager onNavigate={onGoToMailManager} />}
          {showCharacterHub && <SidebarCharacterHub onNavigate={onGoToCharacterHub} />}
          {showFreedcamp && <SidebarFreedcamp onNavigate={onGoToFreedcamp} />}
          <SidebarSettings onOpenSettings={onOpenSettings} />

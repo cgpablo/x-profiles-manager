@@ -131,7 +131,7 @@ export default function ProfileTab({
     if (!profile.xAccount) return;
     navigator.clipboard.writeText(profile.xAccount).then(() => {
       setCopiedXAccount(true);
-      setTimeout(() => setCopiedXAccount(false), 1500);
+      setTimeout(() => setCopiedXAccount(false), 500);
     }).catch(console.error);
   };
 
@@ -142,7 +142,7 @@ export default function ProfileTab({
       if (!pw) return;
       await navigator.clipboard.writeText(pw);
       setCopiedPassword(true);
-      setTimeout(() => setCopiedPassword(false), 1500);
+      setTimeout(() => setCopiedPassword(false), 500);
     } catch (err) {
       console.error('Error copying password:', err);
     }

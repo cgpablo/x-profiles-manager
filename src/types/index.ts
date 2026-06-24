@@ -11,6 +11,14 @@ export interface PasswordEntry {
   updatedAt?: number;
 }
 
+export interface MailEntry {
+  id: string;
+  email: string;
+  profileIds: string[];
+  createdAt: number;
+  updatedAt?: number;
+}
+
 export interface FCLink {
   text: string;
   url: string;
@@ -71,6 +79,7 @@ export interface AppSettings {
       twitterControl?: boolean;
     };
     showPasswordManager?: boolean; // Show Password Manager in sidebar
+    showMailManager?: boolean; // Show Mail Manager in sidebar
     showCharacterHub?: boolean; // Show Character Hub in sidebar
     showFreedcamp?: boolean; // Show Freedcamp in sidebar
     showDashboard?: boolean; // Show Dashboard button in sidebar (default true)
