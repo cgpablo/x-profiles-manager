@@ -190,8 +190,22 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
     };
 
     // Handlers for sidebar
-    const handleLaunchProfile = () => {};
-    const handleCloseProfile = () => {};
+    const handleLaunchProfile = async (profileId: string) => {
+      try {
+        await electronAPI.launcher.launch(profileId, 'https://x.com');
+        onSettingsChange();
+      } catch (error) {
+        console.error('Error launching profile:', error);
+      }
+    };
+    const handleCloseProfile = async (profileId: string) => {
+      try {
+        await electronAPI.launcher.close(profileId);
+        onSettingsChange();
+      } catch (error) {
+        console.error('Error closing profile:', error);
+      }
+    };
     const handleOpenAllInBrowser = async (folderId: string) => {
       const folderProfiles = profiles.filter(p => p.folderId === folderId || (folderId === 'ungrouped' && !p.folderId));
       for (const profile of folderProfiles) {
