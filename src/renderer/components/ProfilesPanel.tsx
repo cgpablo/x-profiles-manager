@@ -24,6 +24,7 @@ interface ProfilesPanelProps {
   onMoveProfileToFolder?: (profileId: string, folderId: string | undefined) => void;
   onSelectProfile?: (profile: ChromeProfile) => void;
   onToggleStar?: (profileId: string) => void;
+  onToggleLock?: (profileId: string) => void;
   headerActions?: React.ReactNode;
   searchQuery?: string;
   showAddCard?: boolean;
@@ -45,6 +46,7 @@ export default function ProfilesPanel({
   onMoveProfileToFolder,
   onSelectProfile,
   onToggleStar,
+  onToggleLock,
   headerActions,
   searchQuery = '',
   showAddCard = true,
@@ -155,7 +157,8 @@ export default function ProfilesPanel({
                      onClose={() => onCloseProfile(profile.id)}
                      onDelete={() => onDeleteProfile(profile.id)}
                      onEdit={() => onEditProfile(profile)}
-                     onToggleStar={onToggleStar ? () => onToggleStar(profile.id) : undefined}
+                      onToggleStar={onToggleStar ? () => onToggleStar(profile.id) : undefined}
+                      onToggleLock={onToggleLock ? () => onToggleLock(profile.id) : undefined}
                      isSelected={activeProfileId === profile.id}
                      folders={folders}
                       onMoveToFolder={onMoveProfileToFolder ? (folderId) => onMoveProfileToFolder(profile.id, folderId) : undefined}
@@ -197,7 +200,8 @@ export default function ProfilesPanel({
                        onClose={() => onCloseProfile(profile.id)}
                        onDelete={() => onDeleteProfile(profile.id)}
                        onEdit={() => onEditProfile(profile)}
-                       onToggleStar={onToggleStar ? () => onToggleStar(profile.id) : undefined}
+                        onToggleStar={onToggleStar ? () => onToggleStar(profile.id) : undefined}
+                        onToggleLock={onToggleLock ? () => onToggleLock(profile.id) : undefined}
                        isSelected={activeProfileId === profile.id}
                        folders={folders}
                        onMoveToFolder={onMoveProfileToFolder ? (folderId) => onMoveProfileToFolder(profile.id, folderId) : undefined}
@@ -240,7 +244,8 @@ export default function ProfilesPanel({
                          onClose={() => onCloseProfile(profile.id)}
                          onDelete={() => onDeleteProfile(profile.id)}
                          onEdit={() => onEditProfile(profile)}
-                         onToggleStar={onToggleStar ? () => onToggleStar(profile.id) : undefined}
+                          onToggleStar={onToggleStar ? () => onToggleStar(profile.id) : undefined}
+                          onToggleLock={onToggleLock ? () => onToggleLock(profile.id) : undefined}
                          isSelected={activeProfileId === profile.id}
                          folders={folders}
                          onMoveToFolder={onMoveProfileToFolder ? (folderId) => onMoveProfileToFolder(profile.id, folderId) : undefined}

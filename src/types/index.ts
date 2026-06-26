@@ -53,6 +53,7 @@ export interface ChromeProfile {
   isActive?: boolean;
   orderIndex?: number; // For sorting profiles
   starred?: boolean; // Starred/favourited profile
+  locked?: boolean; // Locked: hide edit/delete options. undefined or true = locked (default)
   fcInfo?: FCCharacterInfo; // Fan Character info
   hasPassword?: boolean; // True if a password entry is linked to this profile
   installedExtensions?: {

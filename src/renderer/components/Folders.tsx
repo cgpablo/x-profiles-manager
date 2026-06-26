@@ -142,6 +142,17 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
     }
   };
 
+  const handleToggleLock = async (profileId: string) => {
+    const profile = profiles.find(p => p.id === profileId);
+    if (!profile) return;
+    try {
+      await electronAPI.profiles.update(profileId, { locked: profile.locked === false });
+      onProfilesChange();
+    } catch (error) {
+      console.error('Error toggling lock:', error);
+    }
+  };
+
   // Calculate profile count by folder
   const profileCountByFolder = new Map<string | undefined, number>();
   for (const profile of profiles) {
@@ -247,8 +258,8 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
                   const profile = profiles.find(p => p.id === profileId);
                   if (profile) setProfileToDelete(profile);
                 }}
-                 onToggleStar={handleToggleStar}
-                 showPasswordManager={showPasswordManager}
+                onToggleStar={handleToggleStar}
+                  showPasswordManager={showPasswordManager}
                  showMailManager={showMailManager}
                  showCharacterHub={showCharacterHub}
                  showFreedcamp={showFreedcamp}
@@ -277,6 +288,7 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
                }}
                onEditProfile={handleEditProfile}
                onToggleStar={handleToggleStar}
+               onToggleLock={handleToggleLock}
               onCreateProfile={handleCreateProfile}
                onMoveProfileToFolder={handleMoveProfileToFolder}
                  onSelectProfile={setBrowserPreviewProfile}

@@ -17,6 +17,7 @@ interface ProfileTabProps {
   onDelete: () => void;
   onEdit: () => void;
   onToggleStar?: () => void;
+  onToggleLock?: () => void;
   onMoveToFolder?: (folderId: string | undefined) => void;
   folders?: Array<{ id: string; name: string; icon: string }>;
   onSelect?: () => void;
@@ -38,6 +39,7 @@ export default function ProfileTab({
   onDelete,
   onEdit,
   onToggleStar,
+  onToggleLock,
   onMoveToFolder,
   folders = [],
   onSelect,
@@ -53,6 +55,8 @@ export default function ProfileTab({
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
   const [copiedXAccount, setCopiedXAccount] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
+  // locked: true when profile.locked is undefined (default) or true; false only when explicitly set to false
+  const isLocked = profile.locked !== false;
   const [imageUrl, setImageUrl] = useState<string>('');
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -226,6 +230,14 @@ export default function ProfileTab({
                   >
                     {profile.starred ? '★' : '☆'}
                   </button>
+                  <button
+                    className={`btn-lock${isLocked ? ' locked' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); onToggleLock?.(); }}
+                    title={isLocked ? 'Unlock profile (allow edit/delete)' : 'Lock profile (hide edit/delete)'}
+                    aria-label={isLocked ? 'Unlock profile' : 'Lock profile'}
+                  >
+                    {isLocked ? '🔒' : '🔓'}
+                  </button>
                 </div>
                 <div className="profile-account-row">
                   {profile.xAccount ? (
@@ -305,6 +317,7 @@ export default function ProfileTab({
                 </div>
 
                 {/* Row 2: Edit and Delete buttons */}
+                {!isLocked && (
                 <div className="action-row">
                   <Tooltip text="Edit profile" position="top">
                     <button
@@ -329,6 +342,7 @@ export default function ProfileTab({
                     </button>
                   </Tooltip>
                 </div>
+                )}
               </div>
             </div>
        </div>
@@ -370,37 +384,41 @@ export default function ProfileTab({
               <div className="context-menu-divider" />
             </>
           )}
-          <button
-            className="context-menu-item"
-            onClick={() => {
-              if (isActive) {
-                onClose();
-              } else {
-                onLaunch();
-              }
-             setShowContextMenu(false);
-             }}
-           >
-             {isActive ? '✕ Close browser' : '🌐 Open in browser'}
-           </button>
            <button
              className="context-menu-item"
              onClick={() => {
-               onEdit();
+               if (isActive) {
+                 onClose();
+               } else {
+                 onLaunch();
+               }
+              setShowContextMenu(false);
+              }}
+            >
+              {isActive ? '✕ Close browser' : '🌐 Open in browser'}
+            </button>
+            {!isLocked && (
+            <button
+              className="context-menu-item"
+              onClick={() => {
+                onEdit();
+                setShowContextMenu(false);
+              }}
+            >
+              ✎ Edit
+            </button>
+            )}
+           {!isLocked && (
+           <button
+             className="context-menu-item context-menu-delete"
+             onClick={() => {
+               onDelete();
                setShowContextMenu(false);
              }}
            >
-             ✎ Edit
+             🗑️ Delete
            </button>
-          <button
-            className="context-menu-item context-menu-delete"
-            onClick={() => {
-              onDelete();
-              setShowContextMenu(false);
-            }}
-          >
-            🗑️ Delete
-          </button>
+           )}
         </div>
       )}
     </div>

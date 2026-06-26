@@ -231,6 +231,27 @@
   color: #f59e0b;
 }
 
+.btn-lock {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: 0.35;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.btn-lock:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+.btn-lock.locked {
+  opacity: 0.85;
+}
+
 .status-badge.online {
   background: rgba(16, 185, 129, 0.1);
   color: var(--success);

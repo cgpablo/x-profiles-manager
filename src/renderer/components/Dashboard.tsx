@@ -153,6 +153,18 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
     }
   };
 
+  const handleToggleLock = async (profileId: string) => {
+    const profile = profiles.find(p => p.id === profileId);
+    if (!profile) return;
+    try {
+      // locked !== false means locked (undefined = locked by default). Toggle it.
+      await electronAPI.profiles.update(profileId, { locked: profile.locked === false });
+      onProfilesChange();
+    } catch (error) {
+      console.error('Error toggling lock:', error);
+    }
+  };
+
   const handleFolderCreated = () => {
     setShowCreateFolderModal(false);
     onFoldersChange();
@@ -528,6 +540,7 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                              onDelete={() => setProfileToDelete(profile)}
                             onEdit={() => handleEditProfile(profile)}
                             onToggleStar={() => handleToggleStar(profile.id)}
+                            onToggleLock={() => handleToggleLock(profile.id)}
                            onMoveToFolder={handleMoveProfileToFolder}
                            folders={folders}
                            onDragStart={(e) => handleProfileDragStart(e, profile.id)}

@@ -453,7 +453,7 @@ export default function SidebarFolders({
                                       {profile.starred ? '★ Remove favorite' : '☆ Add favorite'}
                                     </button>
                                   )}
-                                  {onEditProfile && (
+                                  {onEditProfile && profile.locked === false && (
                                     <button
                                       className="context-menu-item"
                                       onClick={() => { onEditProfile(profile); setProfileContextMenu(null); }}
@@ -461,7 +461,7 @@ export default function SidebarFolders({
                                       ✎ Edit
                                     </button>
                                   )}
-                                  {onDeleteProfile && (
+                                  {onDeleteProfile && profile.locked === false && (
                                     <button
                                       className="context-menu-item context-menu-delete"
                                       onClick={() => { setProfileToDelete(profile); setProfileContextMenu(null); }}
@@ -735,7 +735,7 @@ export default function SidebarFolders({
                                        {profile.starred ? '★ Remove favorite' : '☆ Add favorite'}
                                      </button>
                                    )}
-                                  {onEditProfile && (
+                                  {onEditProfile && profile.locked === false && (
                                     <button
                                       className="context-menu-item"
                                       onClick={() => { onEditProfile(profile); setProfileContextMenu(null); }}
@@ -743,7 +743,7 @@ export default function SidebarFolders({
                                       ✎ Edit
                                     </button>
                                   )}
-                                   {onDeleteProfile && (
+                                   {onDeleteProfile && profile.locked === false && (
                                      <button
                                        className="context-menu-item context-menu-delete"
                                        onClick={() => { setProfileToDelete(profile); setProfileContextMenu(null); }}
