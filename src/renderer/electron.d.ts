@@ -43,6 +43,19 @@ interface ElectronAPI {
     openFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<string[]>;
     fileToDataUrl: (filePath: string) => Promise<string>;
   };
+  passwords: {
+    getAll: () => Promise<Array<{ id: string; name: string; profileIds: string[]; createdAt: number; updatedAt?: number }>>;
+    create: (name: string, value: string, profileIds: string[]) => Promise<any>;
+    update: (id: string, updates: { name?: string; value?: string; profileIds?: string[] }) => Promise<any>;
+    delete: (id: string) => Promise<boolean>;
+    getDecryptedForProfile: (profileId: string) => Promise<string | null>;
+  };
+  mails: {
+    getAll: () => Promise<Array<{ id: string; email: string; profileIds: string[]; createdAt: number; updatedAt?: number }>>;
+    create: (email: string, profileIds: string[]) => Promise<any>;
+    update: (id: string, updates: { email?: string; profileIds?: string[] }) => Promise<any>;
+    delete: (id: string) => Promise<boolean>;
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

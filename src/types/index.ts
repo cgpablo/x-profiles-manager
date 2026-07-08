@@ -56,6 +56,8 @@ export interface ChromeProfile {
   locked?: boolean; // Locked: hide edit/delete options. undefined or true = locked (default)
   fcInfo?: FCCharacterInfo; // Fan Character info
   hasPassword?: boolean; // True if a password entry is linked to this profile
+  hasMail?: boolean;     // True if a mail entry is linked to this profile (runtime-derived)
+  mailEmail?: string;    // The associated email address (runtime-derived)
   installedExtensions?: {
     ublockOriginLite?: boolean;
     twitterControl?: boolean;

@@ -11,8 +11,7 @@
   background: var(--bg-secondary);
   border: 2px dashed var(--border);
   border-radius: 0.5rem;
-  padding: 2rem 1rem;
-  min-height: 150px;
+  padding: 1rem 1.5rem;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;

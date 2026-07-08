@@ -6,6 +6,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChromeProfile } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Tooltip from './Tooltip';
+import CharacterInfoModal from './CharacterInfoModal';
 import './ProfileTab.css';
 
 interface ProfileTabProps {
@@ -55,12 +56,20 @@ export default function ProfileTab({
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
   const [copiedXAccount, setCopiedXAccount] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
+  const [copiedMail, setCopiedMail] = useState(false);
+  const [showCharInfoModal, setShowCharInfoModal] = useState(false);
   // locked: true when profile.locked is undefined (default) or true; false only when explicitly set to false
   const isLocked = profile.locked !== false;
   const [imageUrl, setImageUrl] = useState<string>('');
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const electronAPI = useElectronAPI();
+
+  // Derived: whether this profile has character hub info
+  const hasFcInfo =
+    (profile.fcInfo?.ig?.length ?? 0) > 0 ||
+    (profile.fcInfo?.x?.length ?? 0) > 0 ||
+    (profile.fcInfo?.sc?.length ?? 0) > 0;
 
   // Convert file path to data URL on mount or when imagePath changes
   useEffect(() => {
@@ -152,6 +161,15 @@ export default function ProfileTab({
     }
   };
 
+  const handleCopyMail = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!profile.mailEmail) return;
+    navigator.clipboard.writeText(profile.mailEmail).then(() => {
+      setCopiedMail(true);
+      setTimeout(() => setCopiedMail(false), 500);
+    }).catch(console.error);
+  };
+
    return (
       <div
         className={`profile-tab ${isActive ? 'active' : ''} ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
@@ -181,9 +199,9 @@ export default function ProfileTab({
           let x = e.clientX;
           let y = e.clientY;
           
-          // Reserve space for menu (approximate width: 180px, height: 200px)
+          // Reserve space for menu (approximate width: 180px, height: 220px)
           const menuWidth = 180;
-          const menuHeight = 200;
+          const menuHeight = 220;
           const padding = 10;
           
           // Adjust x if menu would go off-screen to the right
@@ -223,10 +241,11 @@ export default function ProfileTab({
                 <div className="profile-name-row">
                   <h3>{profile.name}</h3>
                   <button
-                    className={`btn-star${profile.starred ? ' starred' : ''}`}
-                    onClick={(e) => { e.stopPropagation(); onToggleStar?.(); }}
-                    title={profile.starred ? 'Remove from starred' : 'Add to starred'}
-                    aria-label={profile.starred ? 'Unstar profile' : 'Star profile'}
+                    className={`btn-star${profile.starred ? ' starred' : ''}${isLocked ? ' locked-star' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); if (!isLocked) onToggleStar?.(); }}
+                    disabled={isLocked}
+                    title={isLocked ? 'Unlock profile to manage favorites' : (profile.starred ? 'Remove from starred' : 'Add to starred')}
+                    aria-label={isLocked ? 'Unlock profile to manage favorites' : (profile.starred ? 'Unstar profile' : 'Star profile')}
                   >
                     {profile.starred ? '★' : '☆'}
                   </button>
@@ -265,17 +284,31 @@ export default function ProfileTab({
                       {copiedPassword ? '✓' : '🔑'}
                     </button>
                   )}
+                  {profile.hasMail && (
+                    <button
+                      className={`btn-profile-mail${copiedMail ? ' mail-copied' : ''}`}
+                      onClick={handleCopyMail}
+                      title={profile.mailEmail ? `Copy email: ${profile.mailEmail}` : 'Copy email'}
+                      aria-label="Copy email"
+                    >
+                      {copiedMail ? '✓' : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="4" width="20" height="16" rx="2"/>
+                          <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                        </svg>
+                      )}
+                    </button>
+                  )}
                 </div>
                 <span className={`status-badge ${isActive ? 'online' : 'offline'}`}>
                   {isActive ? '● Online' : '○ Offline'}
                 </span>
               </div>
 
-              {/* Action buttons: 2 rows on the right */}
+              {/* Action buttons */}
               <div className="profile-actions">
                 {/* Row 1: Open/Focus/Close buttons */}
                 <div className="action-row">
-                  {/* 🌐 Open in browser (hidden when already active) / 👁️ Focus window (shown when active) */}
                   {!isActive ? (
                     <Tooltip text="Open in browser" position="top">
                       <button className="action-btn launch-btn" onClick={() => {
@@ -303,7 +336,6 @@ export default function ProfileTab({
                     </Tooltip>
                   )}
 
-                  {/* ✕ Close browser (shown when active) */}
                   {isActive && (
                     <Tooltip text="Close browser" position="top">
                       <button className="action-btn close-btn" onClick={() => {
@@ -316,7 +348,7 @@ export default function ProfileTab({
                   )}
                 </div>
 
-                {/* Row 2: Edit and Delete buttons */}
+                {/* Row 2: Edit and Delete buttons (hidden when locked) */}
                 {!isLocked && (
                 <div className="action-row">
                   <Tooltip text="Edit profile" position="top">
@@ -342,6 +374,23 @@ export default function ProfileTab({
                     </button>
                   </Tooltip>
                 </div>
+                )}
+
+                {/* Row 3: Character Hub button (always visible if profile has fcInfo) */}
+                {hasFcInfo && (
+                  <div className="action-row">
+                    <Tooltip text="Character info" position="top">
+                      <button
+                        className="action-btn char-hub-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowCharInfoModal(true);
+                        }}
+                      >
+                        🎭
+                      </button>
+                    </Tooltip>
+                  </div>
                 )}
               </div>
             </div>
@@ -397,6 +446,17 @@ export default function ProfileTab({
             >
               {isActive ? '✕ Close browser' : '🌐 Open in browser'}
             </button>
+            {hasFcInfo && (
+              <button
+                className="context-menu-item"
+                onClick={() => {
+                  setShowCharInfoModal(true);
+                  setShowContextMenu(false);
+                }}
+              >
+                🎭 Character info
+              </button>
+            )}
             {!isLocked && (
             <button
               className="context-menu-item"
@@ -420,6 +480,14 @@ export default function ProfileTab({
            </button>
            )}
         </div>
+      )}
+
+      {/* Character Info Modal */}
+      {showCharInfoModal && (
+        <CharacterInfoModal
+          profile={profile}
+          onClose={() => setShowCharInfoModal(false)}
+        />
       )}
     </div>
   );

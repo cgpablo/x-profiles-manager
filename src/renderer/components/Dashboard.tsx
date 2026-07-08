@@ -8,8 +8,7 @@ import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
 import ProfileTab from './ProfileTab';
 import Tooltip from './Tooltip';
-import CreateProfileModal from './CreateProfileModal';
-import EditProfileModal from './EditProfileModal';
+import ProfileModal from './ProfileModal';
 import CreateFolderModal from './CreateFolderModal';
 import EditFolderModal from './EditFolderModal';
 import DeleteConfirmModal from './DeleteProfileConfirmModal';
@@ -558,12 +557,12 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
 
        {/* Modals */}
        {showCreateModal && (
-         <CreateProfileModal
+         <ProfileModal
            onClose={() => {
              setShowCreateModal(false);
              setSelectedFolderForCreate(undefined);
            }}
-           onCreated={() => {
+           onSuccess={() => {
              setShowCreateModal(false);
              setSelectedFolderForCreate(undefined);
              onProfilesChange();
@@ -574,10 +573,10 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
        )}
 
       {editingProfile && (
-        <EditProfileModal
+        <ProfileModal
           profile={editingProfile}
           onClose={() => setEditingProfile(null)}
-          onUpdated={() => {
+          onSuccess={() => {
             setEditingProfile(null);
             onProfilesChange();
           }}

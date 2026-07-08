@@ -9,8 +9,7 @@ import Sidebar from './Sidebar';
 import ProfilesPanel from './ProfilesPanel';
 import BrowserPreview from './BrowserPreview';
 import Tooltip from './Tooltip';
-import CreateProfileModal from './CreateProfileModal';
-import EditProfileModal from './EditProfileModal';
+import ProfileModal from './ProfileModal';
 import CreateFolderModal from './CreateFolderModal';
 import EditFolderModal from './EditFolderModal';
 import DeleteConfirmModal from './DeleteProfileConfirmModal';
@@ -334,9 +333,9 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
 
       {/* Modals */}
       {showCreateModal && (
-        <CreateProfileModal
+        <ProfileModal
           onClose={() => setShowCreateModal(false)}
-          onCreated={() => {
+          onSuccess={() => {
             setShowCreateModal(false);
             setCreateModalFolderId(undefined);
             onProfilesChange();
@@ -347,10 +346,10 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
       )}
 
       {editingProfile && (
-        <EditProfileModal
+        <ProfileModal
           profile={editingProfile}
           onClose={() => setEditingProfile(null)}
-          onUpdated={() => {
+          onSuccess={() => {
             setEditingProfile(null);
             onProfilesChange();
           }}

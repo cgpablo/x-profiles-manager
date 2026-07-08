@@ -6,8 +6,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AppSettings, ChromeProfile, ProfileFolder } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
-import CreateProfileModal from './CreateProfileModal';
+import ProfileModal from './ProfileModal';
 import CreateFolderModal from './CreateFolderModal';
+import DeleteConfirmModal from './DeleteProfileConfirmModal';
 import './Settings.css';
 
 interface SettingsProps {
@@ -46,6 +47,8 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [creatingFolderId, setCreatingFolderId] = useState<string | undefined>(undefined);
+  const [editingProfile, setEditingProfile] = useState<ChromeProfile | null>(null);
+  const [profileToDelete, setProfileToDelete] = useState<ChromeProfile | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -246,6 +249,38 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
       setShowCreateModal(true);
     };
 
+    const handleEditProfile = (profile: ChromeProfile) => {
+      setEditingProfile(profile);
+    };
+
+    const handleDeleteProfile = (profileId: string) => {
+      const profile = profiles.find(p => p.id === profileId);
+      if (profile) setProfileToDelete(profile);
+    };
+
+    const handleDeleteProfileConfirm = async (profileId: string) => {
+      try {
+        if (activeStatuses?.get(profileId)) {
+          await handleCloseProfile(profileId);
+        }
+        await electronAPI.profiles.delete(profileId);
+        onSettingsChange();
+      } catch (error) {
+        console.error('Error deleting profile:', error);
+      }
+    };
+
+    const handleToggleStar = async (profileId: string) => {
+      const profile = profiles.find(p => p.id === profileId);
+      if (!profile) return;
+      try {
+        await electronAPI.profiles.update(profileId, { starred: !profile.starred });
+        onSettingsChange();
+      } catch (error) {
+        console.error('Error toggling star:', error);
+      }
+    };
+
     const handleEditFolder = (folder: ProfileFolder) => {
       // No edit functionality in Settings view, but function needed for Sidebar interface
     };
@@ -291,6 +326,9 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
              onGoToFreedcamp={onGoToFreedcamp}
              onGoToPasswordManager={onGoToPasswordManager}
              onGoToMailManager={onGoToMailManager}
+             onEditProfile={handleEditProfile}
+             onDeleteProfile={handleDeleteProfile}
+             onToggleStar={handleToggleStar}
            />
 
       <div className="settings-main">
@@ -831,12 +869,12 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
       </div>
 
       {showCreateModal && (
-        <CreateProfileModal
+        <ProfileModal
           onClose={() => {
             setShowCreateModal(false);
             setCreatingFolderId(undefined);
           }}
-          onCreated={() => {
+          onSuccess={() => {
             setShowCreateModal(false);
             setCreatingFolderId(undefined);
             onSettingsChange();
@@ -853,6 +891,27 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
             setShowCreateFolderModal(false);
             onSettingsChange();
           }}
+        />
+      )}
+
+      {editingProfile && (
+        <ProfileModal
+          profile={editingProfile}
+          onClose={() => setEditingProfile(null)}
+          onSuccess={() => {
+            setEditingProfile(null);
+            onSettingsChange();
+          }}
+          folders={folders}
+        />
+      )}
+
+      {profileToDelete && (
+        <DeleteConfirmModal
+          title="Delete Profile"
+          itemName={profileToDelete.name}
+          onConfirm={() => { handleDeleteProfileConfirm(profileToDelete.id); setProfileToDelete(null); }}
+          onCancel={() => setProfileToDelete(null)}
         />
       )}
       </div>{/* settings-main */}

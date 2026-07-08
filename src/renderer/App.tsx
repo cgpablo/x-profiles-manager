@@ -57,7 +57,7 @@ function App() {
   useEffect(() => {
     loadProfiles();
     loadFolders();
-    loadSidebarSettings();
+    loadSidebarSettings(true);
    }, []);
 
    // Poll for active profile status (enriches profiles[].isActive every 2s)
@@ -129,14 +129,19 @@ function App() {
     return m;
   }, [profiles]);
 
-  const loadSidebarSettings = async () => {
+  const loadSidebarSettings = async (isInitialLoad = false) => {
     try {
       const result = await electronAPI.settings.get();
       setShowPasswordManager(result.platformPreferences?.showPasswordManager ?? false);
       setShowMailManager(result.platformPreferences?.showMailManager ?? false);
       setShowCharacterHub(result.platformPreferences?.showCharacterHub ?? false);
       setShowFreedcamp(result.platformPreferences?.showFreedcamp ?? false);
-      setShowDashboard(result.platformPreferences?.showDashboard ?? true);
+      const dashboardVisible = result.platformPreferences?.showDashboard ?? true;
+      setShowDashboard(dashboardVisible);
+      // On initial load, redirect to 'folders' if dashboard is hidden
+      if (isInitialLoad && !dashboardVisible) {
+        setView('folders');
+      }
     } catch (error) {
       console.error('Error loading sidebar settings:', error);
     }
@@ -145,13 +150,24 @@ function App() {
   const loadProfiles = async () => {
     try {
       setError(null);
-      const [result, passwords] = await Promise.all([
+      const [result, passwords, mails] = await Promise.all([
         electronAPI.profiles.getAll(),
         electronAPI.passwords.getAll().catch(() => [] as { profileIds: string[] }[]),
+        window.electronAPI.mails.getAll().catch(() => [] as { profileIds: string[]; email: string }[]),
       ]);
       const passwordProfileIds = new Set(passwords.flatMap(pw => pw.profileIds));
+      // Build profileId → email map (last entry wins if a profile has multiple mails)
+      const mailByProfileId = new Map<string, string>();
+      mails.forEach((m: { profileIds: string[]; email: string }) =>
+        m.profileIds.forEach(pid => mailByProfileId.set(pid, m.email))
+      );
       const sorted = result
-        .map(p => ({ ...p, hasPassword: passwordProfileIds.has(p.id) }))
+        .map(p => ({
+          ...p,
+          hasPassword: passwordProfileIds.has(p.id),
+          hasMail: mailByProfileId.has(p.id),
+          mailEmail: mailByProfileId.get(p.id),
+        }))
         .sort((a, b) => {
           const aIndex = (a as any).orderIndex ?? 0;
           const bIndex = (b as any).orderIndex ?? 0;

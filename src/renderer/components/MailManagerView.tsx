@@ -8,8 +8,7 @@ import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
 import CreateMailModal from './CreateMailModal';
 import ProfileAvatar from './ProfileAvatar';
-import CreateProfileModal from './CreateProfileModal';
-import EditProfileModal from './EditProfileModal';
+import ProfileModal from './ProfileModal';
 import CreateFolderModal from './CreateFolderModal';
 import EditFolderModal from './EditFolderModal';
 import './MailManagerView.css';
@@ -343,9 +342,9 @@ export default function MailManagerView({
       )}
 
       {showCreateModal && (
-        <CreateProfileModal
+        <ProfileModal
           onClose={() => setShowCreateModal(false)}
-          onCreated={() => {
+          onSuccess={() => {
             setShowCreateModal(false);
             setCreateModalFolderId(undefined);
           }}
@@ -355,10 +354,10 @@ export default function MailManagerView({
       )}
 
       {profileForEdit && (
-        <EditProfileModal
+        <ProfileModal
           profile={profileForEdit}
           onClose={() => setProfileForEdit(null)}
-          onUpdated={() => setProfileForEdit(null)}
+          onSuccess={() => setProfileForEdit(null)}
           folders={folders}
         />
       )}

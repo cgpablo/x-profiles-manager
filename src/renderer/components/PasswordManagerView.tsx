@@ -8,8 +8,7 @@ import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
 import CreatePasswordModal from './CreatePasswordModal';
 import ProfileAvatar from './ProfileAvatar';
-import CreateProfileModal from './CreateProfileModal';
-import EditProfileModal from './EditProfileModal';
+import ProfileModal from './ProfileModal';
 import CreateFolderModal from './CreateFolderModal';
 import EditFolderModal from './EditFolderModal';
 import './PasswordManagerView.css';
@@ -330,9 +329,9 @@ export default function PasswordManagerView({
       )}
 
       {showCreateModal && (
-        <CreateProfileModal
+        <ProfileModal
           onClose={() => setShowCreateModal(false)}
-          onCreated={() => {
+          onSuccess={() => {
             setShowCreateModal(false);
             setCreateModalFolderId(undefined);
           }}
@@ -342,10 +341,10 @@ export default function PasswordManagerView({
       )}
 
       {profileForEdit && (
-        <EditProfileModal
+        <ProfileModal
           profile={profileForEdit}
           onClose={() => setProfileForEdit(null)}
-          onUpdated={() => {
+          onSuccess={() => {
             setProfileForEdit(null);
           }}
           folders={folders}

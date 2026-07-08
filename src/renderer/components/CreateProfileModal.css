@@ -116,9 +116,11 @@
 .form-group label {
   display: block;
   margin-bottom: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
 }
 
 .form-group input {
@@ -311,6 +313,7 @@
   display: flex;
   gap: 1rem;
   justify-content: flex-end;
+  margin-top: 1.25rem;
 }
 
 .btn-secondary {

@@ -21,10 +21,11 @@ export default function DeleteConfirmModal({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCancel();
+      if (e.key === 'Enter') onConfirm();
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onCancel]);
+  }, [onCancel, onConfirm]);
 
   return createPortal(
     <div className="delete-confirm-overlay" onClick={onCancel}>

@@ -100,45 +100,46 @@ export default function CreatePasswordModal({
         </div>
 
         <div className="modal-form pm-modal-form">
-          {/* Name */}
-          <div className="pm-field-group">
-            <label className="pm-field-label">Name</label>
-            <input
-              type="text"
-              className="pm-input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Main Twitter Account"
-              disabled={loading}
-              autoFocus
-            />
-          </div>
-
-          {/* Password */}
-          <div className="pm-field-group">
-            <label className="pm-field-label">
-              Password{' '}
-              {isEditing && (
-                <span className="pm-optional">(leave blank to keep current)</span>
-              )}
-            </label>
-            <div className="pm-password-row">
+          {/* Name + Password in the same row */}
+          <div className="pm-field-row">
+            <div className="pm-field-group">
+              <label className="pm-field-label">Name</label>
               <input
-                type={showPassword ? 'text' : 'password'}
+                type="text"
                 className="pm-input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={isEditing ? 'New password (optional)' : 'Enter password...'}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Main Twitter Account"
                 disabled={loading}
+                autoFocus
               />
-              <button
-                type="button"
-                className="btn-pm-toggle"
-                onClick={() => setShowPassword(!showPassword)}
-                title={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? '🙈' : '👁️'}
-              </button>
+            </div>
+
+            <div className="pm-field-group">
+              <label className="pm-field-label">
+                Password{' '}
+                {isEditing && (
+                  <span className="pm-optional">(leave blank to keep current)</span>
+                )}
+              </label>
+              <div className="pm-password-row">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="pm-input"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={isEditing ? 'New password (optional)' : 'Enter password...'}
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  className="btn-pm-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
           </div>
 

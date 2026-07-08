@@ -297,17 +297,17 @@
   border-color: var(--danger);
 }
 
-/* Action buttons (same style as ProfileTab) */
-.action-btn {
-  width: 40px;
-  height: 40px;
+/* Action buttons for folder cards only — scoped to avoid overriding ProfileTab's .action-btn */
+.folder-card .action-btn {
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 1px solid var(--border);
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   border-radius: 0.25rem;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 500;
   transition: all 0.2s;
   display: flex;
@@ -316,20 +316,20 @@
   flex-shrink: 0;
 }
 
-.action-btn:hover {
+.folder-card .action-btn:hover {
   background: var(--primary);
   border-color: var(--primary);
   color: white;
   transform: scale(1.05);
 }
 
-.action-btn.edit-btn:hover {
+.folder-card .action-btn.edit-btn:hover {
   background: var(--primary);
   border-color: var(--primary);
   color: white;
 }
 
-.action-btn.delete-btn:hover {
+.folder-card .action-btn.delete-btn:hover {
   background: var(--danger);
   border-color: var(--danger);
 }
@@ -451,11 +451,7 @@
   white-space: nowrap;
 }
 
-.profile-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
+/* .profile-actions intentionally removed — handled by ProfileTab.css */
 
 /* Scrollbar */
 .folders-list::-webkit-scrollbar,

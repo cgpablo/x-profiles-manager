@@ -8,6 +8,7 @@ import { ProfileFolder, ChromeProfile } from '../../types';
 import Tooltip from './Tooltip';
 import ProfileAvatarIcon from './ProfileAvatarIcon';
 import DeleteConfirmModal from './DeleteProfileConfirmModal';
+import CharacterInfoModal from './CharacterInfoModal';
 import './SidebarFolders.css';
 
 interface SidebarFoldersProps {
@@ -79,6 +80,7 @@ export default function SidebarFolders({
   const [moveSectionExpanded, setMoveSectionExpanded] = useState(false);
   const [profileToDelete, setProfileToDelete] = useState<ChromeProfile | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<ProfileFolder | null>(null);
+  const [characterInfoProfile, setCharacterInfoProfile] = useState<ChromeProfile | null>(null);
 
   // Close context menus on Esc key
   useEffect(() => {
@@ -445,69 +447,77 @@ export default function SidebarFolders({
                                         ✕ Close
                                      </button>
                                     )}
-                                  {onToggleStar && (
-                                    <button
-                                      className="context-menu-item"
-                                      onClick={() => { onToggleStar(profile.id); setProfileContextMenu(null); }}
-                                    >
-                                      {profile.starred ? '★ Remove favorite' : '☆ Add favorite'}
-                                    </button>
-                                  )}
-                                  {onEditProfile && profile.locked === false && (
-                                    <button
-                                      className="context-menu-item"
-                                      onClick={() => { onEditProfile(profile); setProfileContextMenu(null); }}
-                                    >
-                                      ✎ Edit
-                                    </button>
-                                  )}
-                                  {onDeleteProfile && profile.locked === false && (
-                                    <button
-                                      className="context-menu-item context-menu-delete"
-                                      onClick={() => { setProfileToDelete(profile); setProfileContextMenu(null); }}
-                                    >
-                                      🗑️ Delete
-                                    </button>
-                                  )}
-                                  {onMoveProfileToFolder && folders.length > 0 && (
-                                    <>
-                                      <div className="context-menu-divider" />
-                                      <button
-                                        className="context-menu-section"
-                                        onClick={(e) => { e.stopPropagation(); setMoveSectionExpanded(p => !p); }}
+                                   {onToggleStar && profile.locked === false && (
+                                     <button
+                                       className="context-menu-item"
+                                       onClick={() => { onToggleStar(profile.id); setProfileContextMenu(null); }}
                                      >
-                                       <span className={`context-menu-section-arrow${moveSectionExpanded ? ' expanded' : ''}`}>▶</span>
-                                       Move to
+                                       {profile.starred ? '★ Remove favorite' : '☆ Add favorite'}
                                      </button>
-                                     {moveSectionExpanded && (
-                                       <div className="context-menu-move-items">
-                                         {folders.map((f) => (
-                                          <button
-                                            key={f.id}
-                                            className="context-menu-item"
-                                            onClick={() => {
-                                              onMoveProfileToFolder(profile.id, f.id);
-                                              setProfileContextMenu(null);
-                                            }}
-                                          >
-                                            {f.icon} {f.name}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            , document.body
-                           )}
-                         </div>
-                       );
-                     })}
-                  </div>
-                )}
-              </>
-             ) : null;
-           })()}
+                                   )}
+                                   {((profile.fcInfo?.ig?.length ?? 0) > 0 || (profile.fcInfo?.x?.length ?? 0) > 0 || (profile.fcInfo?.sc?.length ?? 0) > 0) && (
+                                     <button
+                                       className="context-menu-item"
+                                       onClick={() => { setCharacterInfoProfile(profile); setProfileContextMenu(null); }}
+                                     >
+                                       🎭 Character info
+                                     </button>
+                                   )}
+                                   {onEditProfile && profile.locked === false && (
+                                     <button
+                                       className="context-menu-item"
+                                       onClick={() => { onEditProfile(profile); setProfileContextMenu(null); }}
+                                     >
+                                       ✎ Edit
+                                     </button>
+                                   )}
+                                   {onDeleteProfile && profile.locked === false && (
+                                     <button
+                                       className="context-menu-item context-menu-delete"
+                                       onClick={() => { setProfileToDelete(profile); setProfileContextMenu(null); }}
+                                     >
+                                       🗑️ Delete
+                                     </button>
+                                   )}
+                                   {onMoveProfileToFolder && folders.length > 0 && (
+                                     <>
+                                       <div className="context-menu-divider" />
+                                       <button
+                                         className="context-menu-section"
+                                         onClick={(e) => { e.stopPropagation(); setMoveSectionExpanded(p => !p); }}
+                                      >
+                                        <span className={`context-menu-section-arrow${moveSectionExpanded ? ' expanded' : ''}`}>▶</span>
+                                        Move to
+                                      </button>
+                                      {moveSectionExpanded && (
+                                        <div className="context-menu-move-items">
+                                          {folders.map((f) => (
+                                           <button
+                                             key={f.id}
+                                             className="context-menu-item"
+                                             onClick={() => {
+                                               onMoveProfileToFolder(profile.id, f.id);
+                                               setProfileContextMenu(null);
+                                             }}
+                                           >
+                                             {f.icon} {f.name}
+                                           </button>
+                                         ))}
+                                       </div>
+                                     )}
+                                   </>
+                                 )}
+                               </div>
+                             , document.body
+                            )}
+                          </div>
+                        );
+                      })}
+                   </div>
+                 )}
+               </>
+              ) : null;
+            })()}
 
         {/* Folders - mostrar todas, pero solo expandir si tienen profiles activos */}
         {folders.map((folder) => {
@@ -727,7 +737,7 @@ export default function SidebarFolders({
                                         ✕ Close
                                      </button>
                                    )}
-                                  {onToggleStar && (
+                                   {onToggleStar && profile.locked === false && (
                                      <button
                                        className="context-menu-item"
                                        onClick={() => { onToggleStar(profile.id); setProfileContextMenu(null); }}
@@ -735,7 +745,15 @@ export default function SidebarFolders({
                                        {profile.starred ? '★ Remove favorite' : '☆ Add favorite'}
                                      </button>
                                    )}
-                                  {onEditProfile && profile.locked === false && (
+                                   {((profile.fcInfo?.ig?.length ?? 0) > 0 || (profile.fcInfo?.x?.length ?? 0) > 0 || (profile.fcInfo?.sc?.length ?? 0) > 0) && (
+                                     <button
+                                       className="context-menu-item"
+                                       onClick={() => { setCharacterInfoProfile(profile); setProfileContextMenu(null); }}
+                                     >
+                                       🎭 Character info
+                                     </button>
+                                   )}
+                                   {onEditProfile && profile.locked === false && (
                                     <button
                                       className="context-menu-item"
                                       onClick={() => { onEditProfile(profile); setProfileContextMenu(null); }}
@@ -963,6 +981,12 @@ export default function SidebarFolders({
             itemName={profileToDelete.name}
             onConfirm={() => { onDeleteProfile?.(profileToDelete.id); setProfileToDelete(null); }}
             onCancel={() => setProfileToDelete(null)}
+          />
+        )}
+        {characterInfoProfile && (
+          <CharacterInfoModal
+            profile={characterInfoProfile}
+            onClose={() => setCharacterInfoProfile(null)}
           />
         )}
       </div>
