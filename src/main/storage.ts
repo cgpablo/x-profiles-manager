@@ -5,7 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
-import { ChromeProfile, AppSettings, ProfileFolder } from '../types';
+import { BrowserProfile, AppSettings, ProfileFolder } from '../types';
 import { v4 as uuid } from 'uuid';
 
 export class StorageManager {
@@ -36,11 +36,11 @@ export class StorageManager {
 
   // ====== PROFILES ======
 
-  getAllProfiles(): ChromeProfile[] {
+  getAllProfiles(): BrowserProfile[] {
     try {
       if (fs.existsSync(this.profilesFile)) {
         const data = fs.readFileSync(this.profilesFile, 'utf-8');
-        const profiles: ChromeProfile[] = JSON.parse(data);
+        const profiles: BrowserProfile[] = JSON.parse(data);
 
         // Only fix profiles that are completely missing orderIndex (first-time migration)
         // Do NOT renormalize existing indices — that would destroy saved order
@@ -70,7 +70,7 @@ export class StorageManager {
   // Batch-save a new ordering without touching other profile fields
   saveProfilesOrder(profileIds: string[]): void {
     const raw = fs.existsSync(this.profilesFile)
-      ? (JSON.parse(fs.readFileSync(this.profilesFile, 'utf-8')) as ChromeProfile[])
+      ? (JSON.parse(fs.readFileSync(this.profilesFile, 'utf-8')) as BrowserProfile[])
       : [];
 
     const indexMap = new Map(profileIds.map((id, i) => [id, i]));
@@ -81,7 +81,7 @@ export class StorageManager {
     this.saveProfiles(updated);
   }
 
-  getProfile(profileId: string): ChromeProfile | null {
+  getProfile(profileId: string): BrowserProfile | null {
     const profiles = this.getAllProfiles();
     return profiles.find((p) => p.id === profileId) || null;
   }
@@ -91,11 +91,11 @@ export class StorageManager {
     color: string = '#3b82f6',
     icon: string = '🔗',
     xAccount?: string
-  ): ChromeProfile {
+  ): BrowserProfile {
     const profiles = this.getAllProfiles();
     const profilesBaseDir = this.getSettings().profilesDir;
 
-    const profile: ChromeProfile = {
+    const profile: BrowserProfile = {
       id: uuid(),
       name,
       color,
@@ -119,13 +119,32 @@ export class StorageManager {
     return profile;
   }
 
-  updateProfile(profileId: string, updates: Partial<ChromeProfile>): ChromeProfile | null {
+  updateProfile(profileId: string, updates: Partial<BrowserProfile>): BrowserProfile | null {
     const profiles = this.getAllProfiles();
     const index = profiles.findIndex((p) => p.id === profileId);
 
     if (index === -1) return null;
 
-    profiles[index] = { ...profiles[index], ...updates, lastAccessed: Date.now() };
+    const current = profiles[index];
+
+    // If name changed, rename the dataDir folder on disk and update the path
+    if (updates.name && updates.name !== current.name) {
+      const settings = this.getSettings();
+      const newDirName = updates.name.replace(/\s+/g, '_');
+      const newDataDir = path.join(settings.profilesDir, newDirName);
+
+      if (newDataDir !== current.dataDir) {
+        if (fs.existsSync(newDataDir)) {
+          throw new Error(`A profile folder named "${newDirName}" already exists`);
+        }
+        if (fs.existsSync(current.dataDir)) {
+          fs.renameSync(current.dataDir, newDataDir);
+        }
+        updates.dataDir = newDataDir;
+      }
+    }
+
+    profiles[index] = { ...current, ...updates, lastAccessed: Date.now() };
     this.saveProfiles(profiles);
     return profiles[index];
   }
@@ -159,7 +178,7 @@ export class StorageManager {
     return true;
   }
 
-  private saveProfiles(profiles: ChromeProfile[]): void {
+  private saveProfiles(profiles: BrowserProfile[]): void {
     fs.writeFileSync(this.profilesFile, JSON.stringify(profiles, null, 2));
   }
 
@@ -260,9 +279,10 @@ export class StorageManager {
   private buildDefaultValues(): AppSettings {
     // Try to detect Chrome path
     let chromePath = '';
+    let geckoPath = '';
 
     if (process.platform === 'win32') {
-      const possiblePaths = [
+      const chromePaths = [
         path.join(process.env.ProgramFiles || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
         path.join(
           process.env['ProgramFiles(x86)'] || '',
@@ -272,15 +292,35 @@ export class StorageManager {
           'chrome.exe'
         ),
       ];
-      chromePath = possiblePaths.find((p) => fs.existsSync(p)) || '';
+      chromePath = chromePaths.find((p) => fs.existsSync(p)) || '';
+
+      const geckoPaths = [
+        path.join(process.env.ProgramFiles || '', 'Mozilla Firefox', 'firefox.exe'),
+        path.join(process.env['ProgramFiles(x86)'] || '', 'Mozilla Firefox', 'firefox.exe'),
+        path.join(process.env.LOCALAPPDATA || '', 'Zen Browser', 'zen.exe'),
+      ];
+      geckoPath = geckoPaths.find((p) => fs.existsSync(p)) || '';
     } else if (process.platform === 'darwin') {
-      const possiblePaths = [
+      const chromePaths = [
         '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
         '/Applications/Chromium.app/Contents/MacOS/Chromium',
       ];
-      chromePath = possiblePaths.find((p) => fs.existsSync(p)) || '';
+      chromePath = chromePaths.find((p) => fs.existsSync(p)) || '';
+
+      const geckoPaths = [
+        '/Applications/Firefox.app/Contents/MacOS/firefox',
+        '/Applications/Zen Browser.app/Contents/MacOS/zen',
+        '/Applications/LibreWolf.app/Contents/MacOS/librewolf',
+      ];
+      geckoPath = geckoPaths.find((p) => fs.existsSync(p)) || '';
     } else {
       chromePath = '/usr/bin/google-chrome'; // Linux default
+      const geckoPaths = [
+        '/usr/bin/firefox',
+        '/usr/bin/zen-browser',
+        '/usr/bin/librewolf',
+      ];
+      geckoPath = geckoPaths.find((p) => fs.existsSync(p)) || '/usr/bin/firefox';
     }
 
     const profilesDir = path.join(this.appDataDir, '..', 'profiles');
@@ -289,7 +329,9 @@ export class StorageManager {
     }
 
     return {
+      browserEngine: 'chromium',
       chromePath,
+      geckoPath,
       profilesDir,
       windowLayout: 'floating',
       autoLaunchOnStartup: false,
@@ -348,9 +390,16 @@ export class StorageManager {
 
   // ====== BACKUP/RESTORE ======
 
+  /**
+   * Exports all app data as a ZIP containing:
+   * - data.json: profiles, folders, passwords (encrypted), mails
+   * - images/: all profile images as actual files
+   */
   async createBackup(outputPath: string): Promise<string> {
     const AdmZip = require('adm-zip');
-    
+    const { passwordManager } = require('./passwordManager');
+    const { mailManager } = require('./mailManager');
+
     try {
       if (!outputPath || typeof outputPath !== 'string') {
         throw new Error('Invalid output path for backup');
@@ -358,37 +407,54 @@ export class StorageManager {
 
       const zip = new AdmZip();
 
-      // Add metadata JSON files
-      zip.addFile('profiles.json', Buffer.from(fs.readFileSync(this.profilesFile)));
-      zip.addFile('folders.json', Buffer.from(fs.readFileSync(this.foldersFile)));
-      zip.addFile('settings.json', Buffer.from(fs.readFileSync(this.settingsFile)));
+      // Gather all metadata
+      const profiles = this.getAllProfiles();
+      const folders = this.getAllFolders();
+      const passwords = passwordManager.getAllRaw();
+      const mails = mailManager.getAll();
 
-      // Add Chrome profiles directories
-      const profilesDir = path.join(this.appDataDir, '..', 'profiles');
-      if (fs.existsSync(profilesDir)) {
-        const addDirToZip = (dirPath: string, zipPath: string) => {
+      const data = {
+        version: 2,
+        exportedAt: new Date().toISOString(),
+        profiles,
+        folders,
+        passwords,
+        mails,
+      };
+
+      zip.addFile('data.json', Buffer.from(JSON.stringify(data, null, 2)));
+
+      // Add all images: profile images + icon files (deduplicated)
+      const addedFiles = new Set<string>();
+
+      // Add profile images (named by profileId for easy mapping on import)
+      for (const profile of profiles) {
+        if (profile.imagePath && fs.existsSync(profile.imagePath)) {
           try {
-            const files = fs.readdirSync(dirPath);
-            for (const file of files) {
-              const filePath = path.join(dirPath, file);
-              try {
-                const stat = fs.statSync(filePath);
-                if (stat.isDirectory()) {
-                  addDirToZip(filePath, path.join(zipPath, file));
-                } else if (stat.isFile()) {
-                  const fileData = fs.readFileSync(filePath);
-                  zip.addFile(path.join(zipPath, file), fileData);
-                }
-                // Ignore symlinks and other special files silently
-              } catch (fileError) {
-                // Silently skip files that can't be read (broken symlinks, etc)
-              }
-            }
-          } catch (dirError) {
-            // Silently skip directories that can't be read
+            const ext = path.extname(profile.imagePath) || '.png';
+            const imageData = fs.readFileSync(profile.imagePath);
+            const zipName = `images/${profile.id}${ext}`;
+            zip.addFile(zipName, imageData);
+            addedFiles.add(path.resolve(profile.imagePath));
+          } catch {
+            // Skip unreadable images
           }
-        };
-        addDirToZip(profilesDir, 'profiles');
+        }
+      }
+
+      // Add remaining icon files from iconsDir (skip already added)
+      if (fs.existsSync(this.iconsDir)) {
+        for (const file of fs.readdirSync(this.iconsDir)) {
+          const filePath = path.join(this.iconsDir, file);
+          if (addedFiles.has(path.resolve(filePath))) continue;
+          try {
+            if (fs.statSync(filePath).isFile()) {
+              zip.addFile(`images/${file}`, fs.readFileSync(filePath));
+            }
+          } catch {
+            // Skip unreadable files
+          }
+        }
       }
 
       // Ensure output directory exists
@@ -397,9 +463,8 @@ export class StorageManager {
         fs.mkdirSync(outputDir, { recursive: true });
       }
 
-      // Write ZIP file
       zip.writeZip(outputPath);
-      console.log(`Backup created at: ${outputPath}`);
+      console.log(`Backup exported to: ${outputPath}`);
       return outputPath;
     } catch (error) {
       console.error('Error creating backup:', error);
@@ -407,12 +472,16 @@ export class StorageManager {
     }
   }
 
+  /**
+   * Imports app data from a ZIP backup file.
+   * Restores: profiles, folders, passwords (encrypted), mails, and profile images.
+   */
   async restoreBackup(backupPath: string): Promise<void> {
     const AdmZip = require('adm-zip');
-    const { installExtension } = require('./extensionsManager');
-    
+    const { passwordManager } = require('./passwordManager');
+    const { mailManager } = require('./mailManager');
+
     try {
-      // Verify backup file exists
       if (!fs.existsSync(backupPath)) {
         throw new Error('Backup file not found');
       }
@@ -420,90 +489,57 @@ export class StorageManager {
       const zip = new AdmZip(backupPath);
       const zipEntries = zip.getEntries();
 
-      // Extract metadata files
-      const profilesEntry = zipEntries.find((e: any) => e.entryName === 'profiles.json');
-      const foldersEntry = zipEntries.find((e: any) => e.entryName === 'folders.json');
-      const settingsEntry = zipEntries.find((e: any) => e.entryName === 'settings.json');
-
-      if (!profilesEntry || !foldersEntry || !settingsEntry) {
-        throw new Error('Invalid backup file: missing metadata');
+      // Read data.json
+      const dataEntry = zipEntries.find((e: any) => e.entryName === 'data.json');
+      if (!dataEntry) {
+        throw new Error('Invalid backup file: missing data.json');
       }
 
-      // Backup current data (in case restore fails) — only if files exist
-      const currentProfilesData = fs.existsSync(this.profilesFile) ? fs.readFileSync(this.profilesFile, 'utf-8') : null;
-      const currentFoldersData = fs.existsSync(this.foldersFile) ? fs.readFileSync(this.foldersFile, 'utf-8') : null;
-      const currentSettingsData = fs.existsSync(this.settingsFile) ? fs.readFileSync(this.settingsFile, 'utf-8') : null;
+      const backup = JSON.parse(dataEntry.getData().toString('utf-8'));
 
-      try {
-        // Extract metadata files
-        fs.writeFileSync(this.profilesFile, profilesEntry.getData().toString());
-        fs.writeFileSync(this.foldersFile, foldersEntry.getData().toString());
-        fs.writeFileSync(this.settingsFile, settingsEntry.getData().toString());
-
-        // Extract Chrome profiles
-        const profilesDir = path.join(this.appDataDir, '..', 'profiles');
-        
-        // Clear existing profiles directory with retry logic for Windows
-        if (fs.existsSync(profilesDir)) {
-          await this.removeDirectoryWithRetry(profilesDir);
-        }
-        fs.mkdirSync(profilesDir, { recursive: true });
-
-        // Extract all profile directories
-        const profileEntries = zipEntries.filter((e: any) => e.entryName.startsWith('profiles/'));
-        for (const entry of profileEntries) {
-          if (entry.isDirectory) {
-            const targetDir = path.join(this.appDataDir, '..', entry.entryName);
-            fs.mkdirSync(targetDir, { recursive: true });
-          } else {
-            const targetPath = path.join(this.appDataDir, '..', entry.entryName);
-            const targetDir = path.dirname(targetPath);
-            fs.mkdirSync(targetDir, { recursive: true });
-            fs.writeFileSync(targetPath, entry.getData());
-          }
-        }
-
-        // After restore, install extensions from importedprofiles if marked as installed
-        try {
-          const profilesData = JSON.parse(profilesEntry.getData().toString()) as ChromeProfile[];
-          const settingsData = JSON.parse(settingsEntry.getData().toString()) as AppSettings;
-          
-          // Get Chrome path from settings
-          const chromePath = settingsData.chromePath;
-          
-          // For each profile with installedExtensions marked as true, install them
-          for (const profile of profilesData) {
-            if (profile.installedExtensions && chromePath) {
-              const extensionsToInstall = (Object.entries(profile.installedExtensions) as any[])
-                .filter(([_, installed]) => installed === true)
-                .map(([key, _]) => key);
-              
-              if (extensionsToInstall.length > 0) {
-                console.log(`Installing ${extensionsToInstall.length} extensions for profile ${profile.name}...`);
-                for (const extKey of extensionsToInstall) {
-                  try {
-                    await installExtension(chromePath, profile.dataDir, extKey);
-                  } catch (error) {
-                    console.error(`Failed to install extension ${extKey} for profile ${profile.name}:`, error);
-                  }
-                }
-              }
-            }
-          }
-        } catch (error) {
-          console.warn('Error installing extensions during restore:', error);
-          // Don't fail the restore if extension installation fails
-        }
-
-        console.log('Backup restored successfully');
-      } catch (error) {
-        // Restore backup on error (only if we have backups)
-        console.error('Error during restore, rolling back:', error);
-        if (currentProfilesData) fs.writeFileSync(this.profilesFile, currentProfilesData);
-        if (currentFoldersData) fs.writeFileSync(this.foldersFile, currentFoldersData);
-        if (currentSettingsData) fs.writeFileSync(this.settingsFile, currentSettingsData);
-        throw error;
+      if (!backup.profiles || !backup.folders) {
+        throw new Error('Invalid backup file: missing profiles or folders');
       }
+
+      // Restore images first (so we can update imagePaths before saving profiles)
+      const imageEntries = zipEntries.filter((e: any) => e.entryName.startsWith('images/') && !e.isDirectory);
+      for (const entry of imageEntries) {
+        const filename = path.basename(entry.entryName);
+        const destPath = path.join(this.iconsDir, filename);
+        fs.writeFileSync(destPath, entry.getData());
+
+        // If filename matches a profileId (e.g. "uuid.png"), update that profile's imagePath
+        const nameWithoutExt = path.parse(filename).name;
+        const profile = backup.profiles.find((p: any) => p.id === nameWithoutExt);
+        if (profile) {
+          profile.imagePath = destPath;
+        }
+      }
+
+      // Restore profiles (with updated imagePaths)
+      this.saveProfiles(backup.profiles);
+
+      // Restore folders
+      this.saveFolders(backup.folders);
+
+      // Restore passwords (if present)
+      if (backup.passwords && Array.isArray(backup.passwords)) {
+        passwordManager.restoreAll(backup.passwords);
+      }
+
+      // Restore mails (if present)
+      if (backup.mails && Array.isArray(backup.mails)) {
+        mailManager.restoreAll(backup.mails);
+      }
+
+      // Create profile data directories (empty, for the browser to initialize on first launch)
+      for (const profile of backup.profiles) {
+        if (profile.dataDir && !fs.existsSync(profile.dataDir)) {
+          fs.mkdirSync(profile.dataDir, { recursive: true });
+        }
+      }
+
+      console.log('Backup restored successfully');
     } catch (error) {
       console.error('Error restoring backup:', error);
       throw error;

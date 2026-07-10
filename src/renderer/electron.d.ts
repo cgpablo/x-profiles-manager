@@ -2,7 +2,7 @@
  * Global type definitions for Electron API and Electron-specific DOM elements.
  */
 
-import { ChromeProfile, AppSettings, ProcessInfo, ProfileFolder } from '../types';
+import { BrowserProfile, AppSettings, ProcessInfo, ProfileFolder } from '../types';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // ElectronAPI (exposed via contextBridge in preload.ts)
@@ -10,9 +10,9 @@ import { ChromeProfile, AppSettings, ProcessInfo, ProfileFolder } from '../types
 
 interface ElectronAPI {
   profiles: {
-    getAll: () => Promise<ChromeProfile[]>;
-    create: (name: string, color?: string, icon?: string, xAccount?: string, folderId?: string) => Promise<ChromeProfile>;
-    update: (profileId: string, updates: Partial<ChromeProfile>) => Promise<ChromeProfile | null>;
+    getAll: () => Promise<BrowserProfile[]>;
+    create: (name: string, color?: string, icon?: string, xAccount?: string, folderId?: string) => Promise<BrowserProfile>;
+    update: (profileId: string, updates: Partial<BrowserProfile>) => Promise<BrowserProfile | null>;
     delete: (profileId: string) => Promise<boolean>;
     saveOrder: (profileIds: string[]) => Promise<boolean>;
   };
@@ -55,6 +55,10 @@ interface ElectronAPI {
     create: (email: string, profileIds: string[]) => Promise<any>;
     update: (id: string, updates: { email?: string; profileIds?: string[] }) => Promise<any>;
     delete: (id: string) => Promise<boolean>;
+  };
+  shell: {
+    openExternal: (url: string) => Promise<boolean>;
+    openPath: (filePath: string) => Promise<boolean>;
   };
 }
 

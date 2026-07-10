@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChromeProfile, ProfileFolder } from '../../types';
+import { BrowserProfile, ProfileFolder } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
 import ProfileTab from './ProfileTab';
@@ -16,7 +16,7 @@ import './Dashboard.css';
 
 interface DashboardProps {
   folders: ProfileFolder[];
-  profiles: ChromeProfile[];
+  profiles: BrowserProfile[];
   selectedFolderId: string | null | 'ungrouped' | '__online__' | '__search__' | '__starred__';
   onSelectFolder: (folderId: string | null | 'ungrouped' | '__online__' | '__search__') => void;
   onProfilesChange: () => void;
@@ -28,7 +28,7 @@ interface DashboardProps {
   onGoToDashboard?: () => void;
   onGoToSettings?: () => void;
   onGoToFolders?: () => void;
-  onOrderChange?: (orderedProfiles: Map<string | 'ungrouped', ChromeProfile[]>, orderedFolders: ProfileFolder[]) => void;
+  onOrderChange?: (orderedProfiles: Map<string | 'ungrouped', BrowserProfile[]>, orderedFolders: ProfileFolder[]) => void;
   activeStatuses?: Map<string, boolean>;
   onToggleAllFolders?: (expand: boolean) => void;
   showPasswordManager?: boolean;
@@ -46,15 +46,15 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
   const electronAPI = useElectronAPI();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedFolderForCreate, setSelectedFolderForCreate] = useState<string | undefined>(undefined);
-  const [editingProfile, setEditingProfile] = useState<ChromeProfile | null>(null);
-  const [profileToDelete, setProfileToDelete] = useState<ChromeProfile | null>(null);
+  const [editingProfile, setEditingProfile] = useState<BrowserProfile | null>(null);
+  const [profileToDelete, setProfileToDelete] = useState<BrowserProfile | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<ProfileFolder | null>(null);
   const [editingFolder, setEditingFolder] = useState<ProfileFolder | null>(null);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [orderedFolders, setOrderedFolders] = useState<ProfileFolder[]>([]);
   const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
   const [draggedProfileId, setDraggedProfileId] = useState<string | null>(null);
-  const [orderedProfiles, setOrderedProfiles] = useState<Map<string | 'ungrouped', ChromeProfile[]>>(new Map());
+  const [orderedProfiles, setOrderedProfiles] = useState<Map<string | 'ungrouped', BrowserProfile[]>>(new Map());
   const [activeTab, setActiveTab] = useState<'folders' | 'profiles'>('folders'); // Para tabs en pantallas estrechas
   const dragOverTimerRef = useRef<NodeJS.Timeout | null>(null);
   // Track profile IDs to detect add/delete vs status-only changes
@@ -95,7 +95,7 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
 
     if (idsChanged || folderAssignmentChanged || orderedProfiles.size === 0 || missingFolder) {
       // Profiles added/deleted or moved between folders: rebuild preserving existing order
-      const profilesByFolder = new Map<string | 'ungrouped', ChromeProfile[]>();
+      const profilesByFolder = new Map<string | 'ungrouped', BrowserProfile[]>();
       for (const folder of activeFolders) {
         const existing = orderedProfiles.get(folder.id) || [];
         const fresh = profiles.filter(p => p.folderId === folder.id);
@@ -137,7 +137,7 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
     }
   };
 
-  const handleEditProfile = (profile: ChromeProfile) => {
+  const handleEditProfile = (profile: BrowserProfile) => {
     setEditingProfile(profile);
   };
 

@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { ChromeProfile, ProfileFolder } from '../../types';
+import { BrowserProfile, ProfileFolder } from '../../types';
 import SidebarDashboard from './SidebarDashboard';
 import SidebarFolders from './SidebarFolders';
 import SidebarPasswordManager from './SidebarPasswordManager';
@@ -15,7 +15,7 @@ import './Sidebar.css';
 
 interface SidebarProps {
   folders: ProfileFolder[];
-  profiles: ChromeProfile[];
+  profiles: BrowserProfile[];
   selectedFolderId: string | null | 'ungrouped';
   expandedFolders: Set<string>;
   expandedOthers?: boolean;
@@ -45,9 +45,9 @@ interface SidebarProps {
   showCharacterHub?: boolean;
   showFreedcamp?: boolean;
   showDashboard?: boolean;
-  orderedProfiles?: Map<string | 'ungrouped', ChromeProfile[]>;
+  orderedProfiles?: Map<string | 'ungrouped', BrowserProfile[]>;
   onToggleAllFolders?: (expand: boolean) => void;
-  onEditProfile?: (profile: ChromeProfile) => void;
+  onEditProfile?: (profile: BrowserProfile) => void;
   onDeleteProfile?: (profileId: string) => void;
   onToggleStar?: (profileId: string) => void;
 }

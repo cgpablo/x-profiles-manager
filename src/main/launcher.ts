@@ -1,5 +1,5 @@
 /**
- * Chrome Launcher - Abre Chrome con un perfil específico
+ * Browser Launcher - Abre un navegador (Chromium o Gecko) con un perfil específico
  */
 
 import { spawn, ChildProcess, execSync } from 'child_process';
@@ -7,7 +7,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
 import { storageManager } from './storage';
-import { ProcessInfo, ChromeProfile } from '../types';
+import { ProcessInfo, BrowserProfile, BrowserEngine } from '../types';
 
 export class ChromeLauncher {
   private runningProcesses: Map<string, ProcessInfo> = new Map();
@@ -78,6 +78,70 @@ export class ChromeLauncher {
   }
 
   /**
+   * Returns the active browser engine from settings
+   */
+  private getBrowserEngine(): BrowserEngine {
+    return storageManager.getSettings().browserEngine || 'chromium';
+  }
+
+  /**
+   * Returns the browser executable path based on current engine
+   */
+  private getBrowserPath(): string {
+    const settings = storageManager.getSettings();
+    if (settings.browserEngine === 'gecko') {
+      return settings.geckoPath || '';
+    }
+    return settings.chromePath;
+  }
+
+  /**
+   * Returns the process name pattern for pgrep/tasklist based on engine
+   */
+  private getBrowserProcessNames(): string[] {
+    if (this.getBrowserEngine() === 'gecko') {
+      return ['firefox', 'zen', 'librewolf', 'waterfox'];
+    }
+    return ['chrome', 'chromium', 'msedge'];
+  }
+
+  /**
+   * Returns the macOS app name for AppleScript based on browser path
+   */
+  private getMacOSAppName(): string {
+    const browserPath = this.getBrowserPath().toLowerCase();
+    if (browserPath.includes('zen')) return 'Zen Browser';
+    if (browserPath.includes('librewolf')) return 'LibreWolf';
+    if (browserPath.includes('waterfox')) return 'Waterfox';
+    if (browserPath.includes('firefox')) return 'Firefox';
+    if (browserPath.includes('edge') || browserPath.includes('msedge')) return 'Microsoft Edge';
+    if (browserPath.includes('chromium')) return 'Chromium';
+    return 'Google Chrome';
+  }
+
+  /**
+   * Returns the effective data directory for the current engine.
+   * Each engine stores its data in a subdirectory: <dataDir>/chromium or <dataDir>/gecko
+   */
+  private getEffectiveDataDir(dataDir: string, engine?: BrowserEngine): string {
+    const e = engine || this.getBrowserEngine();
+    return path.join(dataDir, e);
+  }
+
+  /**
+   * Returns the profile dir CLI arg pattern used in the running process.
+   * Used for pgrep/pkill to identify profile-specific processes.
+   * For gecko, we search just the effective dataDir path since Firefox may re-exec with -profile (single dash).
+   */
+  private getProfileDirPattern(dataDir: string): string {
+    const effectiveDir = this.getEffectiveDataDir(dataDir);
+    if (this.getBrowserEngine() === 'gecko') {
+      return effectiveDir;
+    }
+    return 'user-data-dir=' + effectiveDir;
+  }
+
+  /**
    * Platform-specific: Close Chrome process on Windows
    */
   private closeProcessWindows(processInfo: ProcessInfo): void {
@@ -95,7 +159,8 @@ export class ChromeLauncher {
         } catch (e) {
           console.warn(`Could not kill PID ${processInfo.pid}, trying by name...`);
           try {
-            execSync(`taskkill /IM chrome.exe /F`, {
+            const exeName = this.getBrowserEngine() === 'gecko' ? 'firefox.exe' : 'chrome.exe';
+            execSync(`taskkill /IM ${exeName} /F`, {
               stdio: 'ignore',
               timeout: 5000,
             });
@@ -114,14 +179,15 @@ export class ChromeLauncher {
     * Platform-specific: Close Chrome process on macOS
     * Uses graceful shutdown first, then force kill if necessary
     */
-  private closeProcessMacOS(processInfo: ProcessInfo, profile?: ChromeProfile): void {
+  private closeProcessMacOS(processInfo: ProcessInfo, profile?: BrowserProfile): void {
     const { execSync } = require('child_process');
     if (processInfo.pid && processInfo.pid > 0) {
-      try {
-        // First try graceful close with AppleScript (simulates clicking the close button)
-        console.log(`[macOS] Attempting graceful close for PID ${processInfo.pid}`);
         try {
-          const script = `tell application "Google Chrome" to close (every window)`;
+          // First try graceful close with AppleScript (simulates clicking the close button)
+          console.log(`[macOS] Attempting graceful close for PID ${processInfo.pid}`);
+          try {
+            const appName = this.getMacOSAppName();
+            const script = `tell application "${appName}" to close (every window)`;
           execSync(`osascript -e '${script.replace(/'/g, "'\\''")}'`, {
             stdio: 'ignore',
             timeout: 3000,
@@ -147,7 +213,7 @@ export class ChromeLauncher {
     }
     if (profile) {
       try {
-        execSync(`pkill -f ${JSON.stringify('user-data-dir=' + profile.dataDir)}`, { stdio: 'ignore' });
+        execSync(`pkill -f ${JSON.stringify(this.getProfileDirPattern(profile.dataDir))}`, { stdio: 'ignore' });
       } catch {}
     }
   }
@@ -174,21 +240,43 @@ export class ChromeLauncher {
         stdio: ['pipe', 'pipe', 'ignore'],
       });
       const lines = output.trim().split('\n').filter((l: string) => l.trim().length > 0);
-      return lines.length > 0 && lines[0].includes('chrome');
+      const processNames = this.getBrowserProcessNames();
+      if (lines.length > 0 && processNames.some(name => lines[0].toLowerCase().includes(name))) {
+        return true;
+      }
     } catch (error: any) {
-      return false;
+      // fall through to command-line search
     }
+    // For Gecko: PID may be stale if Firefox re-execed; search process list by profile dir
+    if (this.getBrowserEngine() === 'gecko') {
+      const profileId = Array.from(this.runningProcesses.entries())
+        .find(([_, info]) => info.pid === processInfo.pid)?.[0];
+      const profile = profileId ? storageManager.getProfile(profileId) : null;
+      if (profile) {
+        try {
+          const dataDirEscaped = profile.dataDir.replace(/\\/g, '\\\\');
+          const output = execSync(
+            `wmic process where "CommandLine like '%${dataDirEscaped}%'" get ProcessId /format:csv`,
+            { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'], timeout: 5000 }
+          );
+          return output.split('\n').filter((l: string) => /\d+/.test(l)).length > 0;
+        } catch {
+          return false;
+        }
+      }
+    }
+    return false;
   }
 
   /**
    * Platform-specific: Check if profile process is running on macOS
    */
-  private getProfileStatusMacOS(processInfo: ProcessInfo, profile?: ChromeProfile): boolean {
+  private getProfileStatusMacOS(processInfo: ProcessInfo, profile?: BrowserProfile): boolean {
     const { execSync } = require('child_process');
     if (!profile) return false;
     
     try {
-      execSync(`pgrep -f ${JSON.stringify('user-data-dir=' + profile.dataDir)}`, {
+      execSync(`pgrep -f ${JSON.stringify(this.getProfileDirPattern(profile.dataDir))}`, {
         stdio: 'ignore',
       });
       return true;
@@ -205,6 +293,21 @@ export class ChromeLauncher {
       process.kill(processInfo.pid, 0);
       return true;
     } catch {
+      // For Gecko: PID may be stale if Firefox re-execed; search by profile dir
+      if (this.getBrowserEngine() === 'gecko') {
+        const { execSync } = require('child_process');
+        const profileId = Array.from(this.runningProcesses.entries())
+          .find(([_, info]) => info.pid === processInfo.pid)?.[0];
+        const profile = profileId ? storageManager.getProfile(profileId) : null;
+        if (profile) {
+          try {
+            execSync(`pgrep -f ${JSON.stringify(profile.dataDir)}`, { stdio: 'ignore' });
+            return true;
+          } catch {
+            return false;
+          }
+        }
+      }
       return false;
     }
   }
@@ -212,7 +315,7 @@ export class ChromeLauncher {
   /**
    * Creates an HTML interstitial page that injects the xprofile into storage
    */
-  private createInterstitialPage(profile: ChromeProfile): string {
+  private createInterstitialPage(profile: BrowserProfile): string {
     const xprofile = profile.xAccount || '';
     const username = xprofile.startsWith('@') ? xprofile.substring(1) : xprofile;
     
@@ -258,13 +361,14 @@ export class ChromeLauncher {
   }
 
   /**
-   * Lanza Chrome con un perfil específico
+   * Lanza el navegador con un perfil específico
    */
   async launchProfile(profileId: string, url: string = 'https://x.com'): Promise<ProcessInfo | null> {
     const profile = storageManager.getProfile(profileId);
     if (!profile) return null;
 
     const settings = storageManager.getSettings();
+    const engine = settings.browserEngine || 'chromium';
 
     // If already running, return existing process info
     if (this.runningProcesses.has(profileId)) {
@@ -273,37 +377,52 @@ export class ChromeLauncher {
     }
 
     try {
-      const chromePath = settings.chromePath;
+      const browserPath = this.getBrowserPath();
 
-      // Check if Chrome exists
-      if (!chromePath) {
-        throw new Error('Chrome path not configured');
+      // Check if browser exists
+      if (!browserPath) {
+        throw new Error(engine === 'gecko' ? 'Firefox/Zen path not configured' : 'Chrome path not configured');
       }
 
-      // Generate a unique debug port for this profile (9222 + hash)
-      const debugPort = this.getDebugPort(profileId);
-      this.debugPorts.set(profileId, debugPort);
+      // Compute effective data dir (engine subdirectory)
+      const effectiveDir = this.getEffectiveDataDir(profile.dataDir, engine);
 
-      const args = [
-        `--user-data-dir=${profile.dataDir}`,
-        `--no-first-run`,
-        `--no-default-browser-check`,
-        `--remote-debugging-port=${debugPort}`,
-      ];
+      // Ensure the engine subdirectory exists
+      if (!fs.existsSync(effectiveDir)) {
+        fs.mkdirSync(effectiveDir, { recursive: true });
+      }
 
-      // Platform-specific flags
-      if (process.platform === 'win32' || process.platform === 'linux') {
-        // Windows & Linux: disable crash recovery prompt
-        args.push('--disable-session-crashed-bubble');
-        args.push('--disable-session-restore');
-      } else if (process.platform === 'darwin') {
-        // macOS: suppress various crash/recovery prompts and session restoration
-        args.push('--disable-session-crashed-bubble');
-        args.push('--disable-component-update');
-        args.push('--no-service-autorun');
-        // Disable session restoration completely
-        args.push('--disable-session-restore');
-        args.push('--disable-sync');
+      // Build CLI args based on engine
+      let args: string[];
+
+      if (engine === 'gecko') {
+        args = [
+          '--profile', effectiveDir,
+          '--no-remote',
+        ];
+      } else {
+        // Chromium engine
+        const debugPort = this.getDebugPort(profileId);
+        this.debugPorts.set(profileId, debugPort);
+
+        args = [
+          `--user-data-dir=${effectiveDir}`,
+          `--no-first-run`,
+          `--no-default-browser-check`,
+          `--remote-debugging-port=${debugPort}`,
+        ];
+
+        // Platform-specific flags (Chromium only)
+        if (process.platform === 'win32' || process.platform === 'linux') {
+          args.push('--disable-session-crashed-bubble');
+          args.push('--disable-session-restore');
+        } else if (process.platform === 'darwin') {
+          args.push('--disable-session-crashed-bubble');
+          args.push('--disable-component-update');
+          args.push('--no-service-autorun');
+          args.push('--disable-session-restore');
+          args.push('--disable-sync');
+        }
       }
 
       // Build the URL - use interstitial page if xAccount is specified
@@ -313,16 +432,31 @@ export class ChromeLauncher {
       }
       args.push(finalUrl);
 
+      // Extensions: open store pages for enabled-but-missing extensions as extra tabs
+      try {
+        const { getExtensionUrlsToOpen } = require('./extensionsManager');
+        const extensionsConfig = settings.platformPreferences?.extensionsConfig;
+        if (extensionsConfig) {
+          const extUrls = getExtensionUrlsToOpen(effectiveDir, extensionsConfig, engine);
+          if (extUrls.length > 0) {
+            console.log(`Opening ${extUrls.length} extension store page(s) for profile ${profileId}`);
+            args.push(...extUrls);
+          }
+        }
+      } catch (error) {
+        console.warn('Error checking extensions:', error);
+      }
+
       let pid = 0;
 
       // Platform-specific launching
       if (process.platform === 'darwin') {
-        // macOS: spawn Chrome binary directly so multiple profiles can run as separate instances.
-        if (!fs.existsSync(chromePath)) {
-          throw new Error(`Chrome not found at ${chromePath}`);
+        // macOS: spawn browser binary directly so multiple profiles can run as separate instances.
+        if (!fs.existsSync(browserPath)) {
+          throw new Error(`Browser not found at ${browserPath}`);
         }
         
-        const proc = spawn(chromePath, args, {
+        const proc = spawn(browserPath, args, {
           detached: true,
           stdio: 'ignore',
         });
@@ -342,14 +476,16 @@ export class ChromeLauncher {
           console.error('Error returning focus to app:', error);
         }
        } else if (process.platform === 'win32') {
-         // Windows: use chrome.exe directly with no-activate flag
-         if (!fs.existsSync(chromePath)) {
-           throw new Error(`Chrome not found at ${chromePath}`);
+         // Windows
+         if (!fs.existsSync(browserPath)) {
+           throw new Error(`Browser not found at ${browserPath}`);
          }
 
-         args.push('--disable-activate-on-launch');
+         if (engine === 'chromium') {
+           args.push('--disable-activate-on-launch');
+         }
 
-         const proc = spawn(chromePath, args, {
+         const proc = spawn(browserPath, args, {
            detached: true,
            stdio: 'ignore',
            shell: false,
@@ -359,11 +495,11 @@ export class ChromeLauncher {
          proc.unref();
       } else {
         // Linux and others
-        if (!fs.existsSync(chromePath)) {
-          throw new Error(`Chrome not found at ${chromePath}`);
+        if (!fs.existsSync(browserPath)) {
+          throw new Error(`Browser not found at ${browserPath}`);
         }
 
-        const proc = spawn(chromePath, args, {
+        const proc = spawn(browserPath, args, {
           detached: true,
           stdio: 'ignore',
         });
@@ -391,20 +527,35 @@ export class ChromeLauncher {
   }
 
   /**
-   * macOS: Enfoca ventana de Chrome por PID Unix
+   * macOS: Enfoca ventana del navegador por PID Unix
    */
   private focusWindowMacOS(profileId: string, processInfo: ProcessInfo): boolean {
     const { execSync } = require('child_process');
     try {
       console.log(`[macOS Focus] Starting focus for profile ${profileId} (PID: ${processInfo.pid})`);
-      
-      // Activate Chrome application
-      execSync(`open -a "Google Chrome"`, { stdio: 'ignore' });
-      console.log(`[macOS Focus] Opened Chrome app`);
-      
-      // Use osascript to specifically activate the window by process PID
+
+      // Resolve the actual live PID by searching for the profile dir in the process list.
+      // The stored PID may be stale (Firefox re-execs itself after launch).
+      let targetPid = processInfo.pid;
+      const profile = storageManager.getProfile(profileId);
+      if (profile) {
+        try {
+          const output = execSync(
+            `pgrep -f ${JSON.stringify(this.getProfileDirPattern(profile.dataDir))}`,
+            { encoding: 'utf8', timeout: 3000 }
+          );
+          const pids = output.trim().split('\n').map((l: string) => parseInt(l, 10)).filter((n: number) => !isNaN(n));
+          if (pids.length > 0) {
+            targetPid = pids[0]; // Parent process is typically the lowest/first PID
+          }
+        } catch {
+          // pgrep found nothing; fall back to stored PID
+        }
+      }
+
+      // Focus the window by unix PID (no `open -a` — that could launch the default browser instance)
       const script = `tell application "System Events"
-    set frontmost of (every process whose unix id is ${processInfo.pid}) to true
+    set frontmost of (every process whose unix id is ${targetPid}) to true
 end tell`;
       
       execSync(`osascript -e '${script}'`, {
@@ -412,10 +563,10 @@ end tell`;
         timeout: 5000,
       });
       
-      console.log(`✓ Focus window succeeded for profile ${profileId} on macOS (PID: ${processInfo.pid})`);
+      console.log(`✓ Focus window succeeded for profile ${profileId} on macOS (PID: ${targetPid})`);
       return true;
     } catch (error) {
-      console.error(`✗ Error focusing Chrome on macOS for profile ${profileId}:`, error);
+      console.error(`✗ Error focusing browser on macOS for profile ${profileId}:`, error);
       return false;
     }
   }
@@ -434,23 +585,25 @@ end tell`;
 
       const TH32CS_SNAPPROCESS = 0x00000002;
 
-      // Collect all chrome.exe PIDs via snapshot
-      const chromePids: number[] = [];
+      // Collect all browser PIDs via snapshot
+      const browserPids: number[] = [];
+      const processNames = this.getBrowserProcessNames();
       const snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
       const entry: any = { dwSize: koffi.sizeof(PROCESSENTRY32) };
 
       if (Process32First(snapshot, entry)) {
         do {
           const name = Buffer.from(entry.szExeFile).toString('utf8').replace(/\0.*$/, '');
-          if (name.toLowerCase() === 'chrome.exe') chromePids.push(entry.th32ProcessID);
+          const nameLower = name.toLowerCase();
+          if (processNames.some(pn => nameLower.includes(pn))) browserPids.push(entry.th32ProcessID);
         } while (Process32Next(snapshot, entry));
       }
       CloseHandle(snapshot);
 
-      console.log(`[WinAPI Focus] Found ${chromePids.length} chrome.exe PIDs. Stored PID: ${processInfo.pid}`);
+      console.log(`[WinAPI Focus] Found ${browserPids.length} browser PIDs. Stored PID: ${processInfo.pid}`);
 
-      // Prioritize the stored PID (launched by us), then all chrome PIDs
-      const prioritized = [processInfo.pid, ...chromePids.filter(p => p !== processInfo.pid)];
+      // Prioritize the stored PID (launched by us), then all browser PIDs
+      const prioritized = [processInfo.pid, ...browserPids.filter(p => p !== processInfo.pid)];
 
       let targetHwnd: any = null;
 
@@ -673,11 +826,13 @@ end tell`;
         // Check Windows focus method setting
         const settings = storageManager.getSettings();
         const focusMethod = settings.platformPreferences?.focusMethodWindows || 'auto';
+        const engine = settings.browserEngine || 'chromium';
         
-        if (focusMethod === 'cdp') {
-          return await this.focusWindowCDP(profileId);
-        } else if (focusMethod === 'winapi') {
+        // CDP focus only works with Chromium
+        if (engine === 'gecko' || focusMethod === 'winapi') {
           return this.focusWindowWindows(profileId, processInfo, profile);
+        } else if (focusMethod === 'cdp') {
+          return await this.focusWindowCDP(profileId);
         } else {
           // 'auto': Try Windows API first, fallback to CDP if it fails
           const result = this.focusWindowWindows(profileId, processInfo, profile);
@@ -833,7 +988,7 @@ end tell`;
    * Install missing extensions based on global settings preference
    * DISABLED: Extension opening system needs to be reworked
    */
-  async openExtensionsIfNeeded(profile: ChromeProfile, settings: any): Promise<void> {
+  async openExtensionsIfNeeded(profile: BrowserProfile, settings: any): Promise<void> {
     // TODO: Re-implement extension opening with proper CDP/WebSocket support
     console.log(`Profile ${profile.id}: Extension opening disabled for now`);
     return;
@@ -842,7 +997,7 @@ end tell`;
   /**
    * Registra metadatos de un perfil (llamado cuando se crea o edita)
    */
-  updateProfileMetadata(profileId: string, profile: ChromeProfile): void {
+  updateProfileMetadata(profileId: string, profile: BrowserProfile): void {
     this.profileMetadataMap.set(profileId, {
       folderId: profile.folderId,
       name: profile.name,
@@ -865,7 +1020,7 @@ end tell`;
   /**
    * Carga todos los metadatos de perfiles desde storage
    */
-  loadProfileMetadata(profiles: ChromeProfile[]): void {
+  loadProfileMetadata(profiles: BrowserProfile[]): void {
     this.profileMetadataMap.clear();
     for (const profile of profiles) {
       this.updateProfileMetadata(profile.id, profile);

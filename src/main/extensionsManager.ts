@@ -1,40 +1,62 @@
 /**
- * Extensions Manager - Handle Chrome extension detection
- * Extensions are opened in the Web Store on first launch, then auto-installed
+ * Extensions Manager - Handle browser extension detection across engines
+ * Supports Chromium (Chrome, Brave, Edge) and Gecko (Firefox, Zen, LibreWolf)
  */
 
 import * as path from 'path';
 import * as fs from 'fs';
+import { BrowserEngine } from '../types';
 
-// Extension IDs and metadata
+// Extension metadata per engine
 export const EXTENSIONS = {
   ublockOriginLite: {
-    id: 'ddkjiahejlhfcafbddmgiahcphecmpfh',
     name: 'uBlock Origin Lite',
-    url: 'https://chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh',
+    chromium: {
+      id: 'ddkjiahejlhfcafbddmgiahcphecmpfh',
+      url: 'https://chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh',
+    },
+    gecko: {
+      id: 'uBlock0@raymondhill.net',
+      url: 'https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/',
+    },
   },
   twitterControl: {
-    id: 'kpmjjdhbcfebfjgdnpjagcndoelnidfj',
     name: 'Control Panel for Twitter',
-    url: 'https://chromewebstore.google.com/detail/control-panel-for-twitter/kpmjjdhbcfebfjgdnpjagcndoelnidfj',
+    chromium: {
+      id: 'kpmjjdhbcfebfjgdnpjagcndoelnidfj',
+      url: 'https://chromewebstore.google.com/detail/control-panel-for-twitter/kpmjjdhbcfebfjgdnpjagcndoelnidfj',
+    },
+    gecko: {
+      id: '{5cce4ab5-3d47-41b9-af5e-8203eea05245}',
+      url: 'https://addons.mozilla.org/en-US/firefox/addon/control-panel-for-twitter/',
+    },
   },
 };
 
-type ExtensionKey = keyof typeof EXTENSIONS;
+export type ExtensionKey = keyof typeof EXTENSIONS;
 
 /**
- * Check if an extension is installed in a Chrome profile
+ * Check if an extension is installed in a browser profile
  */
-export function isExtensionInstalled(profileDataDir: string, extensionKey: ExtensionKey): boolean {
-  const extensionId = EXTENSIONS[extensionKey].id;
-  const extensionPath = path.join(
-    profileDataDir,
-    'Extensions',
-    extensionId
-  );
-  
+export function isExtensionInstalled(profileDataDir: string, extensionKey: ExtensionKey, engine: BrowserEngine): boolean {
+  const ext = EXTENSIONS[extensionKey][engine];
+  if (!ext) return false;
+
   try {
-    return fs.existsSync(extensionPath) && fs.statSync(extensionPath).isDirectory();
+    if (engine === 'chromium') {
+      // Chromium stores extensions in <userDataDir>/Default/Extensions/<id>/
+      // ("Default" is the profile Chrome creates inside the user-data-dir)
+      const extensionPath = path.join(profileDataDir, 'Default', 'Extensions', ext.id);
+      return fs.existsSync(extensionPath) && fs.statSync(extensionPath).isDirectory();
+    } else {
+      // Gecko stores extensions in <profileDir>/extensions/<id>.xpi or <id>/ directory
+      const extensionsDir = path.join(profileDataDir, 'extensions');
+      if (!fs.existsSync(extensionsDir)) return false;
+
+      const xpiPath = path.join(extensionsDir, `${ext.id}.xpi`);
+      const dirPath = path.join(extensionsDir, ext.id);
+      return fs.existsSync(xpiPath) || (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory());
+    }
   } catch (error) {
     console.error(`Error checking extension ${extensionKey}:`, error);
     return false;
@@ -44,33 +66,32 @@ export function isExtensionInstalled(profileDataDir: string, extensionKey: Exten
 /**
  * Detect all installed extensions in a profile
  */
-export function detectInstalledExtensions(profileDataDir: string): Record<ExtensionKey, boolean> {
+export function detectInstalledExtensions(profileDataDir: string, engine: BrowserEngine): Record<ExtensionKey, boolean> {
   return {
-    ublockOriginLite: isExtensionInstalled(profileDataDir, 'ublockOriginLite'),
-    twitterControl: isExtensionInstalled(profileDataDir, 'twitterControl'),
+    ublockOriginLite: isExtensionInstalled(profileDataDir, 'ublockOriginLite', engine),
+    twitterControl: isExtensionInstalled(profileDataDir, 'twitterControl', engine),
   };
 }
 
 /**
- * Get extension URLs to open for a profile that needs installation
- * Returns array of URLs for extensions that need to be installed
+ * Get extension URLs to open for a profile that needs installation.
+ * Returns array of store URLs for extensions not yet installed.
  */
-export function getExtensionUrlsToOpen(profileDataDir: string, extensionsConfig: any): string[] {
+export function getExtensionUrlsToOpen(profileDataDir: string, extensionsConfig: any, engine: BrowserEngine): string[] {
   const urls: string[] = [];
-  
+
   if (!extensionsConfig) {
     return urls;
   }
-  
-  // Check uBlock Origin Lite
-  if (extensionsConfig.ublockOriginLite && !isExtensionInstalled(profileDataDir, 'ublockOriginLite')) {
-    urls.push(EXTENSIONS.ublockOriginLite.url);
+
+  for (const [key, config] of Object.entries(extensionsConfig)) {
+    if (config && key in EXTENSIONS) {
+      const extKey = key as ExtensionKey;
+      if (!isExtensionInstalled(profileDataDir, extKey, engine)) {
+        urls.push(EXTENSIONS[extKey][engine].url);
+      }
+    }
   }
-  
-  // Check Control Panel for Twitter
-  if (extensionsConfig.twitterControl && !isExtensionInstalled(profileDataDir, 'twitterControl')) {
-    urls.push(EXTENSIONS.twitterControl.url);
-  }
-  
+
   return urls;
 }

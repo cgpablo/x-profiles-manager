@@ -3,10 +3,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { ChromeProfile } from '../../types';
+import { BrowserProfile } from '../../types';
 
 interface ProfileAvatarIconProps {
-  profile: Pick<ChromeProfile, 'id' | 'name' | 'imagePath'>;
+  profile: Pick<BrowserProfile, 'id' | 'name' | 'imagePath'>;
 }
 
 export default function ProfileAvatarIcon({ profile }: ProfileAvatarIconProps) {

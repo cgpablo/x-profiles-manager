@@ -3,7 +3,7 @@
  */
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { ChromeProfile, ProfileFolder } from '../types';
+import { BrowserProfile, ProfileFolder } from '../types';
 import { useElectronAPI } from './hooks/useElectronAPI';
 import Dashboard from './components/Dashboard';
 import Folders from './components/Folders';
@@ -19,7 +19,7 @@ type View = 'dashboard' | 'folders' | 'settings' | 'character-hub' | 'password-m
 function App() {
   const electronAPI = useElectronAPI();
   const [view, setView] = useState<View>('dashboard');
-  const [profiles, setProfiles] = useState<ChromeProfile[]>([]);
+  const [profiles, setProfiles] = useState<BrowserProfile[]>([]);
   const [folders, setFolders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,12 +33,12 @@ function App() {
 
   // Order state — no initialization guard: every drag immediately shows the 💾 button
   const pendingOrderRef = useRef<{
-    profiles: Map<string | 'ungrouped', ChromeProfile[]>;
+    profiles: Map<string | 'ungrouped', BrowserProfile[]>;
     folders: ProfileFolder[];
   } | null>(null);
   // Save the original order state for undo functionality
   const originalOrderRef = useRef<{
-    profiles: ChromeProfile[];
+    profiles: BrowserProfile[];
     folders: ProfileFolder[];
   } | null>(null);
   const [hasPendingOrder, setHasPendingOrder] = useState(false);
@@ -51,6 +51,7 @@ function App() {
   const [showCharacterHub, setShowCharacterHub] = useState(false);
   const [showFreedcamp, setShowFreedcamp] = useState(false);
   const [showDashboard, setShowDashboard] = useState(true);
+  const [showDirectory, setShowDirectory] = useState(false);
   // Track which folders have been auto-expanded to avoid repeatedly expanding after manual collapse
   const autoExpandedFoldersRef = useRef<Set<string>>(new Set());
 
@@ -138,6 +139,7 @@ function App() {
       setShowFreedcamp(result.platformPreferences?.showFreedcamp ?? false);
       const dashboardVisible = result.platformPreferences?.showDashboard ?? true;
       setShowDashboard(dashboardVisible);
+      setShowDirectory(result.platformPreferences?.developerMode && result.platformPreferences?.showDirectory ? true : false);
       // On initial load, redirect to 'folders' if dashboard is hidden
       if (isInitialLoad && !dashboardVisible) {
         setView('folders');
@@ -276,7 +278,7 @@ function App() {
 
   // Called on every drag-drop in Dashboard — always show the save button
   const handleOrderChange = (
-    orderedProfiles: Map<string | 'ungrouped', ChromeProfile[]>,
+    orderedProfiles: Map<string | 'ungrouped', BrowserProfile[]>,
     orderedFolders: ProfileFolder[]
   ) => {
     // Save original order only on first change
@@ -460,6 +462,7 @@ function App() {
                       showCharacterHub={showCharacterHub}
                       showFreedcamp={showFreedcamp}
                       showDashboard={showDashboard}
+                      showDirectory={showDirectory}
                    onGoToCharacterHub={() => setView('character-hub')}
                    onGoToFreedcamp={() => {}}
                     onGoToPasswordManager={() => setView('password-manager')}
@@ -490,13 +493,14 @@ function App() {
                     showPasswordManager={showPasswordManager}
                     showMailManager={showMailManager}
                     showCharacterHub={showCharacterHub}
-                    showFreedcamp={showFreedcamp}
-                    showDashboard={showDashboard}
-                    onGoToCharacterHub={() => setView('character-hub')}
-                    onGoToFreedcamp={() => {}}
-                    onGoToPasswordManager={() => setView('password-manager')}
-                    onGoToMailManager={() => setView('mail-manager')}
-                  />
+                     showFreedcamp={showFreedcamp}
+                     showDashboard={showDashboard}
+                     showDirectory={showDirectory}
+                     onGoToCharacterHub={() => setView('character-hub')}
+                     onGoToFreedcamp={() => {}}
+                     onGoToPasswordManager={() => setView('password-manager')}
+                     onGoToMailManager={() => setView('mail-manager')}
+                   />
             </div>
 
             {/* Settings - kept mounted to avoid sidebar flicker */}
@@ -555,12 +559,13 @@ function App() {
                      showPasswordManager={showPasswordManager}
                      showMailManager={showMailManager}
                      showCharacterHub={showCharacterHub}
-                     showFreedcamp={showFreedcamp}
-                     showDashboard={showDashboard}
-                     onToggleAllFolders={handleToggleAllFolders}
-                     onGoToPasswordManager={() => setView('password-manager')}
-                     onGoToMailManager={() => setView('mail-manager')}
-                 />
+                      showFreedcamp={showFreedcamp}
+                      showDashboard={showDashboard}
+                      showDirectory={showDirectory}
+                      onToggleAllFolders={handleToggleAllFolders}
+                      onGoToPasswordManager={() => setView('password-manager')}
+                      onGoToMailManager={() => setView('mail-manager')}
+                  />
             </div>
 
             {/* Password Manager - kept mounted to avoid sidebar flicker */}
@@ -576,19 +581,20 @@ function App() {
                    onToggleOthers={handleToggleOthers}
                    onGoToDashboard={() => setView('dashboard')}
                    onGoToSettings={() => setView('settings')}
-                   onGoToFolders={() => setView('folders')}
-                   onGoToCharacterHub={() => setView('character-hub')}
-                    onGoToPasswordManager={() => setView('password-manager')}
-                    onGoToMailManager={() => setView('mail-manager')}
-                    activeStatuses={activeStatuses}
-                    onFoldersChange={handleFoldersChange}
-                    showPasswordManager={showPasswordManager}
-                    showMailManager={showMailManager}
-                    showCharacterHub={showCharacterHub}
-                    showFreedcamp={showFreedcamp}
-                    showDashboard={showDashboard}
-                    onToggleAllFolders={handleToggleAllFolders}
-                  />
+                    onGoToFolders={() => setView('folders')}
+                    onGoToCharacterHub={() => setView('character-hub')}
+                     onGoToPasswordManager={() => setView('password-manager')}
+                     onGoToMailManager={() => setView('mail-manager')}
+                     activeStatuses={activeStatuses}
+                     onFoldersChange={handleFoldersChange}
+                     showPasswordManager={showPasswordManager}
+                     showMailManager={showMailManager}
+                     showCharacterHub={showCharacterHub}
+                     showFreedcamp={showFreedcamp}
+                     showDashboard={showDashboard}
+                     showDirectory={showDirectory}
+                     onToggleAllFolders={handleToggleAllFolders}
+                   />
              </div>
 
              {/* Mail Manager - kept mounted to avoid sidebar flicker */}
@@ -604,19 +610,20 @@ function App() {
                     onToggleOthers={handleToggleOthers}
                     onGoToDashboard={() => setView('dashboard')}
                     onGoToSettings={() => setView('settings')}
-                    onGoToFolders={() => setView('folders')}
-                    onGoToCharacterHub={() => setView('character-hub')}
-                    onGoToPasswordManager={() => setView('password-manager')}
-                    onGoToMailManager={() => setView('mail-manager')}
-                    activeStatuses={activeStatuses}
-                    onFoldersChange={handleFoldersChange}
-                    showPasswordManager={showPasswordManager}
-                    showMailManager={showMailManager}
-                    showCharacterHub={showCharacterHub}
-                    showFreedcamp={showFreedcamp}
-                    showDashboard={showDashboard}
-                    onToggleAllFolders={handleToggleAllFolders}
-                  />
+                     onGoToFolders={() => setView('folders')}
+                     onGoToCharacterHub={() => setView('character-hub')}
+                     onGoToPasswordManager={() => setView('password-manager')}
+                     onGoToMailManager={() => setView('mail-manager')}
+                     activeStatuses={activeStatuses}
+                     onFoldersChange={handleFoldersChange}
+                     showPasswordManager={showPasswordManager}
+                     showMailManager={showMailManager}
+                     showCharacterHub={showCharacterHub}
+                     showFreedcamp={showFreedcamp}
+                     showDashboard={showDashboard}
+                     showDirectory={showDirectory}
+                     onToggleAllFolders={handleToggleAllFolders}
+                   />
              </div>
            </>
          )}

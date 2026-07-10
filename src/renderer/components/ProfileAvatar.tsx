@@ -5,11 +5,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { ChromeProfile } from '../../types';
+import { BrowserProfile } from '../../types';
 import './ProfileAvatar.css';
 
 interface ProfileAvatarProps {
-  profile: Pick<ChromeProfile, 'id' | 'name' | 'color' | 'imagePath'>;
+  profile: Pick<BrowserProfile, 'id' | 'name' | 'color' | 'imagePath'>;
   className?: string;
   title?: string;
   style?: React.CSSProperties;

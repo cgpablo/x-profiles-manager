@@ -3,7 +3,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { AppSettings, ChromeProfile, ProfileFolder } from '../../types';
+import { AppSettings, BrowserProfile, ProfileFolder } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
 import ProfileModal from './ProfileModal';
@@ -13,7 +13,7 @@ import './Settings.css';
 
 interface SettingsProps {
   folders: ProfileFolder[];
-  profiles: ChromeProfile[];
+  profiles: BrowserProfile[];
   selectedFolderId: string | null | 'ungrouped';
   onSelectFolder: (folderId: string | null | 'ungrouped') => void;
   onSettingsChange: () => void;
@@ -47,8 +47,8 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [creatingFolderId, setCreatingFolderId] = useState<string | undefined>(undefined);
-  const [editingProfile, setEditingProfile] = useState<ChromeProfile | null>(null);
-  const [profileToDelete, setProfileToDelete] = useState<ChromeProfile | null>(null);
+  const [editingProfile, setEditingProfile] = useState<BrowserProfile | null>(null);
+  const [profileToDelete, setProfileToDelete] = useState<BrowserProfile | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -249,7 +249,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
       setShowCreateModal(true);
     };
 
-    const handleEditProfile = (profile: ChromeProfile) => {
+    const handleEditProfile = (profile: BrowserProfile) => {
       setEditingProfile(profile);
     };
 
@@ -354,38 +354,97 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
         <div className="settings">
 
         <div className="settings-grid">
+          <div className="settings-section info">
+            <h3>About</h3>
+            <div className="info-item">
+              <strong>App Version</strong>
+              <span>1.2.0</span>
+            </div>
+            <div className="info-item">
+              <strong>Storage Location</strong>
+              <span className="mono">{settings.profilesDir}</span>
+            </div>
+          </div>
+
           <div className="settings-section">
-            <h3>Chrome Configuration</h3>
+            <h3>Browser Configuration</h3>
 
             <div className="setting-item">
-              <label>Chrome Path</label>
-              <div className="input-with-button">
-                <input
-                  type="text"
-                  value={settings.chromePath}
-                  onChange={(e) =>
-                    setSettings({ ...settings, chromePath: e.target.value })
-                  }
-                  placeholder="/path/to/chrome"
-                  className="input-field"
-                />
-                <button
-                  className="explore-button"
-                  onClick={async () => {
-                    try {
-                      const path = await window.electronAPI.system.selectFile();
-                      setSettings({ ...settings, chromePath: path });
-                    } catch (error) {
-                      console.error('Error selecting Chrome path:', error);
-                    }
-                  }}
-                  title="Browse for Chrome executable"
-                >
-                  Browse
-                </button>
-              </div>
-              <small>Path to Chrome executable</small>
+              <label>Browser Engine</label>
+              <select
+                value={settings.browserEngine || 'chromium'}
+                onChange={(e) =>
+                  setSettings({ ...settings, browserEngine: e.target.value as 'chromium' | 'gecko' })
+                }
+                className="input-field"
+              >
+                <option value="chromium">Chromium (Chrome, Edge, Brave...)</option>
+                <option value="gecko">Gecko (Firefox, Zen, LibreWolf...)</option>
+              </select>
+              <small>Select which browser engine to use for profiles</small>
             </div>
+
+            {(settings.browserEngine || 'chromium') === 'chromium' ? (
+              <div className="setting-item">
+                <label>Chrome Path</label>
+                <div className="input-with-button">
+                  <input
+                    type="text"
+                    value={settings.chromePath}
+                    onChange={(e) =>
+                      setSettings({ ...settings, chromePath: e.target.value })
+                    }
+                    placeholder="/path/to/chrome"
+                    className="input-field"
+                  />
+                  <button
+                    className="explore-button"
+                    onClick={async () => {
+                      try {
+                        const path = await window.electronAPI.system.selectFile();
+                        setSettings({ ...settings, chromePath: path });
+                      } catch (error) {
+                        console.error('Error selecting Chrome path:', error);
+                      }
+                    }}
+                    title="Browse for Chrome executable"
+                  >
+                    Browse
+                  </button>
+                </div>
+                <small>Path to Chrome executable</small>
+              </div>
+            ) : (
+              <div className="setting-item">
+                <label>Firefox / Zen Path</label>
+                <div className="input-with-button">
+                  <input
+                    type="text"
+                    value={settings.geckoPath || ''}
+                    onChange={(e) =>
+                      setSettings({ ...settings, geckoPath: e.target.value })
+                    }
+                    placeholder="/path/to/firefox"
+                    className="input-field"
+                  />
+                  <button
+                    className="explore-button"
+                    onClick={async () => {
+                      try {
+                        const path = await window.electronAPI.system.selectFile();
+                        setSettings({ ...settings, geckoPath: path });
+                      } catch (error) {
+                        console.error('Error selecting browser path:', error);
+                      }
+                    }}
+                    title="Browse for Firefox/Zen executable"
+                  >
+                    Browse
+                  </button>
+                </div>
+                <small>Path to Firefox, Zen Browser, or compatible Gecko browser</small>
+              </div>
+            )}
 
             {settings.edgePath && (
               <div className="setting-item">
@@ -434,18 +493,6 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
             </div>
           </div>
 
-          <div className="settings-section info">
-            <h3>About</h3>
-            <div className="info-item">
-              <strong>App Version</strong>
-              <span>1.1.0</span>
-            </div>
-            <div className="info-item">
-              <strong>Storage Location</strong>
-              <span className="mono">{settings.profilesDir}</span>
-            </div>
-          </div>
-
           <div className="settings-section">
             <h3>Platform Preferences</h3>
             
@@ -469,7 +516,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
                   }}
                 />
                 <label htmlFor="enableFocus" style={{ marginLeft: '8px' }}>
-                  Allow clicking "Focus" to bring Chrome window to front
+                  Allow clicking "Focus" to bring browser window to front
                 </label>
               </div>
               <small>When disabled, focus button will be hidden</small>
@@ -524,7 +571,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
                     <option value="winapi">Windows API (SetForegroundWindow only)</option>
                     <option value="cdp">CDP (open/close tab - 100% reliable)</option>
                   </select>
-                  <small>How to focus the Chrome window on Windows</small>
+                  <small>How to focus the browser window on Windows (CDP only available with Chromium engine)</small>
                 </div>
               </>
             )}
@@ -556,6 +603,97 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
                 <small>Useful for troubleshooting focus and process issues</small>
               </div>
              )}
+
+            {settings.platformPreferences?.developerMode && (
+              <div className="setting-item">
+                <label>Show Directory Button</label>
+                <div className="checkbox-group">
+                  <input
+                    type="checkbox"
+                    id="showDirectory"
+                    checked={settings.platformPreferences?.showDirectory || false}
+                    onChange={(e) => {
+                      const prefs = settings.platformPreferences || {};
+                      setSettings({
+                        ...settings,
+                        platformPreferences: {
+                          ...prefs,
+                          showDirectory: e.target.checked,
+                        },
+                      });
+                    }}
+                  />
+                  <label htmlFor="showDirectory" style={{ marginLeft: '8px' }}>
+                    Show profile directory button on cards
+                  </label>
+                </div>
+                <small>Adds a button to open the profile folder in Finder / Explorer</small>
+              </div>
+             )}
+
+            {settings.platformPreferences?.developerMode && (
+              <div className="setting-item">
+                <label>Extensions Manager</label>
+                <small style={{ display: 'block', marginBottom: '8px' }}>
+                  Auto-open extension store pages on first profile launch when not installed
+                </small>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div className="checkbox-group">
+                    <input
+                      type="checkbox"
+                      id="extUblock"
+                      checked={settings.platformPreferences?.extensionsConfig?.ublockOriginLite || false}
+                      onChange={(e) => {
+                        const prefs = settings.platformPreferences || {};
+                        const extConfig = prefs.extensionsConfig || {};
+                        setSettings({
+                          ...settings,
+                          platformPreferences: {
+                            ...prefs,
+                            extensionsConfig: {
+                              ...extConfig,
+                              ublockOriginLite: e.target.checked,
+                            },
+                          },
+                        });
+                      }}
+                    />
+                    <label htmlFor="extUblock">
+                      uBlock Origin Lite
+                    </label>
+                  </div>
+                  <div className="checkbox-group">
+                    <input
+                      type="checkbox"
+                      id="extTwitterControl"
+                      checked={settings.platformPreferences?.extensionsConfig?.twitterControl || false}
+                      onChange={(e) => {
+                        const prefs = settings.platformPreferences || {};
+                        const extConfig = prefs.extensionsConfig || {};
+                        setSettings({
+                          ...settings,
+                          platformPreferences: {
+                            ...prefs,
+                            extensionsConfig: {
+                              ...extConfig,
+                              twitterControl: e.target.checked,
+                            },
+                          },
+                        });
+                      }}
+                    />
+                    <label htmlFor="extTwitterControl">
+                      Control Panel for Twitter
+                    </label>
+                  </div>
+                </div>
+                <small>
+                  {(settings.browserEngine || 'chromium') === 'chromium'
+                    ? 'Opens Chrome Web Store pages for missing extensions'
+                    : 'Opens Firefox Add-ons pages for missing extensions'}
+                </small>
+              </div>
+            )}
 
            </div>
 

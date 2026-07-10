@@ -9,7 +9,7 @@ import { storageManager } from './storage';
 import { chromeLauncher } from './launcher';
 import { passwordManager } from './passwordManager';
 import { mailManager } from './mailManager';
-import { ChromeProfile, AppSettings, IpcResponse, ProfileFolder } from '../types';
+import { BrowserProfile, AppSettings, IpcResponse, ProfileFolder } from '../types';
 
 export function setupIpcHandlers(): void {
   // Start process monitoring to detect when Chrome windows close
@@ -21,7 +21,7 @@ export function setupIpcHandlers(): void {
 
   // ====== PROFILE HANDLERS ======
 
-  ipcMain.handle('profiles:getAll', async (): Promise<IpcResponse<ChromeProfile[]>> => {
+  ipcMain.handle('profiles:getAll', async (): Promise<IpcResponse<BrowserProfile[]>> => {
     try {
       const profiles = storageManager.getAllProfiles();
       // Add active status
@@ -63,7 +63,7 @@ export function setupIpcHandlers(): void {
     }
   );
 
-  ipcMain.handle('profiles:update', async (_, profileId: string, updates: Partial<ChromeProfile>) => {
+  ipcMain.handle('profiles:update', async (_, profileId: string, updates: Partial<BrowserProfile>) => {
     try {
       const profile = storageManager.updateProfile(profileId, updates);
       if (!profile) {
@@ -441,6 +441,16 @@ export function setupIpcHandlers(): void {
       return { success: true, data: true };
     } catch (error) {
       console.error('Error opening external URL:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('shell:openPath', async (_, filePath: string): Promise<IpcResponse<boolean>> => {
+    try {
+      await shell.openPath(filePath);
+      return { success: true, data: true };
+    } catch (error) {
+      console.error('Error opening path:', error);
       return { success: false, error: String(error) };
     }
   });

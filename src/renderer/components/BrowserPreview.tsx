@@ -1,13 +1,13 @@
 /**
- * BrowserPreview Component - Ventana embebida de Chrome
+ * BrowserPreview Component - Ventana embebida del navegador
  */
 
 import React, { useState, useEffect } from 'react';
-import { ChromeProfile } from '../../types';
+import { BrowserProfile } from '../../types';
 import './BrowserPreview.css';
 
 interface BrowserPreviewProps {
-  profile: ChromeProfile | null;
+  profile: BrowserProfile | null;
   onClose: () => void;
   isActive?: boolean;
 }
@@ -65,8 +65,8 @@ export default function BrowserPreview({ profile, onClose, isActive }: BrowserPr
             {showInstructions && (
               <div className="instructions-box">
                 <div className="status-icon">✓</div>
-                <h2>Chrome is Running</h2>
-                <p>Profile <strong>{profile.name}</strong> is now active and running in Chrome.</p>
+                <h2>Browser is Running</h2>
+                <p>Profile <strong>{profile.name}</strong> is now active and running.</p>
                 {profile.xAccount && (
                   <p className="account-info">X Account: <strong>@{profile.xAccount}</strong></p>
                 )}
@@ -77,7 +77,7 @@ export default function BrowserPreview({ profile, onClose, isActive }: BrowserPr
                       (window as any).electronAPI?.launcher?.focusWindow?.(profile.id);
                     }}
                   >
-                    Focus Chrome Window
+                    Focus Browser Window
                   </button>
                   <button 
                     className="btn-close-profile"
@@ -109,7 +109,7 @@ export default function BrowserPreview({ profile, onClose, isActive }: BrowserPr
           <div className="inactive-info">
             <div className="status-icon">○</div>
             <h2>Profile Not Running</h2>
-            <p>Click the Launch button on the profile card to start Chrome with this profile.</p>
+            <p>Click the Launch button on the profile card to start the browser with this profile.</p>
             <div className="profile-details">
               <div className="detail-row">
                 <span className="detail-label">Profile ID:</span>

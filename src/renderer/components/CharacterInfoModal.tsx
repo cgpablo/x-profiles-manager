@@ -4,12 +4,12 @@
 
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ChromeProfile } from '../../types';
+import { BrowserProfile } from '../../types';
 import './CharacterInfoModal.css';
 import './CharacterHub.css';
 
 interface CharacterInfoModalProps {
-  profile: ChromeProfile;
+  profile: BrowserProfile;
   onClose: () => void;
 }
 

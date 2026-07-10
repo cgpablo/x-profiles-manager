@@ -65,4 +65,9 @@ export const mailManager = {
     writeAll(filtered);
     return true;
   },
+
+  /** Overwrite all entries (for restore) */
+  restoreAll(entries: MailEntry[]): void {
+    writeAll(entries);
+  },
 };

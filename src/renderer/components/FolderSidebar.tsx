@@ -3,13 +3,13 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ProfileFolder, ChromeProfile } from '../../types';
+import { ProfileFolder, BrowserProfile } from '../../types';
 import ProfileAvatarIcon from './ProfileAvatarIcon';
 import './FolderSidebar.css';
 
 interface FolderSidebarProps {
   folders: ProfileFolder[];
-  profiles: ChromeProfile[];
+  profiles: BrowserProfile[];
   selectedFolderId: string | null | 'ungrouped';
   expandedFolders: Set<string>;
   onSelectFolder: (folderId: string | null | 'ungrouped') => void;
@@ -45,7 +45,7 @@ export default function FolderSidebar({
   const contextMenuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const profileContextMenuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const [draggedProfile, setDraggedProfile] = useState<ChromeProfile | null>(null);
+  const [draggedProfile, setDraggedProfile] = useState<BrowserProfile | null>(null);
 
   // Close context menu on Esc key
   useEffect(() => {

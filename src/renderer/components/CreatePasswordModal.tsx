@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { ChromeProfile } from '../../types';
+import { BrowserProfile } from '../../types';
 import { useModalClose } from '../hooks/useModalClose';
 import './CreatePasswordModal.css';
 
@@ -14,7 +14,7 @@ interface PasswordEntryBasic {
 }
 
 interface CreatePasswordModalProps {
-  profiles: ChromeProfile[];
+  profiles: BrowserProfile[];
   editingEntry: PasswordEntryBasic | null;
   onClose: () => void;
   onSaved: () => void;

@@ -105,4 +105,14 @@ export const passwordManager = {
       return null;
     }
   },
+
+  /** Return all entries WITH encryptedValue (for backup) */
+  getAllRaw(): PasswordEntry[] {
+    return readAll();
+  },
+
+  /** Overwrite all entries (for restore) */
+  restoreAll(entries: PasswordEntry[]): void {
+    writeAll(entries);
+  },
 };

@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { ChromeProfile, ProfileFolder } from '../../types';
+import { BrowserProfile, ProfileFolder } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
 import ProfilesPanel from './ProfilesPanel';
@@ -17,7 +17,7 @@ import './FoldersView.css';
 
 interface FoldersProps {
   folders: ProfileFolder[];
-  profiles: ChromeProfile[];
+  profiles: BrowserProfile[];
   selectedFolderId: string | null | 'ungrouped' | '__online__' | '__search__' | '__starred__';
   onSelectFolder: (folderId: string | null | 'ungrouped' | '__online__' | '__search__') => void;
   onProfilesChange: () => void;
@@ -38,23 +38,25 @@ interface FoldersProps {
   showCharacterHub?: boolean;
   showFreedcamp?: boolean;
   showDashboard?: boolean;
+  showDirectory?: boolean;
   onGoToCharacterHub?: () => void;
   onGoToFreedcamp?: () => void;
   onGoToPasswordManager?: () => void;
   onGoToMailManager?: () => void;
 }
 
-export default function Folders({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, activeStatuses = new Map(), searchQuery = '', showAddCard = true, onToggleAllFolders, showPasswordManager = false, showMailManager = false, showCharacterHub = false, showFreedcamp = false, showDashboard = true, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, onGoToMailManager }: FoldersProps) {  const electronAPI = useElectronAPI();
+export default function Folders({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, activeStatuses = new Map(), searchQuery = '', showAddCard = true, onToggleAllFolders, showPasswordManager = false, showMailManager = false, showCharacterHub = false, showFreedcamp = false, showDashboard = true, showDirectory = false, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, onGoToMailManager }: FoldersProps) {  const electronAPI = useElectronAPI();
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalFolderId, setCreateModalFolderId] = useState<string | undefined>(undefined);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
-  const [editingProfile, setEditingProfile] = useState<ChromeProfile | null>(null);
+  const [editingProfile, setEditingProfile] = useState<BrowserProfile | null>(null);
   const [editingFolder, setEditingFolder] = useState<ProfileFolder | null>(null);
-  const [profileToDelete, setProfileToDelete] = useState<ChromeProfile | null>(null);
-  const [browserPreviewProfile, setBrowserPreviewProfile] = useState<ChromeProfile | null>(null);
+  const [profileToDelete, setProfileToDelete] = useState<BrowserProfile | null>(null);
+  const [browserPreviewProfile, setBrowserPreviewProfile] = useState<BrowserProfile | null>(null);
   const [sortOrderStarred, setSortOrderStarred] = useState<'asc' | 'desc'>('asc');
   const [sortOrderOnline, setSortOrderOnline] = useState<'asc' | 'desc'>('asc');
+  const [sortOrderFolders, setSortOrderFolders] = useState<'asc' | 'desc' | null>(null);
 
   const handleLaunchProfile = async (profileId: string) => {
     try {
@@ -89,7 +91,7 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
     }
   };
 
-  const handleEditProfile = (profile: ChromeProfile) => {
+  const handleEditProfile = (profile: BrowserProfile) => {
     setEditingProfile(profile);
   };
 
@@ -212,13 +214,23 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
   };
 
   const isVirtualView = selectedFolderId === '__starred__' || selectedFolderId === '__online__';
+  const isFolderView = !isVirtualView && selectedFolderId !== '__search__';
   const currentSortOrder = selectedFolderId === '__starred__' ? sortOrderStarred : sortOrderOnline;
   const toggleSortOrder = selectedFolderId === '__starred__'
     ? () => setSortOrderStarred(o => o === 'asc' ? 'desc' : 'asc')
     : () => setSortOrderOnline(o => o === 'asc' ? 'desc' : 'asc');
+
+  const cycleFolderSort = () => setSortOrderFolders(o => o === null ? 'asc' : o === 'asc' ? 'desc' : null);
+
   const profilesToDisplay = isVirtualView
     ? [...profiles].sort((a, b) =>
         currentSortOrder === 'asc'
+          ? a.name.localeCompare(b.name)
+          : b.name.localeCompare(a.name)
+      )
+    : isFolderView && sortOrderFolders !== null
+    ? [...profiles].sort((a, b) =>
+        sortOrderFolders === 'asc'
           ? a.name.localeCompare(b.name)
           : b.name.localeCompare(a.name)
       )
@@ -292,20 +304,36 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
                onMoveProfileToFolder={handleMoveProfileToFolder}
                  onSelectProfile={setBrowserPreviewProfile}
                  searchQuery={searchQuery}
-                 showAddCard={showAddCard}
-                     headerActions={
+                  showAddCard={showAddCard}
+                      showDirectory={showDirectory}
+                      headerActions={
                        <div className="panel-header-content">
                          <h3 className="panel-header-folder-name">{selectedFolderName}</h3>
-                         <div className="panel-header-actions">
-                            {isVirtualView && (
-                              <button
-                                className="panel-header-btn active"
-                                onClick={toggleSortOrder}
-                                title={currentSortOrder === 'asc' ? 'A→Z (click for Z→A)' : 'Z→A (click for A→Z)'}
-                              >
-                                {currentSortOrder === 'desc' ? 'Z↓' : 'A↓'}
-                              </button>
-                            )}
+                          <div className="panel-header-actions">
+                             {isVirtualView && (
+                               <button
+                                 className="panel-header-btn active"
+                                 onClick={toggleSortOrder}
+                                 title={currentSortOrder === 'asc' ? 'A→Z (click for Z→A)' : 'Z→A (click for A→Z)'}
+                               >
+                                 {currentSortOrder === 'desc' ? 'Z↓' : 'A↓'}
+                               </button>
+                             )}
+                             {isFolderView && (
+                               <button
+                                 className={`panel-header-btn${sortOrderFolders !== null ? ' active' : ''}`}
+                                 onClick={cycleFolderSort}
+                                 title={
+                                   sortOrderFolders === null
+                                     ? 'Sort A→Z'
+                                     : sortOrderFolders === 'asc'
+                                     ? 'Sorted A→Z (click for Z→A)'
+                                     : 'Sorted Z→A (click to reset)'
+                                 }
+                               >
+                                 {sortOrderFolders === null ? 'AZ' : sortOrderFolders === 'asc' ? 'A↓' : 'Z↓'}
+                               </button>
+                             )}
                            {selectedFolderHasBrowserActive && selectedFolderId && (
                              <Tooltip text="Close all" position="left">
                                <button

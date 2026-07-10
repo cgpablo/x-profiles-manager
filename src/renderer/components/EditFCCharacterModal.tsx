@@ -3,13 +3,13 @@
  */
 
 import React, { useState } from 'react';
-import { ChromeProfile, FCCharacterInfo } from '../../types';
+import { BrowserProfile, FCCharacterInfo } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import { useModalClose } from '../hooks/useModalClose';
 import './EditFCCharacterModal.css';
 
 interface EditFCCharacterModalProps {
-  profile: ChromeProfile;
+  profile: BrowserProfile;
   onClose: () => void;
   onSaved: () => void;
 }

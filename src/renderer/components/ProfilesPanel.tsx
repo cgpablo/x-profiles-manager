@@ -3,13 +3,13 @@
  */
 
 import React from 'react';
-import { ChromeProfile, ProfileFolder } from '../../types';
+import { BrowserProfile, ProfileFolder } from '../../types';
 import ProfileTab from './ProfileTab';
 import EmptyProfileCard from './EmptyProfileCard';
 import './ProfilesPanel.css';
 
 interface ProfilesPanelProps {
-  profiles: ChromeProfile[];
+  profiles: BrowserProfile[];
   folders: ProfileFolder[];
   selectedFolderId: string | null | 'ungrouped' | '__online__' | '__search__';
   expandedFolders: Set<string>;
@@ -19,15 +19,16 @@ interface ProfilesPanelProps {
   onLaunchProfile: (profileId: string) => void;
   onCloseProfile: (profileId: string) => void;
   onDeleteProfile: (profileId: string) => void;
-  onEditProfile: (profile: ChromeProfile) => void;
+  onEditProfile: (profile: BrowserProfile) => void;
   onCreateProfile: (folderId?: string | undefined) => void;
   onMoveProfileToFolder?: (profileId: string, folderId: string | undefined) => void;
-  onSelectProfile?: (profile: ChromeProfile) => void;
+  onSelectProfile?: (profile: BrowserProfile) => void;
   onToggleStar?: (profileId: string) => void;
   onToggleLock?: (profileId: string) => void;
   headerActions?: React.ReactNode;
   searchQuery?: string;
   showAddCard?: boolean;
+  showDirectory?: boolean;
 }
 
 export default function ProfilesPanel({
@@ -50,9 +51,10 @@ export default function ProfilesPanel({
   headerActions,
   searchQuery = '',
   showAddCard = true,
+  showDirectory = false,
 }: ProfilesPanelProps) {
   // Group profiles by folder
-  const profilesByFolder = new Map<string | undefined, ChromeProfile[]>();
+  const profilesByFolder = new Map<string | undefined, BrowserProfile[]>();
   for (const profile of profiles) {
     const folderId = profile.folderId;
     if (!profilesByFolder.has(folderId)) {
@@ -87,7 +89,7 @@ export default function ProfilesPanel({
       return profilesByFolder.get(selectedFolderId) || [];
     }
     // Show all expanded folders + ungrouped (if expandedOthers is true)
-    const allProfiles: ChromeProfile[] = [];
+    const allProfiles: BrowserProfile[] = [];
     if (expandedOthers) {
       allProfiles.push(...unfolderredProfiles);
     }
@@ -161,11 +163,12 @@ export default function ProfilesPanel({
                       onToggleLock={onToggleLock ? () => onToggleLock(profile.id) : undefined}
                      isSelected={activeProfileId === profile.id}
                      folders={folders}
-                      onMoveToFolder={onMoveProfileToFolder ? (folderId) => onMoveProfileToFolder(profile.id, folderId) : undefined}
-                        onSelect={onSelectProfile ? () => onSelectProfile(profile) : undefined}
-                      />
-                ))}
-                {showAddCard && selectedFolderId !== '__online__' && selectedFolderId !== '__search__' && selectedFolderId !== '__starred__' && (
+                       onMoveToFolder={onMoveProfileToFolder ? (folderId) => onMoveProfileToFolder(profile.id, folderId) : undefined}
+                         onSelect={onSelectProfile ? () => onSelectProfile(profile) : undefined}
+                         showDirectory={showDirectory}
+                       />
+                 ))}
+                 {showAddCard && selectedFolderId !== '__online__' && selectedFolderId !== '__search__' && selectedFolderId !== '__starred__' && (
                   <EmptyProfileCard 
                     onCreateProfile={() => {
                       const folderIdToCreate = selectedFolderId && selectedFolderId !== 'ungrouped' ? selectedFolderId : undefined;
@@ -206,12 +209,13 @@ export default function ProfilesPanel({
                        folders={folders}
                        onMoveToFolder={onMoveProfileToFolder ? (folderId) => onMoveProfileToFolder(profile.id, folderId) : undefined}
                        onSelect={onSelectProfile ? () => onSelectProfile(profile) : undefined}
-                     />
-                  ))}
-                  {showAddCard && (
-                    <EmptyProfileCard 
-                      onCreateProfile={() => {
-                        onCreateProfile(undefined);
+                       showDirectory={showDirectory}
+                      />
+                   ))}
+                   {showAddCard && (
+                     <EmptyProfileCard 
+                       onCreateProfile={() => {
+                         onCreateProfile(undefined);
                       }}
                     />
                   )}
@@ -250,12 +254,13 @@ export default function ProfilesPanel({
                          folders={folders}
                          onMoveToFolder={onMoveProfileToFolder ? (folderId) => onMoveProfileToFolder(profile.id, folderId) : undefined}
                          onSelect={onSelectProfile ? () => onSelectProfile(profile) : undefined}
+                         showDirectory={showDirectory}
                        />
-                    ))}
-                    {showAddCard && (
-                      <EmptyProfileCard 
-                        onCreateProfile={() => {
-                          onCreateProfile(folder.id);
+                     ))}
+                     {showAddCard && (
+                       <EmptyProfileCard 
+                         onCreateProfile={() => {
+                           onCreateProfile(folder.id);
                         }}
                       />
                     )}

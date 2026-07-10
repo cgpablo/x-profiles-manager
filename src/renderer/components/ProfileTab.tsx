@@ -3,14 +3,14 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ChromeProfile } from '../../types';
+import { BrowserProfile } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Tooltip from './Tooltip';
 import CharacterInfoModal from './CharacterInfoModal';
 import './ProfileTab.css';
 
 interface ProfileTabProps {
-  profile: ChromeProfile;
+  profile: BrowserProfile;
   isActive: boolean;
   isSelected: boolean;
   onLaunch: () => void;
@@ -29,6 +29,7 @@ interface ProfileTabProps {
   onDrop?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
   disableContextMenu?: boolean;
+  showDirectory?: boolean;
 }
 
 export default function ProfileTab({
@@ -51,6 +52,7 @@ export default function ProfileTab({
   onDrop,
   onDragEnd,
   disableContextMenu = false,
+  showDirectory = false,
 }: ProfileTabProps) {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
@@ -348,7 +350,7 @@ export default function ProfileTab({
                   )}
                 </div>
 
-                {/* Row 2: Edit and Delete buttons (hidden when locked) */}
+                {/* Row 2: Edit, Delete and Directory buttons (hidden when locked) */}
                 {!isLocked && (
                 <div className="action-row">
                   <Tooltip text="Edit profile" position="top">
@@ -373,6 +375,19 @@ export default function ProfileTab({
                       🗑️
                     </button>
                   </Tooltip>
+                  {showDirectory && (
+                    <Tooltip text="Open profile folder" position="top">
+                      <button
+                        className="action-btn dir-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.electronAPI.shell.openPath(profile.dataDir).catch(console.error);
+                        }}
+                      >
+                        ⚙️
+                      </button>
+                    </Tooltip>
+                  )}
                 </div>
                 )}
 

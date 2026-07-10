@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ProfileFolder, ChromeProfile } from '../../types';
+import { ProfileFolder, BrowserProfile } from '../../types';
 import Tooltip from './Tooltip';
 import ProfileAvatarIcon from './ProfileAvatarIcon';
 import DeleteConfirmModal from './DeleteProfileConfirmModal';
@@ -13,7 +13,7 @@ import './SidebarFolders.css';
 
 interface SidebarFoldersProps {
   folders: ProfileFolder[];
-  profiles: ChromeProfile[];
+  profiles: BrowserProfile[];
   selectedFolderId: string | null | 'ungrouped';
   expandedFolders: Set<string>;
   expandedOthers?: boolean;
@@ -32,9 +32,9 @@ interface SidebarFoldersProps {
   activeStatuses?: Map<string, boolean>;
   onMoveProfileToFolder?: (profileId: string, folderId: string | undefined) => void;
   onGoToFolders?: () => void;
-  orderedProfiles?: Map<string | 'ungrouped', ChromeProfile[]>;
+  orderedProfiles?: Map<string | 'ungrouped', BrowserProfile[]>;
   onToggleAllFolders?: (expand: boolean) => void;
-  onEditProfile?: (profile: ChromeProfile) => void;
+  onEditProfile?: (profile: BrowserProfile) => void;
   onDeleteProfile?: (profileId: string) => void;
   onToggleStar?: (profileId: string) => void;
 }
@@ -73,14 +73,14 @@ export default function SidebarFolders({
   const contextMenuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const profileContextMenuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const [draggedProfile, setDraggedProfile] = useState<ChromeProfile | null>(null);
+  const [draggedProfile, setDraggedProfile] = useState<BrowserProfile | null>(null);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [headerMenuPos, setHeaderMenuPos] = useState({ x: 0, y: 0 });
   const headerMenuRef = useRef<HTMLDivElement | null>(null);
   const [moveSectionExpanded, setMoveSectionExpanded] = useState(false);
-  const [profileToDelete, setProfileToDelete] = useState<ChromeProfile | null>(null);
+  const [profileToDelete, setProfileToDelete] = useState<BrowserProfile | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<ProfileFolder | null>(null);
-  const [characterInfoProfile, setCharacterInfoProfile] = useState<ChromeProfile | null>(null);
+  const [characterInfoProfile, setCharacterInfoProfile] = useState<BrowserProfile | null>(null);
 
   // Close context menus on Esc key
   useEffect(() => {

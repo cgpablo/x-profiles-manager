@@ -3,14 +3,14 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { ChromeProfile, AppSettings, ProcessInfo, ProfileFolder } from '../types';
+import { BrowserProfile, AppSettings, ProcessInfo, ProfileFolder } from '../types';
 
 interface ElectronAPI {
   platform: 'darwin' | 'win32' | 'linux';
   profiles: {
-    getAll: () => Promise<ChromeProfile[]>;
-    create: (name: string, color?: string, icon?: string, xAccount?: string, folderId?: string) => Promise<ChromeProfile>;
-    update: (profileId: string, updates: Partial<ChromeProfile>) => Promise<ChromeProfile | null>;
+    getAll: () => Promise<BrowserProfile[]>;
+    create: (name: string, color?: string, icon?: string, xAccount?: string, folderId?: string) => Promise<BrowserProfile>;
+    update: (profileId: string, updates: Partial<BrowserProfile>) => Promise<BrowserProfile | null>;
     delete: (profileId: string) => Promise<boolean>;
     saveOrder: (profileIds: string[]) => Promise<boolean>;
   };
@@ -53,6 +53,7 @@ interface ElectronAPI {
   };
   shell: {
     openExternal: (url: string) => Promise<boolean>;
+    openPath: (filePath: string) => Promise<boolean>;
   };
   passwords: {
     getAll: () => Promise<Array<{ id: string; name: string; profileIds: string[]; createdAt: number; updatedAt?: number }>>;
@@ -152,6 +153,8 @@ const electronAPI: ElectronAPI = {
        shell: {
          openExternal: (url: string) =>
            unwrapResponse<boolean>(ipcRenderer.invoke('shell:openExternal', url)),
+         openPath: (filePath: string) =>
+           unwrapResponse<boolean>(ipcRenderer.invoke('shell:openPath', filePath)),
        },
         passwords: {
           getAll: () =>

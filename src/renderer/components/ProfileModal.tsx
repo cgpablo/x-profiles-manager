@@ -1,11 +1,11 @@
 /**
  * ProfileModal - Unified create/edit profile modal.
  * Create mode: profile prop is undefined.
- * Edit mode:   profile prop is a ChromeProfile object.
+ * Edit mode:   profile prop is a BrowserProfile object.
  */
 
 import React, { useState, useEffect } from 'react';
-import { ChromeProfile } from '../../types';
+import { BrowserProfile } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import { useModalClose } from '../hooks/useModalClose';
 import ColorPicker from './ColorPicker';
@@ -26,7 +26,7 @@ interface MailEntry {
 
 interface ProfileModalProps {
   /** Pass a profile to enter edit mode; omit (or pass undefined) for create mode. */
-  profile?: ChromeProfile;
+  profile?: BrowserProfile;
   onClose: () => void;
   onSuccess: () => void;
   /** Pre-selected folder (create mode only). */

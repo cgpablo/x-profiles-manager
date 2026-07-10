@@ -39,13 +39,13 @@ export interface ProfileFolder {
   order: number; // For sorting
 }
 
-export interface ChromeProfile {
+export interface BrowserProfile {
   id: string;
   name: string;
   color: string; // Hex color
   icon: string; // Unicode icon or custom identifier
   imagePath?: string; // Optional: path to custom image/thumbnail
-  dataDir: string; // Full path to Chrome user-data-dir
+  dataDir: string; // Full path to browser profile directory
   xAccount?: string; // Optional: associated X account
   folderId?: string; // Optional: parent folder ID
   createdAt: number;
@@ -65,9 +65,13 @@ export interface ChromeProfile {
   extensionsPromptShown?: boolean; // Flag: have we already shown the extension setup prompt?
 }
 
+export type BrowserEngine = 'chromium' | 'gecko';
+
 export interface AppSettings {
+  browserEngine: BrowserEngine;
   chromePath: string;
   edgePath?: string;
+  geckoPath?: string; // Firefox, Zen Browser, LibreWolf, etc.
   profilesDir: string;
   windowLayout?: 'floating' | 'tiled';
   autoLaunchOnStartup?: boolean;
@@ -86,6 +90,7 @@ export interface AppSettings {
     showCharacterHub?: boolean; // Show Character Hub in sidebar
     showFreedcamp?: boolean; // Show Freedcamp in sidebar
     showDashboard?: boolean; // Show Dashboard button in sidebar (default true)
+    showDirectory?: boolean; // Show "open directory" button on profile cards (requires developerMode)
   };
 }
 

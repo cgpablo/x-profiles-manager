@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { ChromeProfile, ProfileFolder } from '../../types';
+import { BrowserProfile, ProfileFolder } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
 import EditFCCharacterModal from './EditFCCharacterModal';
@@ -16,7 +16,7 @@ import './ProfilesPanel.css';
 
 interface CharacterHubProps {
   folders: ProfileFolder[];
-  profiles: ChromeProfile[];
+  profiles: BrowserProfile[];
   selectedFolderId: string | null | 'ungrouped';
   onSelectFolder: (folderId: string | null | 'ungrouped') => void;
   expandedFolders: Set<string>;
@@ -65,7 +65,7 @@ export default function CharacterHub({
   showDashboard = true,
   onToggleAllFolders,
 }: CharacterHubProps) {
-  const [editingProfile, setEditingProfile] = useState<ChromeProfile | null>(null);
+  const [editingProfile, setEditingProfile] = useState<BrowserProfile | null>(null);
   const [search, setSearch] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -73,7 +73,7 @@ export default function CharacterHub({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalFolderId, setCreateModalFolderId] = useState<string | undefined>(undefined);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
-  const [profileForEdit, setProfileForEdit] = useState<ChromeProfile | null>(null);
+  const [profileForEdit, setProfileForEdit] = useState<BrowserProfile | null>(null);
   const [editingFolder, setEditingFolder] = useState<ProfileFolder | null>(null);
 
   const handleLaunchProfile = async (profileId: string) => {

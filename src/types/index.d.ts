@@ -1,7 +1,7 @@
 /**
  * Types compartidos entre main y renderer
  */
-export interface ChromeProfile {
+export interface BrowserProfile {
     id: string;
     name: string;
     color: string;
