@@ -3,6 +3,7 @@
  */
 
 import React from 'react';
+import { FolderBookmark } from 'reicon-react';
 import { BrowserProfile, ProfileFolder } from '../../types';
 import ProfileTab from './ProfileTab';
 import EmptyProfileCard from './EmptyProfileCard';
@@ -188,7 +189,7 @@ export default function ProfilesPanel({
             {expandedOthers && unfolderredProfiles.length > 0 && (
               <div className="folder-section">
                 <div className="folder-section-header">
-                  <span className="folder-icon">📌</span>
+                   <span className="folder-icon"><FolderBookmark size={14} weight="Outline" /></span>
                   <span className="folder-name">OTHERS</span>
                    <span className="profile-count">{unfolderredProfiles.length}</span>
                   <div className="folder-section-color-strip" style={{ backgroundColor: '#6b7280' }} />

@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { Pen, SearchNormal, X } from 'reicon-react';
 import { BrowserProfile, ProfileFolder } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
@@ -243,7 +244,7 @@ export default function CharacterHub({
           <div className="panel-header-content">
             <h2 className="character-hub-title">Character Hub</h2>
             <div className="ch-search-wrapper">
-              <span className="ch-search-icon">⌕</span>
+              <span className="ch-search-icon"><SearchNormal size={16} weight="Outline" /></span>
               <input
                 className="ch-search-input"
                 type="text"
@@ -257,7 +258,7 @@ export default function CharacterHub({
                   onClick={() => setSearch('')}
                   title="Clear search"
                 >
-                  ×
+                   <X size={12} weight="Outline" />
                 </button>
               )}
             </div>
@@ -348,7 +349,7 @@ export default function CharacterHub({
                     onClick={() => setEditingProfile(profile)}
                     title="Edit faceclaim info"
                   >
-                    ✎
+                     <Pen size={14} weight="Outline" />
                   </button>
                 </div>
               </div>

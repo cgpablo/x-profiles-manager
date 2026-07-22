@@ -3,6 +3,7 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
+import { Gear, X } from 'reicon-react';
 import ColorPickerGradient from './ColorPickerGradient';
 import './ColorPicker.css';
 
@@ -78,7 +79,7 @@ export default function ColorPicker({ value, onChange, disabled = false }: Color
            disabled={disabled}
            title="Custom color"
          >
-           ⚙️
+            <Gear size={14} weight="Outline" />
          </button>
        </div>
 
@@ -89,7 +90,7 @@ export default function ColorPicker({ value, onChange, disabled = false }: Color
              <div className="color-modal-header">
                <h3>Select Color</h3>
                <button className="color-modal-close" onClick={handleCancelGradientPicker}>
-                 ✕
+                  <X size={14} weight="Outline" />
                </button>
              </div>
              <div className="color-modal-body">

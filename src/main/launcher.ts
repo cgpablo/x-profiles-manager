@@ -313,54 +313,6 @@ export class ChromeLauncher {
   }
 
   /**
-   * Creates an HTML interstitial page that injects the xprofile into storage
-   */
-  private createInterstitialPage(profile: BrowserProfile): string {
-    const xprofile = profile.xAccount || '';
-    const username = xprofile.startsWith('@') ? xprofile.substring(1) : xprofile;
-    
-    // Escape properly for JSON string
-    const escaped = JSON.stringify(username);
-    
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Loading X...</title>
-</head>
-<body style="margin:0;padding:0;background:#fff;">
-    <script type="text/javascript">
-        (function() {
-            try {
-                var username = ${escaped};
-                if (username && username.length > 0) {
-                    localStorage.setItem("_xprofile_username", username);
-                    sessionStorage.setItem("_xprofile_username", username);
-                    console.log("[X Profiles Launcher] Stored xprofile:", username);
-                }
-            } catch(e) {
-                console.error("[X Profiles Launcher] Error storing xprofile:", e);
-            }
-            
-            // Redirect to X.com
-            window.location.replace("https://x.com");
-        })();
-    </script>
-    <p>Redirecting to X.com...</p>
-</body>
-</html>`;
-
-    try {
-      const htmlPath = path.join(profile.dataDir, 'xprofile-inject.html');
-      fs.writeFileSync(htmlPath, html, 'utf8');
-      return `file://${htmlPath}`;
-    } catch (error) {
-      console.error('Error creating interstitial page:', error);
-      return 'https://x.com';
-    }
-  }
-
-  /**
    * Lanza el navegador con un perfil específico
    */
   async launchProfile(profileId: string, url: string = 'https://x.com'): Promise<ProcessInfo | null> {
@@ -425,11 +377,8 @@ export class ChromeLauncher {
         }
       }
 
-      // Build the URL - use interstitial page if xAccount is specified
+      // Build the URL
       let finalUrl = url;
-      if (profile.xAccount) {
-        finalUrl = this.createInterstitialPage(profile);
-      }
       args.push(finalUrl);
 
       // Extensions: open store pages for enabled-but-missing extensions as extra tabs
@@ -1034,6 +983,293 @@ end tell`;
   deleteProfileMetadata(profileId: string): void {
     this.profileMetadataMap.delete(profileId);
     console.log(`✓ Deleted metadata for profile ${profileId}`);
+  }
+
+  /**
+   * Check if a profile is logged in on X.com based on the URL of any open tab.
+   * Lightweight: only queries the DevTools /json endpoint, no WebSocket.
+   * Returns true only if a tab is on a known authenticated route.
+   */
+  async isLoggedIn(profileId: string): Promise<boolean> {
+    const debugPort = this.debugPorts.get(profileId);
+    if (!debugPort) return false;
+    try {
+      const pagesJson = await this.makeHttpRequest(`http://localhost:${debugPort}/json`);
+      const pages = JSON.parse(pagesJson) as Array<{ url: string; type: string }>;
+
+      const loggedInPaths = ['/home', '/notifications', '/messages', '/i/bookmarks', '/i/premium', '/compose/'];
+      return pages.some(p =>
+        p.type === 'page' &&
+        (p.url.includes('x.com') || p.url.includes('twitter.com')) &&
+        loggedInPaths.some(path => p.url.includes(path))
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Auto-login on X.com using CDP.
+   * Steps:
+   * 1. Focus the browser window
+   * 2. Navigate to x.com/i/flow/login
+   * 3. Fill username, click Next
+   * 4. Poll for password field, fill password, click Log in
+   */
+  async autoLogin(profileId: string, username: string, password: string): Promise<boolean> {
+    const debugPort = this.debugPorts.get(profileId);
+    if (!debugPort) {
+      console.error(`[AutoLogin] No debug port for profile ${profileId}`);
+      return false;
+    }
+
+    // Focus window first so user can see
+    try {
+      await this.focusWindow(profileId);
+    } catch {}
+
+    try {
+      // Get list of pages/tabs
+      const pagesJson = await this.makeHttpRequest(`http://localhost:${debugPort}/json`);
+      const pages = JSON.parse(pagesJson) as Array<{ id: string; url: string; webSocketDebuggerUrl: string; type: string }>;
+
+      // Find an existing tab on x.com or twitter.com, or use first page tab
+      let target = pages.find(p => p.type === 'page' && (p.url.includes('x.com') || p.url.includes('twitter.com')));
+      if (!target) {
+        target = pages.find(p => p.type === 'page');
+      }
+
+      if (!target || !target.webSocketDebuggerUrl) {
+        console.error('[AutoLogin] No suitable tab found');
+        return false;
+      }
+
+      const wsUrl = target.webSocketDebuggerUrl;
+      
+      // Connect via WebSocket and run the login sequence
+      return await this.runLoginSequence(wsUrl, username, password);
+    } catch (error: any) {
+      console.error(`[AutoLogin] Error: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Execute the login sequence via CDP WebSocket
+   */
+  private runLoginSequence(wsUrl: string, username: string, password: string): Promise<boolean> {
+    const WebSocket = require('ws');
+
+    return new Promise((resolve) => {
+      const ws = new WebSocket(wsUrl);
+      let msgId = 1;
+      const pending = new Map<number, (result: any) => void>();
+      let timeoutHandle: NodeJS.Timeout;
+
+      const send = (method: string, params: any = {}): Promise<any> => {
+        return new Promise((res) => {
+          const id = msgId++;
+          pending.set(id, res);
+          ws.send(JSON.stringify({ id, method, params }));
+        });
+      };
+
+      const cleanup = (result: boolean) => {
+        clearTimeout(timeoutHandle);
+        try { ws.close(); } catch {}
+        resolve(result);
+      };
+
+      // Timeout after 45s
+      timeoutHandle = setTimeout(() => {
+        console.error('[AutoLogin] Timed out after 45s');
+        cleanup(false);
+      }, 45000);
+
+      ws.on('error', () => cleanup(false));
+
+      ws.on('message', (data: Buffer) => {
+        try {
+          const msg = JSON.parse(data.toString());
+          if (msg.id && pending.has(msg.id)) {
+            const cb = pending.get(msg.id)!;
+            pending.delete(msg.id);
+            cb(msg.result || msg.error);
+          }
+        } catch {}
+      });
+
+      ws.on('open', async () => {
+        try {
+          // Enable Page events for navigation tracking
+          await send('Page.enable');
+          await send('Runtime.enable');
+
+          // Navigate to login page
+          await send('Page.navigate', { url: 'https://x.com/i/flow/login' });
+
+          // Wait for page to be ready - poll for the username input
+          const usernameFound = await this.pollForElement(send, 
+            'input[autocomplete="username"], input[name="text"], input[type="text"]',
+            10000
+          );
+          if (!usernameFound) {
+            console.error('[AutoLogin] Username field not found after polling');
+            cleanup(false);
+            return;
+          }
+
+          await this.delay(500);
+
+          // Fill username using keyboard simulation for better React compatibility
+          const focusUsername = `
+            (function() {
+              const input = document.querySelector('input[autocomplete="username"], input[name="text"], input[type="text"]');
+              if (!input) return false;
+              input.focus();
+              return true;
+            })()
+          `;
+          await send('Runtime.evaluate', { expression: focusUsername });
+          await this.delay(200);
+
+          // Type username character by character via CDP Input
+          await this.typeText(send, username);
+
+          await this.delay(500);
+
+          // Press Enter to advance to password step (more reliable than clicking Next)
+          await this.pressEnter(send);
+          console.log('[AutoLogin] Pressed Enter after username');
+
+          // Poll from Node for up to 60s waiting for the password field to appear.
+          // This is more reliable than injecting an observer/listener into the page
+          // because X.com's SPA may reset JS context on navigation, and their code
+          // may capture Enter before any injected listener sees it.
+          console.log('[AutoLogin] Waiting for user to advance to password step...');
+          const passwordAppeared = await this.pollForElement(
+            send,
+            'input[type="password"], input[name="password"]',
+            60000  // 60 seconds
+          );
+
+          if (!passwordAppeared) {
+            console.error('[AutoLogin] Password field never appeared (60s timeout)');
+            cleanup(false);
+            return;
+          }
+
+          console.log('[AutoLogin] Password field detected, waiting for stability...');
+          // Wait longer for React to finish mounting and any transitions to settle
+          await this.delay(1200);
+
+          // Focus the password input
+          const focusPasswordScript = `
+            (function() {
+              const input = document.querySelector('input[type="password"], input[name="password"]');
+              if (!input) return false;
+              input.focus();
+              input.click();
+              return true;
+            })()
+          `;
+          const focused = await send('Runtime.evaluate', { expression: focusPasswordScript });
+          if (!focused?.result?.value) {
+            console.error('[AutoLogin] Failed to focus password field');
+            cleanup(false);
+            return;
+          }
+
+          await this.delay(300);
+
+          // Type password char by char (same technique as username - more reliable)
+          await this.typeText(send, password);
+
+          console.log('✓ AutoLogin: password typed');
+
+          await this.delay(500);
+
+          // Press Enter to submit login
+          await this.pressEnter(send);
+          console.log('✓ AutoLogin: pressed Enter to submit');
+
+          cleanup(true);
+        } catch (error: any) {
+          console.error(`[AutoLogin] Sequence error: ${error.message}`);
+          cleanup(false);
+        }
+      });
+    });
+  }
+
+  /**
+   * Poll for an element to appear in the DOM
+   */
+  private async pollForElement(
+    send: (method: string, params?: any) => Promise<any>,
+    selector: string,
+    timeoutMs: number
+  ): Promise<boolean> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const result = await send('Runtime.evaluate', {
+        expression: `!!document.querySelector('${selector}')`
+      });
+      if (result?.result?.value === true) return true;
+      await this.delay(500);
+    }
+    return false;
+  }
+
+  /**
+   * Press the Enter key via CDP
+   */
+  private async pressEnter(
+    send: (method: string, params?: any) => Promise<any>
+  ): Promise<void> {
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Enter',
+      code: 'Enter',
+      windowsVirtualKeyCode: 13,
+      nativeVirtualKeyCode: 13,
+      text: '\r',
+      unmodifiedText: '\r',
+    });
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Enter',
+      code: 'Enter',
+      windowsVirtualKeyCode: 13,
+      nativeVirtualKeyCode: 13,
+    });
+  }
+
+  /**
+   * Type text character by character using CDP Input.dispatchKeyEvent
+   */
+  private async typeText(
+    send: (method: string, params?: any) => Promise<any>,
+    text: string
+  ): Promise<void> {
+    for (const char of text) {
+      await send('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: char,
+        text: char,
+      });
+      await send('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: char,
+        text: char,
+      });
+      // Small delay between keystrokes to mimic human typing
+      await this.delay(30);
+    }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 

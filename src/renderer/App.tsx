@@ -3,6 +3,7 @@
  */
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { Star, SearchNormal, X, Undo, Floppy } from 'reicon-react';
 import { BrowserProfile, ProfileFolder } from '../types';
 import { useElectronAPI } from './hooks/useElectronAPI';
 import Dashboard from './components/Dashboard';
@@ -338,14 +339,14 @@ function App() {
                 onClick={() => { setView('folders'); setSelectedFolderId('__starred__'); setSearchActive(false); }}
                 title={starredProfilesCount > 0 ? `Show ${starredProfilesCount} favorite profile(s)` : 'No favorites yet'}
               >
-                <span className="btn-show-starred-icon">★</span>
+                 <span className="btn-show-starred-icon"><Star size={14} weight="Filled" /></span>
                 Show favorites
                 {starredProfilesCount > 0 && (
                   <span className="btn-show-starred-count">{starredProfilesCount}</span>
                 )}
               </button>
             <div className="nav-search">
-              <span className="nav-search-icon">⌕</span>
+              <span className="nav-search-icon"><SearchNormal size={16} /></span>
               <input
                 ref={searchInputRef}
                 className="nav-search-input"
@@ -379,9 +380,9 @@ function App() {
                     setSearchQuery('');
                     setSelectedFolderId(null);
                   }}
-                  title="Clear search"
-                >
-                  ×
+                   title="Clear search"
+                 >
+                   <X size={12} />
                 </button>
               )}
             </div>
@@ -401,7 +402,7 @@ function App() {
                  onClick={handleCloseAll}
                  title={`Close all ${activeProfilesCount} active profile(s)`}
                >
-                 ✕ Close actives
+                  <><X size={14} /> Close actives</>
                </button>
              )}
             {hasPendingOrder && (
@@ -411,7 +412,7 @@ function App() {
                   onClick={handleUndoOrder}
                   title="Undo changes"
                 >
-                  ↶
+                   <Undo size={14} />
                 </button>
               </Tooltip>
             )}
@@ -421,7 +422,7 @@ function App() {
                 onClick={handleSaveOrder}
                 title="Save current order"
               >
-                💾
+                 <Floppy size={16} />
               </button>
             )}
          </div>

@@ -55,8 +55,11 @@ export interface BrowserProfile {
   starred?: boolean; // Starred/favourited profile
   locked?: boolean; // Locked: hide edit/delete options. undefined or true = locked (default)
   fcInfo?: FCCharacterInfo; // Fan Character info
+  directoryPath?: string;  // Optional: filesystem path to open in Finder/Explorer
   hasPassword?: boolean; // True if a password entry is linked to this profile
   hasMail?: boolean;     // True if a mail entry is linked to this profile (runtime-derived)
+  xLoggedIn?: boolean;   // Cached X.com login status (updated on launch and after auto-login)
+  xLoginCheckedAt?: number; // Timestamp of last login check
   mailEmail?: string;    // The associated email address (runtime-derived)
   installedExtensions?: {
     ublockOriginLite?: boolean;

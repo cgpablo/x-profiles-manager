@@ -3,6 +3,7 @@
  */
 
 import React from 'react';
+import { Envelope } from 'reicon-react';
 import './SidebarDashboard.css';
 
 interface SidebarMailManagerProps {
@@ -13,7 +14,7 @@ export default function SidebarMailManager({ onNavigate }: SidebarMailManagerPro
   return (
     <div className="sidebar-mail-manager">
       <button className="sidebar-section-header-btn" onClick={onNavigate}>
-        <h3><span>✉️</span><span>MAIL MANAGER</span></h3>
+        <h3><Envelope size={16} weight="Outline" /><span>MAIL MANAGER</span></h3>
       </button>
     </div>
   );

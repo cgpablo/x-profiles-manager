@@ -3,6 +3,7 @@
  */
 
 import React, { useState } from 'react';
+import { X } from 'reicon-react';
 import { BrowserProfile, FCCharacterInfo } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import { useModalClose } from '../hooks/useModalClose';
@@ -87,11 +88,8 @@ export default function EditFCCharacterModal({ profile, onClose, onSaved }: Edit
       <div className="modal-content fc-modal" ref={modalRef}>
         {/* Header */}
         <div className="modal-header">
-          <div>
-            <h2>Add Faceclaim Info</h2>
-            <p className="fc-modal-subtitle">{profile.name}</p>
-          </div>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <h2>Add Faceclaim Info to <span style={{ color: 'var(--primary)' }}>{profile.name}</span></h2>
+          <button className="modal-close" onClick={onClose}><X size={14} weight="Outline" /></button>
         </div>
 
         <div className="modal-form fc-modal-form">
@@ -128,7 +126,7 @@ export default function EditFCCharacterModal({ profile, onClose, onSaved }: Edit
                     onClick={() => handleRemoveIgTag(tag)}
                     aria-label={`Remove ${tag}`}
                   >
-                    ✕
+                    <X size={14} weight="Outline" />
                   </button>
                 </span>
               ))}
@@ -168,7 +166,7 @@ export default function EditFCCharacterModal({ profile, onClose, onSaved }: Edit
                     onClick={() => handleRemoveXTag(tag)}
                     aria-label={`Remove ${tag}`}
                   >
-                    ✕
+                    <X size={14} weight="Outline" />
                   </button>
                 </span>
               ))}
@@ -224,7 +222,7 @@ export default function EditFCCharacterModal({ profile, onClose, onSaved }: Edit
                     onClick={() => handleRemoveLink(i)}
                     aria-label="Remove link"
                   >
-                    ✕
+                    <X size={14} weight="Outline" />
                   </button>
                 </div>
               ))}

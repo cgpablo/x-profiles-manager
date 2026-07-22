@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { Pin, Folder, FolderBookmark, Globe, X, Star, Mask, Pen, Trash, Plus } from 'reicon-react';
 import { ProfileFolder, BrowserProfile } from '../../types';
 import Tooltip from './Tooltip';
 import ProfileAvatarIcon from './ProfileAvatarIcon';
@@ -214,7 +215,7 @@ export default function SidebarFolders({
            onClick={() => { onSelectFolder(null); onGoToFolders?.(); }}
            title="Show all profiles"
          >
-            <h3><span>📁</span><span>FOLDERS</span></h3>
+             <h3><span><Folder size={14} weight="Outline" /></span><span>FOLDERS</span></h3>
          </button>
          <div className="sidebar-header-actions">
            <button
@@ -270,7 +271,7 @@ export default function SidebarFolders({
                    >
                      ▶
                    </button>
-                   <span className="folder-icon">📌</span>
+                     <span className="folder-icon"><FolderBookmark size={14} weight="Outline" /></span>
                    <button
                      className="folder-name-btn"
                      onClick={(e) => {
@@ -329,12 +330,11 @@ export default function SidebarFolders({
                          className="btn-folder-menu"
                          onClick={(e) => openFolderContextMenu(e, 'ungrouped')}
                          aria-label="Folder options"
-                       >
-                         ⋮
-                       </button>
-                     </div>
-                  </div>
-               </div>
+                        >
+                          ⋮
+                        </button>
+                      </div>
+                   </div>
 
                {/* Expanded OTHERS profiles list */}
                {expandedOthers && ungroupedCount > 0 && (
@@ -434,7 +434,7 @@ export default function SidebarFolders({
                                         }}
                                         className="context-menu-item"
                                        >
-                                         🌐 Open
+                                         <><Globe size={12} /> Open</>
                                        </button>
                                     ) : (
                                       <button
@@ -444,7 +444,7 @@ export default function SidebarFolders({
                                         }}
                                         className="context-menu-item"
                                       >
-                                        ✕ Close
+                                        <><X size={12} /> Close</>
                                      </button>
                                     )}
                                    {onToggleStar && profile.locked === false && (
@@ -452,154 +452,155 @@ export default function SidebarFolders({
                                        className="context-menu-item"
                                        onClick={() => { onToggleStar(profile.id); setProfileContextMenu(null); }}
                                      >
-                                       {profile.starred ? '★ Remove favorite' : '☆ Add favorite'}
-                                     </button>
-                                   )}
-                                   {((profile.fcInfo?.ig?.length ?? 0) > 0 || (profile.fcInfo?.x?.length ?? 0) > 0 || (profile.fcInfo?.sc?.length ?? 0) > 0) && (
-                                     <button
-                                       className="context-menu-item"
-                                       onClick={() => { setCharacterInfoProfile(profile); setProfileContextMenu(null); }}
-                                     >
-                                       🎭 Character info
-                                     </button>
-                                   )}
-                                   {onEditProfile && profile.locked === false && (
-                                     <button
-                                       className="context-menu-item"
-                                       onClick={() => { onEditProfile(profile); setProfileContextMenu(null); }}
-                                     >
-                                       ✎ Edit
-                                     </button>
-                                   )}
-                                   {onDeleteProfile && profile.locked === false && (
-                                     <button
-                                       className="context-menu-item context-menu-delete"
-                                       onClick={() => { setProfileToDelete(profile); setProfileContextMenu(null); }}
-                                     >
-                                       🗑️ Delete
-                                     </button>
-                                   )}
-                                   {onMoveProfileToFolder && folders.length > 0 && (
-                                     <>
-                                       <div className="context-menu-divider" />
-                                       <button
-                                         className="context-menu-section"
-                                         onClick={(e) => { e.stopPropagation(); setMoveSectionExpanded(p => !p); }}
-                                      >
-                                        <span className={`context-menu-section-arrow${moveSectionExpanded ? ' expanded' : ''}`}>▶</span>
-                                        Move to
+                                        {profile.starred ? <><Star size={12} weight="Filled" /> Remove favorite</> : <><Star size={12} weight="Outline" /> Add favorite</>}
                                       </button>
-                                      {moveSectionExpanded && (
-                                        <div className="context-menu-move-items">
-                                          {folders.map((f) => (
-                                           <button
-                                             key={f.id}
-                                             className="context-menu-item"
-                                             onClick={() => {
-                                               onMoveProfileToFolder(profile.id, f.id);
-                                               setProfileContextMenu(null);
-                                             }}
-                                           >
-                                             {f.icon} {f.name}
-                                           </button>
-                                         ))}
-                                       </div>
-                                     )}
-                                   </>
-                                 )}
-                               </div>
-                             , document.body
-                            )}
-                          </div>
-                        );
-                      })}
-                   </div>
-                 )}
-               </>
-              ) : null;
-            })()}
+                                    )}
+                                    {((profile.fcInfo?.ig?.length ?? 0) > 0 || (profile.fcInfo?.x?.length ?? 0) > 0 || (profile.fcInfo?.sc?.length ?? 0) > 0) && (
+                                       <button
+                                         className="context-menu-item"
+                                         onClick={() => { setCharacterInfoProfile(profile); setProfileContextMenu(null); }}
+                                       >
+                                         <><Mask size={12} /> Character info</>
+                                      </button>
+                                    )}
+                                    {onEditProfile && profile.locked === false && (
+                                      <button
+                                        className="context-menu-item"
+                                        onClick={() => { onEditProfile(profile); setProfileContextMenu(null); }}
+                                      >
+                                        <><Pen size={12} /> Edit</>
+                                      </button>
+                                    )}
+                                    {onDeleteProfile && profile.locked === false && (
+                                      <button
+                                        className="context-menu-item context-menu-delete"
+                                        onClick={() => { setProfileToDelete(profile); setProfileContextMenu(null); }}
+                                      >
+                                        <><Trash size={12} /> Delete</>
+                                      </button>
+                                    )}
+                                    {onMoveProfileToFolder && folders.length > 0 && (
+                                      <>
+                                        <div className="context-menu-divider" />
+                                        <button
+                                          className="context-menu-section"
+                                          onClick={(e) => { e.stopPropagation(); setMoveSectionExpanded(p => !p); }}
+                                       >
+                                         <span className={`context-menu-section-arrow${moveSectionExpanded ? ' expanded' : ''}`}>▶</span>
+                                         Move to
+                                       </button>
+                                       {moveSectionExpanded && (
+                                         <div className="context-menu-move-items">
+                                           {folders.map((f) => (
+                                            <button
+                                              key={f.id}
+                                              className="context-menu-item"
+                                              onClick={() => {
+                                                onMoveProfileToFolder(profile.id, f.id);
+                                                setProfileContextMenu(null);
+                                              }}
+                                            >
+                                              {f.icon} {f.name}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              , document.body
+                             )}
+                           </div>
+                         );
+                        })}
+                     </div>
+                   )}
+                </div>
+                 </>
+               ) : null;
+             })()}
 
-        {/* Folders - mostrar todas, pero solo expandir si tienen profiles activos */}
-        {folders.map((folder) => {
-           const allProfileCount = profileCountByFolder.get(folder.id) || 0;
-           const activeProfileCount = profiles.filter(
-             (p) => p.folderId === folder.id && (activeStatuses?.get(p.id) || false)
-           ).length;
-           
-           const isExpanded = expandedFolders.has(folder.id);
-           const isContextMenuOpen = showContextMenu === folder.id;
+         {/* Folders - mostrar todas, pero solo expandir si tienen profiles activos */}
+         {folders.map((folder) => {
+            const allProfileCount = profileCountByFolder.get(folder.id) || 0;
+            const activeProfileCount = profiles.filter(
+              (p) => p.folderId === folder.id && (activeStatuses?.get(p.id) || false)
+            ).length;
+            
+            const isExpanded = expandedFolders.has(folder.id);
+            const isContextMenuOpen = showContextMenu === folder.id;
 
-           return (
-             <div key={folder.id} className="folder-item-wrapper">
-               <div
-                 className={`folder-item ${selectedFolderId === folder.id ? 'active' : ''}`}
-                 style={{
-                   backgroundColor:
-                     selectedFolderId === folder.id
-                       ? `${folder.color}20`
-                       : 'transparent',
-                   borderLeftColor:
-                     selectedFolderId === folder.id ? folder.color : 'transparent',
-                 }}
-               >
-                 <button
-                   className={`folder-toggle ${isExpanded ? 'expanded' : ''}`}
-                   onClick={(e) => {
-                     e.stopPropagation();
-                     onToggleFolder(folder.id);
-                   }}
-                   title={isExpanded ? 'Collapse' : 'Expand'}
-                   disabled={allProfileCount === 0}
-                   style={{ visibility: allProfileCount === 0 ? 'hidden' : 'visible' }}
-                 >
-                   ▶
-                 </button>
-
-                 <button
-                   className="folder-name-btn"
+            return (
+              <div key={folder.id} className="folder-item-wrapper">
+                <div
+                  className={`folder-item ${selectedFolderId === folder.id ? 'active' : ''}`}
+                  style={{
+                    backgroundColor:
+                      selectedFolderId === folder.id
+                        ? `${folder.color}20`
+                        : 'transparent',
+                    borderLeftColor:
+                      selectedFolderId === folder.id ? folder.color : 'transparent',
+                  }}
+                >
+                  <button
+                    className={`folder-toggle ${isExpanded ? 'expanded' : ''}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSelectFolder(folder.id);
-                      setShowContextMenu(null);
-                      onGoToFolders?.();
+                      onToggleFolder(folder.id);
                     }}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      
-                      let x = e.clientX + 10;
-                      let y = e.clientY - 50;
-                      
-                      const menuWidth = 160;
-                      // Calculate menu height dynamically based on visible items
-                      // Each item is approximately 32px
-                      let menuHeight = 10; // base padding
-                      if (onOpenAllInBrowser) menuHeight += 32;
-                      if (onCloseAll) menuHeight += 32;
-                      // Edit and Delete buttons are always shown for regular folders
-                      menuHeight += 64; // for Edit and Delete
-                      const padding = 10;
-                      
-                      if (x + menuWidth + padding > window.innerWidth) {
-                        x = e.clientX - menuWidth - 10;
-                      }
-                      
-                      if (y < padding) {
-                        y = e.clientY + 10;
-                      }
-                      
-                      if (y + menuHeight + padding > window.innerHeight) {
-                        y = e.clientY - menuHeight - 10;
-                      }
-                      
-                       setContextMenuPos({ x, y });
-                       setShowContextMenu(isContextMenuOpen ? null : folder.id);
-                       setProfileContextMenu(null);
-                       setShowHeaderMenu(false);
-                     }}
+                    title={isExpanded ? 'Collapse' : 'Expand'}
+                    disabled={allProfileCount === 0}
+                    style={{ visibility: allProfileCount === 0 ? 'hidden' : 'visible' }}
                   >
-                    <span className="folder-icon">📁</span>
-                    <span className="folder-label">{folder.name}</span>
+                    ▶
+                  </button>
+
+                  <button
+                    className="folder-name-btn"
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       onSelectFolder(folder.id);
+                       setShowContextMenu(null);
+                       onGoToFolders?.();
+                     }}
+                     onContextMenu={(e) => {
+                       e.preventDefault();
+                       e.stopPropagation();
+                       
+                       let x = e.clientX + 10;
+                       let y = e.clientY - 50;
+                       
+                       const menuWidth = 160;
+                       // Calculate menu height dynamically based on visible items
+                       // Each item is approximately 32px
+                       let menuHeight = 10; // base padding
+                       if (onOpenAllInBrowser) menuHeight += 32;
+                       if (onCloseAll) menuHeight += 32;
+                       // Edit and Delete buttons are always shown for regular folders
+                       menuHeight += 64; // for Edit and Delete
+                       const padding = 10;
+                       
+                       if (x + menuWidth + padding > window.innerWidth) {
+                         x = e.clientX - menuWidth - 10;
+                       }
+                       
+                       if (y < padding) {
+                         y = e.clientY + 10;
+                       }
+                       
+                       if (y + menuHeight + padding > window.innerHeight) {
+                         y = e.clientY - menuHeight - 10;
+                       }
+                       
+                        setContextMenuPos({ x, y });
+                        setShowContextMenu(isContextMenuOpen ? null : folder.id);
+                        setProfileContextMenu(null);
+                        setShowHeaderMenu(false);
+                      }}
+                   >
+                      <span className="folder-icon"><Folder size={14} weight="Outline" /></span>
+                     <span className="folder-label">{folder.name}</span>
                     {/* Badge moved to profile level - active indicator now shows per profile, not per folder */}
                   </button>
 
@@ -724,49 +725,49 @@ export default function SidebarFolders({
                                        }}
                                        className="context-menu-item"
                                       >
-                                        🌐 Open
+                                        <><Globe size={12} /> Open</>
+                                       </button>
+                                    ) : (
+                                      <button
+                                        onClick={() => {
+                                           onCloseProfile?.(profile.id);
+                                           setProfileContextMenu(null);
+                                         }}
+                                         className="context-menu-item"
+                                       >
+                                         <><X size={12} /> Close</>
                                       </button>
-                                   ) : (
-                                     <button
-                                       onClick={() => {
-                                          onCloseProfile?.(profile.id);
-                                          setProfileContextMenu(null);
-                                        }}
+                                    )}
+                                    {onToggleStar && profile.locked === false && (
+                                      <button
                                         className="context-menu-item"
+                                        onClick={() => { onToggleStar(profile.id); setProfileContextMenu(null); }}
                                       >
-                                        ✕ Close
-                                     </button>
-                                   )}
-                                   {onToggleStar && profile.locked === false && (
+                                        {profile.starred ? <><Star size={12} weight="Filled" /> Remove favorite</> : <><Star size={12} weight="Outline" /> Add favorite</>}
+                                      </button>
+                                    )}
+                                    {((profile.fcInfo?.ig?.length ?? 0) > 0 || (profile.fcInfo?.x?.length ?? 0) > 0 || (profile.fcInfo?.sc?.length ?? 0) > 0) && (
+                                      <button
+                                        className="context-menu-item"
+                                        onClick={() => { setCharacterInfoProfile(profile); setProfileContextMenu(null); }}
+                                      >
+                                        <><Mask size={12} /> Character info</>
+                                      </button>
+                                    )}
+                                    {onEditProfile && profile.locked === false && (
                                      <button
                                        className="context-menu-item"
-                                       onClick={() => { onToggleStar(profile.id); setProfileContextMenu(null); }}
+                                       onClick={() => { onEditProfile(profile); setProfileContextMenu(null); }}
                                      >
-                                       {profile.starred ? '★ Remove favorite' : '☆ Add favorite'}
+                                       <><Pen size={12} /> Edit</>
                                      </button>
                                    )}
-                                   {((profile.fcInfo?.ig?.length ?? 0) > 0 || (profile.fcInfo?.x?.length ?? 0) > 0 || (profile.fcInfo?.sc?.length ?? 0) > 0) && (
-                                     <button
-                                       className="context-menu-item"
-                                       onClick={() => { setCharacterInfoProfile(profile); setProfileContextMenu(null); }}
-                                     >
-                                       🎭 Character info
-                                     </button>
-                                   )}
-                                   {onEditProfile && profile.locked === false && (
-                                    <button
-                                      className="context-menu-item"
-                                      onClick={() => { onEditProfile(profile); setProfileContextMenu(null); }}
-                                    >
-                                      ✎ Edit
-                                    </button>
-                                  )}
-                                   {onDeleteProfile && profile.locked === false && (
-                                     <button
-                                       className="context-menu-item context-menu-delete"
-                                       onClick={() => { setProfileToDelete(profile); setProfileContextMenu(null); }}
-                                     >
-                                       🗑️ Delete
+                                    {onDeleteProfile && profile.locked === false && (
+                                      <button
+                                        className="context-menu-item context-menu-delete"
+                                        onClick={() => { setProfileToDelete(profile); setProfileContextMenu(null); }}
+                                      >
+                                        <><Trash size={12} /> Delete</>
                                      </button>
                                    )}
                                   {onMoveProfileToFolder && folders.length > 0 && (
@@ -788,12 +789,10 @@ export default function SidebarFolders({
                                             setProfileContextMenu(null);
                                           }}
                                         >
-                                          📌 OTHERS
-                                        </button>
-                                        <div className="context-menu-move-items">
-                                          {folders
-                                            .filter((f) => f.id !== folder.id)
-                                            .map((f) => (
+                                             <Pin size={14} weight="Filled" /> OTHERS
+                                         </button>
+                                         <div className="context-menu-move-items">
+                                           {folders.filter((f) => f.id !== folder.id).map((f) => (
                                               <button
                                                 key={f.id}
                                                 className="context-menu-item"
@@ -805,7 +804,7 @@ export default function SidebarFolders({
                                                 {f.icon} {f.name}
                                               </button>
                                             ))}
-                                        </div>
+                                         </div>
                                       </>
                                     )}
                                   </>
@@ -850,7 +849,7 @@ export default function SidebarFolders({
                     setShowContextMenu(null);
                   }}
                 >
-                   ✚ New Profile
+                   <><Plus size={14} /> New Profile</>
                 </button>
               </>
             )}
@@ -874,7 +873,7 @@ export default function SidebarFolders({
                      }
                    }}
                  >
-                     🌐 Open All
+                      <><Globe size={14} /> Open All</>
                  </button>
                ) : null;
             })()}
@@ -905,7 +904,7 @@ export default function SidebarFolders({
                       }
                     }}
                   >
-                    ✕ Close All
+                     <><X size={12} /> Close All</>
                   </button>
                  ) : null;
                 })()}
@@ -922,7 +921,7 @@ export default function SidebarFolders({
                     }
                   }}
                 >
-                  ✎ Edit
+                   <><Pen size={12} /> Edit</>
                 </button>
                 <button
                   className="context-menu-item context-menu-delete"
@@ -932,7 +931,7 @@ export default function SidebarFolders({
                     }
                   }}
                 >
-                  🗑️ Delete
+                   <><Trash size={12} /> Delete</>
                 </button>
               </>
              )}

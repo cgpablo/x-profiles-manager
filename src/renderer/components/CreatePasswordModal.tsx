@@ -3,6 +3,7 @@
  */
 
 import React, { useState } from 'react';
+import { X, EyeOff, Eye } from 'reicon-react';
 import { BrowserProfile } from '../../types';
 import { useModalClose } from '../hooks/useModalClose';
 import './CreatePasswordModal.css';
@@ -95,7 +96,7 @@ export default function CreatePasswordModal({
         <div className="modal-header">
           <h2>{isEditing ? 'Edit Password' : 'New Password'}</h2>
           <button className="modal-close" onClick={onClose}>
-            ✕
+            <X size={14} weight="Outline" />
           </button>
         </div>
 
@@ -137,7 +138,7 @@ export default function CreatePasswordModal({
                   onClick={() => setShowPassword(!showPassword)}
                   title={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? '🙈' : '👁️'}
+                  {showPassword ? <EyeOff size={14} weight="Outline" /> : <Eye size={14} weight="Outline" />}
                 </button>
               </div>
             </div>
@@ -164,7 +165,7 @@ export default function CreatePasswordModal({
                       onClick={() => removeProfile(p.id)}
                       aria-label={`Remove ${p.name}`}
                     >
-                      ✕
+                      <X size={14} weight="Outline" />
                     </button>
                   </span>
                 ))}

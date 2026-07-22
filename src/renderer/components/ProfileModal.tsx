@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { X, Folder } from 'reicon-react';
 import { BrowserProfile } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import { useModalClose } from '../hooks/useModalClose';
@@ -56,6 +57,7 @@ export default function ProfileModal({
       ? profile.folderId
       : (selectedFolderId && selectedFolderId !== 'ungrouped' ? selectedFolderId : undefined)
   );
+  const [directoryPath, setDirectoryPath] = useState(isEdit ? (profile.directoryPath || '') : '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -72,6 +74,9 @@ export default function ProfileModal({
   const [initialMailId, setInitialMailId] = useState<string | null>(null);
   const [mailSearch, setMailSearch] = useState('');
   const [mailDropdownOpen, setMailDropdownOpen] = useState(false);
+
+  // Folder dropdown state
+  const [folderDropdownOpen, setFolderDropdownOpen] = useState(false);
 
   // Load existing image preview in edit mode
   useEffect(() => {
@@ -213,11 +218,12 @@ export default function ProfileModal({
           xAccount: xAccount || undefined,
           folderId,
           imagePath: imagePath || undefined,
+          directoryPath: directoryPath || undefined,
         });
         await linkPasswordMail(profile.id);
       } else {
         const newProfile = await electronAPI.profiles.create(
-          name, color, imagePath || '', xAccount || undefined, folderId
+          name, color, imagePath || '', xAccount || undefined, folderId, directoryPath || undefined
         );
         if (newProfile?.id) {
           await linkPasswordMail(newProfile.id);
@@ -251,7 +257,7 @@ export default function ProfileModal({
       <div className="modal-content" ref={modalRef}>
         <div className="modal-header">
           <h2>{isEdit ? 'Edit Profile' : 'Create New Profile'}</h2>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={14} weight="Outline" /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
@@ -324,20 +330,83 @@ export default function ProfileModal({
             {folders.length > 0 && (
               <div className="form-group">
                 <label>Folder (optional)</label>
-                <select
-                  value={folderId || ''}
-                  onChange={(e) => setFolderId(e.target.value || undefined)}
-                  disabled={loading}
-                >
-                  <option value="">OTHERS</option>
-                  {folders.map((folder) => (
-                    <option key={folder.id} value={folder.id}>
-                      {folder.icon} {folder.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="folder-dropdown-wrapper">
+                  <button
+                    type="button"
+                    className="folder-dropdown-trigger"
+                    onClick={() => !loading && setFolderDropdownOpen((o) => !o)}
+                    onBlur={() => setTimeout(() => setFolderDropdownOpen(false), 150)}
+                    disabled={loading}
+                  >
+                    <span className="folder-dropdown-icon"><Folder size={14} /></span>
+                    <span className="folder-dropdown-label">
+                      {folderId
+                        ? folders.find((f) => f.id === folderId)?.name ?? 'OTHERS'
+                        : 'OTHERS'}
+                    </span>
+                    <span className="folder-dropdown-chevron">▾</span>
+                  </button>
+                  {folderDropdownOpen && (
+                    <div className="folder-dropdown-menu">
+                      <button
+                        type="button"
+                        className={`folder-dropdown-option${!folderId ? ' folder-dropdown-option--selected' : ''}`}
+                        onMouseDown={() => {
+                          setFolderId(undefined);
+                          setFolderDropdownOpen(false);
+                        }}
+                      >
+                        <span className="folder-dropdown-icon"><Folder size={14} /></span>
+                        OTHERS
+                      </button>
+                      {folders.map((folder) => (
+                        <button
+                          key={folder.id}
+                          type="button"
+                          className={`folder-dropdown-option${folderId === folder.id ? ' folder-dropdown-option--selected' : ''}`}
+                          onMouseDown={() => {
+                            setFolderId(folder.id);
+                            setFolderDropdownOpen(false);
+                          }}
+                        >
+                          <span className="folder-dropdown-icon"><Folder size={14} /></span>
+                          {folder.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
+          </div>
+
+          {/* Directory path */}
+          <div className="form-group">
+            <label>Directory (optional)</label>
+            <div className="directory-input-row">
+              <input
+                type="text"
+                value={directoryPath}
+                onChange={(e) => setDirectoryPath(e.target.value)}
+                placeholder="/users/example/my-folder"
+                disabled={loading}
+              />
+              <button
+                type="button"
+                className="btn-browse-dir"
+                disabled={loading}
+                onClick={async () => {
+                  try {
+                    const selected = await window.electronAPI.system.selectDirectory();
+                    if (selected) setDirectoryPath(selected);
+                  } catch {
+                    // cancelled or error — ignore
+                  }
+                }}
+              >
+                Browse
+              </button>
+            </div>
           </div>
 
           {/* Password + Mail selectors */}
@@ -355,7 +424,7 @@ export default function ProfileModal({
                       onClick={() => setSelectedPasswordId(null)}
                       aria-label="Remove linked password"
                     >
-                      ✕
+                      <X size={14} weight="Outline" />
                     </button>
                   </span>
                 </div>
@@ -411,7 +480,7 @@ export default function ProfileModal({
                       onClick={() => setSelectedMailId(null)}
                       aria-label="Remove linked mail"
                     >
-                      ✕
+                      <X size={14} weight="Outline" />
                     </button>
                   </span>
                 </div>
@@ -468,7 +537,7 @@ export default function ProfileModal({
             </button>
             <button type="submit" className="btn-primary" disabled={loading}>
               {isEdit
-                ? (loading ? 'Updating...' : 'Update Profile')
+                ? (loading ? 'Updating...' : 'Update')
                 : (loading ? 'Creating...' : 'Create')}
             </button>
           </div>

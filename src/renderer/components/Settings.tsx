@@ -3,6 +3,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { Floppy, Archive, FolderOpen, X } from 'reicon-react';
 import { AppSettings, BrowserProfile, ProfileFolder } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
@@ -341,15 +342,15 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
               title="Save settings"
               style={{ visibility: isDirty ? 'visible' : 'hidden' }}
             >
-              💾
+              <Floppy size={16} />
             </button>
+            {statusMsg && (
+              <span className={`settings-status-msg settings-status-${statusMsg.type}`}>
+                {statusMsg.text}
+              </span>
+            )}
           </div>
-          {statusMsg && (
-            <span className={`settings-status-msg settings-status-${statusMsg.type}`}>
-              {statusMsg.text}
-            </span>
-          )}
-        </div>
+        </div>{/* panel-header */}
 
         <div className="settings">
 
@@ -358,7 +359,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
             <h3>About</h3>
             <div className="info-item">
               <strong>App Version</strong>
-              <span>1.2.0</span>
+              <span>1.3.0</span>
             </div>
             <div className="info-item">
               <strong>Storage Location</strong>
@@ -909,14 +910,14 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
                    onClick={handleExport}
                    disabled={isExporting}
                  >
-                   {isExporting ? 'Exporting...' : '📦 Export'}
+                    {isExporting ? 'Exporting...' : <><Archive size={14} /> Export</>}
                  </button>
                  <button
                    className="btn-secondary"
                    onClick={handleImport}
                    disabled={isImporting}
                  >
-                   {isImporting ? 'Importing...' : '📂 Import'}
+                    {isImporting ? 'Importing...' : <><FolderOpen size={14} /> Import</>}
                  </button>
                </div>
              </div>
@@ -963,7 +964,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
 
         <div className="settings-actions" style={{ display: 'none' }}>
           <button className="btn-save-settings" onClick={handleSave} title="Save settings">
-            💾
+            <Floppy size={16} />
           </button>
         </div>
 
@@ -972,7 +973,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
             <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
               <div className="modal-header">
                 <h2>Clear All Data?</h2>
-                <button className="modal-close" onClick={() => !isClearing && setShowClearConfirm(false)} disabled={isClearing}>✕</button>
+                 <button className="modal-close" onClick={() => !isClearing && setShowClearConfirm(false)} disabled={isClearing}><X size={14} /></button>
               </div>
               <div className="modal-body">
                 <p>This will permanently delete:</p>

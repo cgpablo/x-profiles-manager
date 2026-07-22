@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { FolderBookmark, Folder, Pen, Trash } from 'reicon-react';
 import { BrowserProfile, ProfileFolder } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
@@ -441,7 +442,7 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                     >
                        <div className="folder-card-header">
                          <div className="folder-info">
-                           <span className="folder-icon">📌</span>
+                            <span className="folder-icon"><FolderBookmark size={14} weight="Outline" /></span>
                            <h4>OTHERS</h4>
                            <span className="profile-count">{profileCountByFolder.get(undefined) || 0}</span>
                          </div>
@@ -464,7 +465,7 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                     >
                      <div className="folder-card-header">
                         <div className="folder-info">
-                          <span className="folder-icon">📁</span>
+                           <span className="folder-icon"><Folder size={14} weight="Outline" /></span>
                           <h4>{folder.name}</h4>
                           <span className="profile-count">{profileCountByFolder.get(folder.id) || 0}</span>
                         </div>
@@ -474,14 +475,14 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                               onClick={() => setEditingFolder(folder)}
                               title="Edit"
                             >
-                              ✎
+                              <Pen size={14} weight="Outline" />
                             </button>
                             <button
                               className="action-btn delete-btn"
                               onClick={() => setFolderToDelete(folder)}
                               title="Delete"
                             >
-                             🗑️
+                             <Trash size={14} weight="Outline" />
                            </button>
                          </div>
                       </div>

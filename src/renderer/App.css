@@ -213,6 +213,8 @@ body,
    align-items: center;
    margin-left: auto;
    padding-right: 2rem;
+   min-width: 220px;
+   justify-content: flex-end;
  }
 
 .nav-saved-banner {

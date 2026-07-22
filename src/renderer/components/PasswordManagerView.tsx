@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { Pen, Trash } from 'reicon-react';
 import { BrowserProfile, ProfileFolder } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
@@ -299,14 +300,14 @@ export default function PasswordManagerView({
                         setShowModal(true);
                       }}
                     >
-                      ✎
+                      <Pen size={14} weight="Outline" />
                     </button>
                     <button
                       className="btn-pw-action btn-pw-delete"
                       title="Delete"
                       onClick={() => handleDelete(entry.id)}
                     >
-                      🗑️
+                      <Trash size={14} weight="Outline" />
                     </button>
                   </div>
                 </div>

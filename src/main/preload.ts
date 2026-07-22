@@ -21,6 +21,8 @@ interface ElectronAPI {
      focusWindow: (profileId: string) => Promise<boolean>;
      getActive: () => Promise<string[]>;
      isActive: (profileId: string) => Promise<boolean>;
+     autoLogin: (profileId: string) => Promise<boolean>;
+     isLoggedIn: (profileId: string) => Promise<boolean>;
    };
   folders: {
     getAll: () => Promise<ProfileFolder[]>;
@@ -107,9 +109,13 @@ const electronAPI: ElectronAPI = {
      focusWindow: (profileId) =>
        unwrapResponse(ipcRenderer.invoke('launcher:focusWindow', profileId)),
      getActive: () => unwrapResponse(ipcRenderer.invoke('launcher:getActive')),
-     isActive: (profileId) =>
-       unwrapResponse(ipcRenderer.invoke('launcher:isActive', profileId)),
-   },
+      isActive: (profileId) =>
+        unwrapResponse(ipcRenderer.invoke('launcher:isActive', profileId)),
+      autoLogin: (profileId: string) =>
+        unwrapResponse(ipcRenderer.invoke('launcher:autoLogin', profileId)),
+      isLoggedIn: (profileId: string) =>
+        unwrapResponse(ipcRenderer.invoke('launcher:isLoggedIn', profileId)),
+    },
    folders: {
      getAll: () => unwrapResponse(ipcRenderer.invoke('folders:getAll')),
      create: (name, color, icon) =>

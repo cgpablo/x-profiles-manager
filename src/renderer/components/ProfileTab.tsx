@@ -7,6 +7,7 @@ import { BrowserProfile } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Tooltip from './Tooltip';
 import CharacterInfoModal from './CharacterInfoModal';
+import { Star, Lock, LockOpen, Check, Key, Envelope, Globe, Eye, X, Pen, Trash, Gear, Mask, Pin, FolderConnect, Bookmarks, Login } from 'reicon-react';
 import './ProfileTab.css';
 
 interface ProfileTabProps {
@@ -57,6 +58,26 @@ export default function ProfileTab({
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
   const [copiedXAccount, setCopiedXAccount] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(!!profile.xLoggedIn);
+
+  // Sync local state when the persisted value changes (after main-side check)
+  useEffect(() => {
+    setIsLoggedIn(!!profile.xLoggedIn);
+  }, [profile.xLoggedIn]);
+
+  // One-shot check when the profile becomes active (after browser has had time to settle).
+  // The main process also persists this on launch/autoLogin, but this covers logouts
+  // during a running session without continuous polling.
+  useEffect(() => {
+    if (!isActive || !profile.xAccount) return;
+    const timer = setTimeout(async () => {
+      try {
+        const result = await window.electronAPI.launcher.isLoggedIn(profile.id);
+        setIsLoggedIn(result);
+      } catch {}
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [isActive, profile.id, profile.xAccount]);
   const [copiedPassword, setCopiedPassword] = useState(false);
   const [copiedMail, setCopiedMail] = useState(false);
   const [showCharInfoModal, setShowCharInfoModal] = useState(false);
@@ -249,7 +270,7 @@ export default function ProfileTab({
                     title={isLocked ? 'Unlock profile to manage favorites' : (profile.starred ? 'Remove from starred' : 'Add to starred')}
                     aria-label={isLocked ? 'Unlock profile to manage favorites' : (profile.starred ? 'Unstar profile' : 'Star profile')}
                   >
-                    {profile.starred ? '★' : '☆'}
+                    {profile.starred ? <Star size={14} weight="Filled" /> : <Star size={14} weight="Outline" />}
                   </button>
                   <button
                     className={`btn-lock${isLocked ? ' locked' : ''}`}
@@ -257,7 +278,7 @@ export default function ProfileTab({
                     title={isLocked ? 'Unlock profile (allow edit/delete)' : 'Lock profile (hide edit/delete)'}
                     aria-label={isLocked ? 'Unlock profile' : 'Lock profile'}
                   >
-                    {isLocked ? '🔒' : '🔓'}
+                    {isLocked ? <Lock size={14} weight="Filled" /> : <LockOpen size={14} />}
                   </button>
                 </div>
                 <div className="profile-account-row">
@@ -268,7 +289,7 @@ export default function ProfileTab({
                       title="Click to copy @handle"
                     >
                       <span className={`profile-account-handle${copiedXAccount ? ' handle-copied' : ''}`}>
-                        {copiedXAccount ? '✓ Copied!' : `@${profile.xAccount}`}
+                        {copiedXAccount ? <><Check size={10} /> Copied!</> : `@${profile.xAccount}`}
                       </span>
                     </p>
                   ) : (
@@ -283,7 +304,7 @@ export default function ProfileTab({
                       title="Copy password"
                       aria-label="Copy password"
                     >
-                      {copiedPassword ? '✓' : '🔑'}
+                      {copiedPassword ? <Check size={10} /> : <Key size={12} />}
                     </button>
                   )}
                   {profile.hasMail && (
@@ -293,12 +314,7 @@ export default function ProfileTab({
                       title={profile.mailEmail ? `Copy email: ${profile.mailEmail}` : 'Copy email'}
                       aria-label="Copy email"
                     >
-                      {copiedMail ? '✓' : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="2" y="4" width="20" height="16" rx="2"/>
-                          <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-                        </svg>
-                      )}
+                      {copiedMail ? <Check size={10} /> : <Envelope size={11} />}
                     </button>
                   )}
                 </div>
@@ -309,15 +325,31 @@ export default function ProfileTab({
 
               {/* Action buttons */}
               <div className="profile-actions">
-                {/* Row 1: Open/Focus/Close buttons */}
+                {/* Row 1: Auto-login/Open/Focus/Close buttons */}
                 <div className="action-row">
+                  {isActive && profile.xAccount && profile.hasPassword && !isLoggedIn && (
+                    <Tooltip text="Auto-login X" position="top">
+                      <button
+                        className="action-btn login-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Optimistic: hide button immediately; a later background
+                          // check will correct it if login actually failed.
+                          setIsLoggedIn(true);
+                          window.electronAPI.launcher.autoLogin(profile.id);
+                        }}
+                      >
+                        <Login size={14} weight="Outline" />
+                      </button>
+                    </Tooltip>
+                  )}
                   {!isActive ? (
                     <Tooltip text="Open in browser" position="top">
                       <button className="action-btn launch-btn" onClick={() => {
                         onCloseContextMenus?.();
                         onLaunch();
                       }}>
-                        🌐
+                         <Globe size={14} />
                       </button>
                     </Tooltip>
                   ) : (
@@ -333,7 +365,7 @@ export default function ProfileTab({
                           }
                         }}
                       >
-                        👁️
+                         <Eye size={14} />
                       </button>
                     </Tooltip>
                   )}
@@ -344,13 +376,13 @@ export default function ProfileTab({
                         onCloseContextMenus?.();
                         onClose();
                       }}>
-                        ✕
-                      </button>
-                    </Tooltip>
-                  )}
-                </div>
+                         <X size={14} />
+                       </button>
+                     </Tooltip>
+                   )}
+                 </div>
 
-                {/* Row 2: Edit, Delete and Directory buttons (hidden when locked) */}
+                 {/* Row 2: Edit, Delete and Directory buttons (hidden when locked) */}
                 {!isLocked && (
                 <div className="action-row">
                   <Tooltip text="Edit profile" position="top">
@@ -361,10 +393,10 @@ export default function ProfileTab({
                         onEdit();
                       }}
                     >
-                      ✎
-                    </button>
-                  </Tooltip>
-                  <Tooltip text="Delete profile" position="top">
+                       <Pen size={14} />
+                     </button>
+                   </Tooltip>
+                   <Tooltip text="Delete profile" position="top">
                     <button
                       className="action-btn delete-btn"
                       onClick={() => {
@@ -372,10 +404,10 @@ export default function ProfileTab({
                         onDelete();
                       }}
                     >
-                      🗑️
-                    </button>
-                  </Tooltip>
-                  {showDirectory && (
+                       <Trash size={14} />
+                     </button>
+                   </Tooltip>
+                   {showDirectory && (
                     <Tooltip text="Open profile folder" position="top">
                       <button
                         className="action-btn dir-btn"
@@ -384,27 +416,42 @@ export default function ProfileTab({
                           window.electronAPI.shell.openPath(profile.dataDir).catch(console.error);
                         }}
                       >
-                        ⚙️
-                      </button>
+                         <Gear size={14} />
+                       </button>
                     </Tooltip>
                   )}
                 </div>
                 )}
 
-                {/* Row 3: Character Hub button (always visible if profile has fcInfo) */}
-                {hasFcInfo && (
+                {/* Row 3: Directory + Character Hub buttons */}
+                {(hasFcInfo || profile.directoryPath) && (
                   <div className="action-row">
-                    <Tooltip text="Character info" position="top">
-                      <button
-                        className="action-btn char-hub-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowCharInfoModal(true);
-                        }}
-                      >
-                        🎭
-                      </button>
-                    </Tooltip>
+                    {profile.directoryPath && (
+                      <Tooltip text="Open directory" position="top">
+                        <button
+                          className="action-btn dir-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.electronAPI.shell.openPath(profile.directoryPath!);
+                          }}
+                        >
+                          <FolderConnect size={14} weight="Outline" />
+                        </button>
+                      </Tooltip>
+                    )}
+                    {hasFcInfo && (
+                      <Tooltip text="Character info" position="top">
+                        <button
+                          className="action-btn char-hub-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowCharInfoModal(true);
+                          }}
+                        >
+                          <Bookmarks size={14} weight="Outline" />
+                        </button>
+                      </Tooltip>
+                    )}
                   </div>
                 )}
               </div>
@@ -430,8 +477,8 @@ export default function ProfileTab({
                   onMoveToFolder(undefined);
                   setShowContextMenu(false);
                 }}
-              >
-               <span>📌</span> OTHERS
+               >
+               <Pin size={12} /> OTHERS
               </button>
               {folders.map((folder) => (
                 <button
@@ -459,7 +506,7 @@ export default function ProfileTab({
               setShowContextMenu(false);
               }}
             >
-              {isActive ? '✕ Close browser' : '🌐 Open in browser'}
+               {isActive ? <><X size={12} /> Close browser</> : <><Globe size={12} /> Open in browser</>}
             </button>
             {hasFcInfo && (
               <button
@@ -469,7 +516,7 @@ export default function ProfileTab({
                   setShowContextMenu(false);
                 }}
               >
-                🎭 Character info
+                 <><Mask size={12} /> Character info</>
               </button>
             )}
             {!isLocked && (
@@ -480,7 +527,7 @@ export default function ProfileTab({
                 setShowContextMenu(false);
               }}
             >
-              ✎ Edit
+              <><Pen size={12} /> Edit</>
             </button>
             )}
            {!isLocked && (
@@ -491,7 +538,7 @@ export default function ProfileTab({
                setShowContextMenu(false);
              }}
            >
-             🗑️ Delete
+             <><Trash size={12} /> Delete</>
            </button>
            )}
         </div>

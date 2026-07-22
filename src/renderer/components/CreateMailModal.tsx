@@ -3,6 +3,7 @@
  */
 
 import React, { useState } from 'react';
+import { X } from 'reicon-react';
 import { BrowserProfile } from '../../types';
 import { useModalClose } from '../hooks/useModalClose';
 import './CreatePasswordModal.css';
@@ -90,7 +91,7 @@ export default function CreateMailModal({
         <div className="modal-header">
           <h2>{isEditing ? 'Edit Mail' : 'New Mail'}</h2>
           <button className="modal-close" onClick={onClose}>
-            ✕
+            <X size={14} weight="Outline" />
           </button>
         </div>
 
@@ -130,7 +131,7 @@ export default function CreateMailModal({
                       onClick={() => removeProfile(p.id)}
                       aria-label={`Remove ${p.name}`}
                     >
-                      ✕
+                      <X size={14} weight="Outline" />
                     </button>
                   </span>
                 ))}

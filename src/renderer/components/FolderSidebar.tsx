@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { Folder, Pin, Rocket, X } from 'reicon-react';
 import { ProfileFolder, BrowserProfile } from '../../types';
 import ProfileAvatarIcon from './ProfileAvatarIcon';
 import './FolderSidebar.css';
@@ -120,7 +121,7 @@ export default function FolderSidebar({
   return (
     <div className="folder-sidebar" ref={sidebarRef}>
       <div className="sidebar-header">
-        <h3>📁 Folders</h3>
+        <h3><Folder size={14} weight="Filled" /> Folders</h3>
         <button
           className="btn-add-folder"
           onClick={onCreateFolder}
@@ -161,7 +162,7 @@ export default function FolderSidebar({
                   selectedFolderId === 'ungrouped' ? othersColor : 'transparent',
               }}
             >
-              <span className="folder-icon">📌</span>
+              <span className="folder-icon"><Pin size={14} weight="Filled" /></span>
               <span className="folder-label">OTHERS</span>
               <span className="profile-count">{ungroupedCount}</span>
             </div>
@@ -217,7 +218,7 @@ export default function FolderSidebar({
                     setShowContextMenu(isContextMenuOpen ? null : folder.id);
                   }}
                 >
-                  <span className="folder-icon">📁</span>
+                  <span className="folder-icon"><Folder size={14} weight="Filled" /></span>
                   <span className="folder-label">{folder.name}</span>
                 </button>
 
@@ -320,7 +321,7 @@ export default function FolderSidebar({
                                   }}
                                   className="context-menu-item"
                                 >
-                                  🚀 Launch
+                                  <><Rocket size={14} weight="Outline" /> Launch</>
                                 </button>
                               ) : (
                                 <button
@@ -330,7 +331,7 @@ export default function FolderSidebar({
                                   }}
                                   className="context-menu-item"
                                 >
-                                  ✕ Close
+                                  <><X size={14} weight="Outline" /> Close</>
                                 </button>
                               )}
                               {onMoveProfileToFolder && folders.length > 0 && (
@@ -358,7 +359,7 @@ export default function FolderSidebar({
                                        setProfileContextMenu(null);
                                      }}
                                    >
-                                     📌 OTHERS
+                                     <><Pin size={14} weight="Filled" /> OTHERS</>
                                    </button>
                                 </>
                               )}

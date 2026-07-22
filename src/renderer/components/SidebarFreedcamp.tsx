@@ -3,6 +3,7 @@
  */
 
 import React from 'react';
+import { Globe2 } from 'reicon-react';
 import './SidebarDashboard.css';
 
 interface SidebarFreedcampProps {
@@ -18,7 +19,7 @@ export default function SidebarFreedcamp({ onNavigate }: SidebarFreedcampProps) 
   return (
     <div className="sidebar-freedcamp">
       <button className="sidebar-section-header-btn" onClick={handleClick}>
-        <h3>⛺ FREEDCAMP</h3>
+        <h3><Globe2 size={16} weight="Outline" /> FREEDCAMP</h3>
       </button>
     </div>
   );

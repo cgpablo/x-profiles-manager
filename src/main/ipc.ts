@@ -37,13 +37,14 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle(
     'profiles:create',
-    async (_, name: string, color: string, imagePath: string, xAccount?: string, folderId?: string) => {
+    async (_, name: string, color: string, imagePath: string, xAccount?: string, folderId?: string, directoryPath?: string) => {
       try {
         const profile = storageManager.createProfile(name, color, undefined, xAccount);
-        // Apply imagePath and/or folderId if provided
+        // Apply imagePath, folderId, and/or directoryPath if provided
         const extraUpdates: Record<string, unknown> = {};
         if (imagePath) extraUpdates.imagePath = imagePath;
         if (folderId) extraUpdates.folderId = folderId;
+        if (directoryPath) extraUpdates.directoryPath = directoryPath;
         
         let finalProfile = profile;
         if (Object.keys(extraUpdates).length > 0) {
@@ -113,7 +114,20 @@ export function setupIpcHandlers(): void {
           console.error(`Error opening extensions for profile ${profileId}:`, error);
         }
       }, 2000); // Wait 2 seconds for Chrome to load
-      
+
+      // Check X.com login status after browser has had time to restore session
+      setTimeout(async () => {
+        try {
+          const loggedIn = await chromeLauncher.isLoggedIn(profileId);
+          storageManager.updateProfile(profileId, {
+            xLoggedIn: loggedIn,
+            xLoginCheckedAt: Date.now(),
+          });
+        } catch (error) {
+          console.error(`Error checking login status for ${profileId}:`, error);
+        }
+      }, 6000);
+
       return { success: true, data: processInfo };
     } catch (error) {
       return { success: false, error: String(error) };
@@ -173,6 +187,57 @@ export function setupIpcHandlers(): void {
       }
       
       return { success: true, data: closedCount };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('launcher:autoLogin', async (_, profileId: string): Promise<IpcResponse<boolean>> => {
+    try {
+      const profile = storageManager.getProfile(profileId);
+      if (!profile) {
+        return { success: false, error: 'Profile not found' };
+      }
+      const username = profile.xAccount || '';
+      if (!username) {
+        return { success: false, error: 'No X account configured for this profile' };
+      }
+      // Get decrypted password
+      const password = passwordManager.getDecryptedForProfile(profileId);
+      if (!password) {
+        return { success: false, error: 'No password linked to this profile' };
+      }
+      const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
+      const result = await chromeLauncher.autoLogin(profileId, cleanUsername, password);
+
+      // If autoLogin succeeded, verify and persist login status after redirect settles
+      if (result) {
+        setTimeout(async () => {
+          try {
+            const loggedIn = await chromeLauncher.isLoggedIn(profileId);
+            storageManager.updateProfile(profileId, {
+              xLoggedIn: loggedIn,
+              xLoginCheckedAt: Date.now(),
+            });
+          } catch {}
+        }, 5000);
+      }
+
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('launcher:isLoggedIn', async (_, profileId: string): Promise<IpcResponse<boolean>> => {
+    try {
+      const result = await chromeLauncher.isLoggedIn(profileId);
+      // Persist the current state so UI shows the correct button on next render
+      storageManager.updateProfile(profileId, {
+        xLoggedIn: result,
+        xLoginCheckedAt: Date.now(),
+      });
+      return { success: true, data: result };
     } catch (error) {
       return { success: false, error: String(error) };
     }

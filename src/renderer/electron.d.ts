@@ -11,7 +11,7 @@ import { BrowserProfile, AppSettings, ProcessInfo, ProfileFolder } from '../type
 interface ElectronAPI {
   profiles: {
     getAll: () => Promise<BrowserProfile[]>;
-    create: (name: string, color?: string, icon?: string, xAccount?: string, folderId?: string) => Promise<BrowserProfile>;
+    create: (name: string, color?: string, icon?: string, xAccount?: string, folderId?: string, directoryPath?: string) => Promise<BrowserProfile>;
     update: (profileId: string, updates: Partial<BrowserProfile>) => Promise<BrowserProfile | null>;
     delete: (profileId: string) => Promise<boolean>;
     saveOrder: (profileIds: string[]) => Promise<boolean>;
@@ -23,6 +23,8 @@ interface ElectronAPI {
     focusWindow: (profileId: string) => Promise<boolean>;
     getActive: () => Promise<string[]>;
     isActive: (profileId: string) => Promise<boolean>;
+    autoLogin: (profileId: string) => Promise<boolean>;
+    isLoggedIn: (profileId: string) => Promise<boolean>;
   };
   folders: {
     getAll: () => Promise<ProfileFolder[]>;
@@ -38,6 +40,7 @@ interface ElectronAPI {
   system: {
     getInfo: () => Promise<any>;
     clearAllData: () => Promise<boolean>;
+    selectDirectory: () => Promise<string | null>;
   };
   dialog: {
     openFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<string[]>;

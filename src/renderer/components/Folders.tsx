@@ -3,6 +3,7 @@
  */
 
 import React, { useState } from 'react';
+import { X } from 'reicon-react';
 import { BrowserProfile, ProfileFolder } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
@@ -340,7 +341,7 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
                                  className="panel-header-btn"
                                  onClick={() => handleCloseAllInFolder(selectedFolderId as string)}
                                >
-                                 ✕
+                                  <X size={14} weight="Outline" />
                                </button>
                              </Tooltip>
                            )}

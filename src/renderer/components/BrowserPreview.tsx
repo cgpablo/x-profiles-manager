@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { Globe, X, Check, Information } from 'reicon-react';
 import { BrowserProfile } from '../../types';
 import './BrowserPreview.css';
 
@@ -29,7 +30,7 @@ export default function BrowserPreview({ profile, onClose, isActive }: BrowserPr
     return (
       <div className="browser-preview empty">
         <div className="empty-state">
-          <div className="empty-icon">🌐</div>
+          <div className="empty-icon"><Globe size={14} weight="Outline" /></div>
           <h3>No profile selected</h3>
           <p>Click on a profile card to view its details</p>
         </div>
@@ -56,7 +57,7 @@ export default function BrowserPreview({ profile, onClose, isActive }: BrowserPr
           )}
         </div>
         <button className="browser-close" onClick={onClose} title="Close preview">
-          ✕
+          <X size={14} weight="Outline" />
         </button>
       </div>
       <div className="browser-content">
@@ -64,7 +65,7 @@ export default function BrowserPreview({ profile, onClose, isActive }: BrowserPr
           <div className="active-status">
             {showInstructions && (
               <div className="instructions-box">
-                <div className="status-icon">✓</div>
+                <div className="status-icon"><Check size={10} weight="Outline" /></div>
                 <h2>Browser is Running</h2>
                 <p>Profile <strong>{profile.name}</strong> is now active and running.</p>
                 {profile.xAccount && (
@@ -100,7 +101,7 @@ export default function BrowserPreview({ profile, onClose, isActive }: BrowserPr
                   onClick={() => setShowInstructions(true)}
                   title="Show instructions"
                 >
-                  ℹ
+                  <Information size={14} weight="Outline" />
                 </button>
               </div>
             )}

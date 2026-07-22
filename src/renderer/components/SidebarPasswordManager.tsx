@@ -3,6 +3,7 @@
  */
 
 import React from 'react';
+import { LockKeyhole } from 'reicon-react';
 import './SidebarDashboard.css';
 
 interface SidebarPasswordManagerProps {
@@ -13,7 +14,7 @@ export default function SidebarPasswordManager({ onNavigate }: SidebarPasswordMa
   return (
     <div className="sidebar-password-manager">
       <button className="sidebar-section-header-btn" onClick={onNavigate}>
-        <h3><span>🔐</span><span>PASSWORD MANAGER</span></h3>
+        <h3><LockKeyhole size={16} weight="Outline" /><span>PASSWORD MANAGER</span></h3>
       </button>
     </div>
   );
