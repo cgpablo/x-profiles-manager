@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Pin, Folder, FolderBookmark, Globe, X, Star, Mask, Pen, Trash, Plus } from 'reicon-react';
+import { Pin, Folder, FolderBookmark, FolderConnect, Globe, X, Star, Bookmarks, Pen, Trash, Plus } from 'reicon-react';
 import { ProfileFolder, BrowserProfile } from '../../types';
 import Tooltip from './Tooltip';
 import ProfileAvatarIcon from './ProfileAvatarIcon';
@@ -367,7 +367,7 @@ export default function SidebarFolders({
                             let y = e.clientY - 50;
                             
                             const menuWidth = 160;
-                            const menuHeight = 140;
+                             const menuHeight = 204;
                             const padding = 10;
                             
                             if (x + menuWidth + padding > window.innerWidth) {
@@ -455,12 +455,23 @@ export default function SidebarFolders({
                                         {profile.starred ? <><Star size={12} weight="Filled" /> Remove favorite</> : <><Star size={12} weight="Outline" /> Add favorite</>}
                                       </button>
                                     )}
-                                    {((profile.fcInfo?.ig?.length ?? 0) > 0 || (profile.fcInfo?.x?.length ?? 0) > 0 || (profile.fcInfo?.sc?.length ?? 0) > 0) && (
+                                     {profile.directoryPath && (
+                                       <button
+                                         className="context-menu-item"
+                                         onClick={() => {
+                                           window.electronAPI.shell.openPath(profile.directoryPath!).catch(console.error);
+                                           setProfileContextMenu(null);
+                                         }}
+                                       >
+                                         <><FolderConnect size={12} weight="Outline" /> Open directory</>
+                                       </button>
+                                     )}
+                                     {((profile.fcInfo?.ig?.length ?? 0) > 0 || (profile.fcInfo?.x?.length ?? 0) > 0 || (profile.fcInfo?.sc?.length ?? 0) > 0) && (
                                        <button
                                          className="context-menu-item"
                                          onClick={() => { setCharacterInfoProfile(profile); setProfileContextMenu(null); }}
                                        >
-                                         <><Mask size={12} /> Character info</>
+                                          <><Bookmarks size={12} weight="Outline" /> Character info</>
                                       </button>
                                     )}
                                     {onEditProfile && profile.locked === false && (
@@ -655,7 +666,7 @@ export default function SidebarFolders({
                               let y = e.clientY - 50; // Default: open slightly upwards
                               
                               const menuWidth = 160;
-                              const menuHeight = 140;
+                               const menuHeight = 204;
                               const padding = 10;
                               
                               // Adjust x if menu would go off-screen to the right
@@ -746,12 +757,23 @@ export default function SidebarFolders({
                                         {profile.starred ? <><Star size={12} weight="Filled" /> Remove favorite</> : <><Star size={12} weight="Outline" /> Add favorite</>}
                                       </button>
                                     )}
-                                    {((profile.fcInfo?.ig?.length ?? 0) > 0 || (profile.fcInfo?.x?.length ?? 0) > 0 || (profile.fcInfo?.sc?.length ?? 0) > 0) && (
-                                      <button
-                                        className="context-menu-item"
-                                        onClick={() => { setCharacterInfoProfile(profile); setProfileContextMenu(null); }}
-                                      >
-                                        <><Mask size={12} /> Character info</>
+                                     {profile.directoryPath && (
+                                       <button
+                                         className="context-menu-item"
+                                         onClick={() => {
+                                           window.electronAPI.shell.openPath(profile.directoryPath!).catch(console.error);
+                                           setProfileContextMenu(null);
+                                         }}
+                                       >
+                                         <><FolderConnect size={12} weight="Outline" /> Open directory</>
+                                       </button>
+                                     )}
+                                     {((profile.fcInfo?.ig?.length ?? 0) > 0 || (profile.fcInfo?.x?.length ?? 0) > 0 || (profile.fcInfo?.sc?.length ?? 0) > 0) && (
+                                       <button
+                                         className="context-menu-item"
+                                         onClick={() => { setCharacterInfoProfile(profile); setProfileContextMenu(null); }}
+                                       >
+                                         <><Bookmarks size={12} weight="Outline" /> Character info</>
                                       </button>
                                     )}
                                     {onEditProfile && profile.locked === false && (

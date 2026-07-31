@@ -57,12 +57,14 @@
   display: flex;
   gap: 0.75rem;
   width: 100%;
+  min-width: 0;
   align-items: flex-start;
   justify-content: space-between;
 }
 
 .profile-content {
   width: 100%;
+  min-width: 0;
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
@@ -160,6 +162,8 @@
 }
 
 .profile-account {
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: 0.75rem;
   color: var(--text-secondary);
   white-space: nowrap;

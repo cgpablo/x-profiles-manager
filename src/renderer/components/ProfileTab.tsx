@@ -7,7 +7,7 @@ import { BrowserProfile } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Tooltip from './Tooltip';
 import CharacterInfoModal from './CharacterInfoModal';
-import { Star, Lock, LockOpen, Check, Key, Envelope, Globe, Eye, X, Pen, Trash, Gear, Mask, Pin, FolderConnect, Bookmarks, Login } from 'reicon-react';
+import { Star, Lock, LockOpen, Check, Key, Envelope, Globe, Eye, X, Pen, Trash, Gear, Pin, FolderConnect, Bookmarks, Login } from 'reicon-react';
 import './ProfileTab.css';
 
 interface ProfileTabProps {
@@ -319,7 +319,7 @@ export default function ProfileTab({
                   )}
                 </div>
                 <span className={`status-badge ${isActive ? 'online' : 'offline'}`}>
-                  {isActive ? '● Online' : '○ Offline'}
+                  {isActive ? 'Online' : 'Offline'}
                 </span>
               </div>
 
@@ -508,6 +508,17 @@ export default function ProfileTab({
             >
                {isActive ? <><X size={12} /> Close browser</> : <><Globe size={12} /> Open in browser</>}
             </button>
+            {profile.directoryPath && (
+              <button
+                className="context-menu-item"
+                onClick={() => {
+                  window.electronAPI.shell.openPath(profile.directoryPath!);
+                  setShowContextMenu(false);
+                }}
+              >
+                <><FolderConnect size={12} weight="Outline" /> Open directory</>
+              </button>
+            )}
             {hasFcInfo && (
               <button
                 className="context-menu-item"
@@ -516,7 +527,7 @@ export default function ProfileTab({
                   setShowContextMenu(false);
                 }}
               >
-                 <><Mask size={12} /> Character info</>
+                 <><Bookmarks size={12} weight="Outline" /> Character info</>
               </button>
             )}
             {!isLocked && (
