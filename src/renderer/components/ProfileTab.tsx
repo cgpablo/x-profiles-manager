@@ -7,7 +7,7 @@ import { BrowserProfile } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Tooltip from './Tooltip';
 import CharacterInfoModal from './CharacterInfoModal';
-import { Star, Lock, LockOpen, Check, Key, Envelope, Globe, Eye, X, Pen, Trash, Gear, Pin, FolderConnect, Bookmarks, Login } from 'reicon-react';
+import { Star, Lock, LockOpen, Check, Key, Envelope, Globe, Eye, X, Pen, Trash, Gear, Pin, FolderConnect, Bookmarks, Login, ChatRound } from 'reicon-react';
 import './ProfileTab.css';
 
 interface ProfileTabProps {
@@ -27,6 +27,7 @@ interface ProfileTabProps {
   isDragging?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
   onDragOver?: (e: React.DragEvent) => void;
+  onDragLeave?: (e: React.DragEvent) => void;
   onDrop?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
   disableContextMenu?: boolean;
@@ -50,6 +51,7 @@ export default function ProfileTab({
   isDragging = false,
   onDragStart,
   onDragOver,
+  onDragLeave,
   onDrop,
   onDragEnd,
   disableContextMenu = false,
@@ -58,28 +60,56 @@ export default function ProfileTab({
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
   const [copiedXAccount, setCopiedXAccount] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(!!profile.xLoggedIn);
+  // Auto-login button: once clicked, stay hidden for 20 days regardless of anything else.
+  // Once the 20 days elapse (or if it was never clicked to begin with), the window's current
+  // URL is checked — /home, /notifications, /i/history, /i/chat — before the button is
+  // allowed to reappear: if it's on any of those it stays hidden; otherwise it shows.
+  // The button must NEVER show before that check has actually run once the browser opens.
+  const AUTO_LOGIN_COOLDOWN_MS = 20 * 24 * 60 * 60 * 1000;
+  const cooldownActive = !!profile.autoLoginClickedAt && (Date.now() - profile.autoLoginClickedAt) < AUTO_LOGIN_COOLDOWN_MS;
+  const [onHomePage, setOnHomePage] = useState(false);
+  const [homeCheckDone, setHomeCheckDone] = useState(false);
+  // Optimistic instant-hide right after clicking, before the persisted cooldown timestamp
+  // has round-tripped back into the `profile` prop.
+  const [justClickedLogin, setJustClickedLogin] = useState(false);
 
-  // Sync local state when the persisted value changes (after main-side check)
+  // One-shot check once the profile's browser becomes active (after it's had time to
+  // settle). Skipped entirely while the 20-day auto-login cooldown is active — the button
+  // stays hidden regardless, so there's no need to check. Otherwise (never clicked before,
+  // or the cooldown just lapsed), the check always runs before the button may show.
   useEffect(() => {
-    setIsLoggedIn(!!profile.xLoggedIn);
-  }, [profile.xLoggedIn]);
-
-  // One-shot check when the profile becomes active (after browser has had time to settle).
-  // The main process also persists this on launch/autoLogin, but this covers logouts
-  // during a running session without continuous polling.
-  useEffect(() => {
-    if (!isActive || !profile.xAccount) return;
+    if (!isActive) {
+      // Browser closed: reset so a fresh check is required the next time it opens.
+      setOnHomePage(false);
+      setHomeCheckDone(false);
+      return;
+    }
+    if (!profile.xAccount || cooldownActive) {
+      return;
+    }
+    setHomeCheckDone(false);
     const timer = setTimeout(async () => {
       try {
-        const result = await window.electronAPI.launcher.isLoggedIn(profile.id);
-        setIsLoggedIn(result);
-      } catch {}
+        const result = await window.electronAPI.launcher.isOnHomeUrl(profile.id);
+        setOnHomePage(result);
+      } catch {
+        setOnHomePage(false);
+      } finally {
+        setHomeCheckDone(true);
+      }
     }, 4000);
     return () => clearTimeout(timer);
-  }, [isActive, profile.id, profile.xAccount]);
+  }, [isActive, profile.id, profile.xAccount, cooldownActive]);
+
+  // Once the persisted cooldown has actually kicked in, the optimistic flag is no longer needed.
+  useEffect(() => {
+    if (cooldownActive) setJustClickedLogin(false);
+  }, [cooldownActive]);
   const [copiedPassword, setCopiedPassword] = useState(false);
   const [copiedMail, setCopiedMail] = useState(false);
+  const [pinFilling, setPinFilling] = useState(false);
+  const [pinFilled, setPinFilled] = useState(false);
+  const [pinFillFailed, setPinFillFailed] = useState(false);
   const [showCharInfoModal, setShowCharInfoModal] = useState(false);
   // locked: true when profile.locked is undefined (default) or true; false only when explicitly set to false
   const isLocked = profile.locked !== false;
@@ -193,6 +223,30 @@ export default function ProfileTab({
     }).catch(console.error);
   };
 
+  const handleFillPin = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (pinFilling) return;
+    setPinFilling(true);
+    try {
+      const filled = await window.electronAPI.launcher.fillPinRecovery(profile.id);
+      if (filled) {
+        setPinFilled(true);
+        setTimeout(() => setPinFilled(false), 800);
+      } else {
+        // Clicked, but the browser wasn't on /i/chat/pin/recovery (or no PIN linked) —
+        // give visible feedback instead of silently doing nothing.
+        setPinFillFailed(true);
+        setTimeout(() => setPinFillFailed(false), 800);
+      }
+    } catch (err) {
+      console.error('Error filling PIN:', err);
+      setPinFillFailed(true);
+      setTimeout(() => setPinFillFailed(false), 800);
+    } finally {
+      setPinFilling(false);
+    }
+  };
+
    return (
       <div
         className={`profile-tab ${isActive ? 'active' : ''} ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
@@ -206,6 +260,7 @@ export default function ProfileTab({
         draggable={!!onDragStart}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
         onDrop={onDrop}
         onDragEnd={onDragEnd}
         onClick={() => {
@@ -307,6 +362,23 @@ export default function ProfileTab({
                       {copiedPassword ? <Check size={10} /> : <Key size={12} />}
                     </button>
                   )}
+                  {isActive && (
+                    <button
+                      className={`btn-profile-pin${pinFilled ? ' pin-filled' : ''}${pinFillFailed ? ' pin-fill-failed' : ''}`}
+                      onClick={handleFillPin}
+                      disabled={pinFilling}
+                      title={
+                        pinFillFailed
+                          ? 'Could not open chat'
+                          : profile.pinPasswordId
+                            ? 'Open chat and fill PIN if asked'
+                            : 'Open chat (/i/chat)'
+                      }
+                      aria-label="Open chat"
+                    >
+                      {pinFilled ? <Check size={10} /> : pinFillFailed ? <X size={10} /> : <ChatRound size={11} />}
+                    </button>
+                  )}
                   {profile.hasMail && (
                     <button
                       className={`btn-profile-mail${copiedMail ? ' mail-copied' : ''}`}
@@ -327,16 +399,17 @@ export default function ProfileTab({
               <div className="profile-actions">
                 {/* Row 1: Auto-login/Open/Focus/Close buttons */}
                 <div className="action-row">
-                  {isActive && profile.xAccount && profile.hasPassword && !isLoggedIn && (
+                  {isActive && profile.xAccount && profile.hasPassword && homeCheckDone && !justClickedLogin && !cooldownActive && !onHomePage && (
                     <Tooltip text="Auto-login X" position="top">
                       <button
                         className="action-btn login-btn"
                         onClick={(e) => {
                           e.stopPropagation();
-                          // Optimistic: hide button immediately; a later background
-                          // check will correct it if login actually failed.
-                          setIsLoggedIn(true);
+                          // Optimistic instant-hide; the persisted 20-day cooldown (written
+                          // right below) is what actually keeps it hidden going forward.
+                          setJustClickedLogin(true);
                           window.electronAPI.launcher.autoLogin(profile.id);
+                          window.electronAPI.profiles.update(profile.id, { autoLoginClickedAt: Date.now() }).catch(() => {});
                         }}
                       >
                         <Login size={14} weight="Outline" />
@@ -507,6 +580,16 @@ export default function ProfileTab({
               }}
             >
                {isActive ? <><X size={12} /> Close browser</> : <><Globe size={12} /> Open in browser</>}
+            </button>
+            <button
+              className="context-menu-item"
+              onClick={() => {
+                window.electronAPI.launcher.openChat(profile.id).catch((err) => console.error('Error opening chat:', err));
+                onCloseContextMenus?.();
+                setShowContextMenu(false);
+              }}
+            >
+              <><ChatRound size={12} /> Chat</>
             </button>
             {profile.directoryPath && (
               <button

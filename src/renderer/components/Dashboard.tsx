@@ -55,6 +55,10 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
   const [orderedFolders, setOrderedFolders] = useState<ProfileFolder[]>([]);
   const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
   const [draggedProfileId, setDraggedProfileId] = useState<string | null>(null);
+  const [folderDragOverId, setFolderDragOverId] = useState<string | null>(null);
+  const [folderDragOverPos, setFolderDragOverPos] = useState<'before' | 'after' | null>(null);
+  const [profileDragOverId, setProfileDragOverId] = useState<string | null>(null);
+  const [profileDragOverPos, setProfileDragOverPos] = useState<'before' | 'after' | null>(null);
   const [orderedProfiles, setOrderedProfiles] = useState<Map<string | 'ungrouped', BrowserProfile[]>>(new Map());
   const [activeTab, setActiveTab] = useState<'folders' | 'profiles'>('folders'); // Para tabs en pantallas estrechas
   const dragOverTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -269,31 +273,50 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
     e.dataTransfer!.setData('text/plain', folderId);
   };
 
-  const handleFolderDragOver = (e: React.DragEvent) => {
+  const handleFolderDragOver = (e: React.DragEvent, folderId: string) => {
     e.preventDefault();
     e.dataTransfer!.dropEffect = 'move';
+    if (draggedFolderId === folderId) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isBefore = e.clientY < rect.top + rect.height / 2;
+    setFolderDragOverId(folderId);
+    setFolderDragOverPos(isBefore ? 'before' : 'after');
+  };
+
+  const handleFolderDragLeave = (e: React.DragEvent, folderId: string) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setFolderDragOverId((prev) => (prev === folderId ? null : prev));
+    }
   };
 
   const handleFolderDrop = (e: React.DragEvent, targetFolderId: string) => {
     e.preventDefault();
     // Get the source folder ID from dataTransfer instead of state
     const sourceFolderId = e.dataTransfer?.getData('text/plain');
-    
+
     if (sourceFolderId && sourceFolderId !== targetFolderId) {
       const sourceIndex = orderedFolders.findIndex((f) => f.id === sourceFolderId);
-      const targetIndex = orderedFolders.findIndex((f) => f.id === targetFolderId);
-      if (sourceIndex !== -1 && targetIndex !== -1) {
+      if (sourceIndex !== -1) {
         const newOrder = [...orderedFolders];
-        [newOrder[sourceIndex], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[sourceIndex]];
-        setOrderedFolders(newOrder);
-        onOrderChange?.(orderedProfiles, newOrder);
+        const [moved] = newOrder.splice(sourceIndex, 1);
+        const targetIndex = newOrder.findIndex((f) => f.id === targetFolderId);
+        if (targetIndex !== -1) {
+          const insertAt = folderDragOverPos === 'after' ? targetIndex + 1 : targetIndex;
+          newOrder.splice(insertAt, 0, moved);
+          setOrderedFolders(newOrder);
+          onOrderChange?.(orderedProfiles, newOrder);
+        }
       }
     }
     setDraggedFolderId(null);
+    setFolderDragOverId(null);
+    setFolderDragOverPos(null);
   };
 
   const handleFolderDragEnd = () => {
     setDraggedFolderId(null);
+    setFolderDragOverId(null);
+    setFolderDragOverPos(null);
   };
 
   // Drag and Drop Handlers for Profiles
@@ -303,9 +326,20 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
     e.dataTransfer.setData('text/plain', profileId);
   };
 
-  const handleProfileDragOver = (e: React.DragEvent) => {
+  const handleProfileDragOver = (e: React.DragEvent, profileId: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    if (draggedProfileId === profileId) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isBefore = e.clientY < rect.top + rect.height / 2;
+    setProfileDragOverId(profileId);
+    setProfileDragOverPos(isBefore ? 'before' : 'after');
+  };
+
+  const handleProfileDragLeave = (e: React.DragEvent, profileId: string) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setProfileDragOverId((prev) => (prev === profileId ? null : prev));
+    }
   };
 
   const handleProfileDrop = (e: React.DragEvent, targetProfileId: string) => {
@@ -314,21 +348,29 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
     if (sourceProfileId && sourceProfileId !== targetProfileId && selectedFolderId) {
       const currentProfiles = orderedProfiles.get(selectedFolderId) || [];
       const sourceIndex = currentProfiles.findIndex((p) => p.id === sourceProfileId);
-      const targetIndex = currentProfiles.findIndex((p) => p.id === targetProfileId);
-      if (sourceIndex !== -1 && targetIndex !== -1) {
+      if (sourceIndex !== -1) {
         const newProfiles = [...currentProfiles];
-        [newProfiles[sourceIndex], newProfiles[targetIndex]] = [newProfiles[targetIndex], newProfiles[sourceIndex]];
-        const newMap = new Map(orderedProfiles);
-        newMap.set(selectedFolderId, newProfiles);
-        setOrderedProfiles(newMap);
-        onOrderChange?.(newMap, orderedFolders);
+        const [moved] = newProfiles.splice(sourceIndex, 1);
+        const targetIndex = newProfiles.findIndex((p) => p.id === targetProfileId);
+        if (targetIndex !== -1) {
+          const insertAt = profileDragOverPos === 'after' ? targetIndex + 1 : targetIndex;
+          newProfiles.splice(insertAt, 0, moved);
+          const newMap = new Map(orderedProfiles);
+          newMap.set(selectedFolderId, newProfiles);
+          setOrderedProfiles(newMap);
+          onOrderChange?.(newMap, orderedFolders);
+        }
       }
     }
     setDraggedProfileId(null);
+    setProfileDragOverId(null);
+    setProfileDragOverPos(null);
   };
 
   const handleProfileDragEnd = () => {
     setDraggedProfileId(null);
+    setProfileDragOverId(null);
+    setProfileDragOverPos(null);
   };
 
   // Calculate profile count by folder
@@ -452,43 +494,54 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                   )}
 
                   {/* Regular Folders */}
-                  {orderedFolders.map((folder) => (
-                    <div
-                      key={folder.id}
-                      className={`folder-card ${draggedFolderId === folder.id ? 'dragging' : ''} ${selectedFolderId === folder.id ? 'selected' : ''}`}
-                      draggable
-                      onDragStart={(e) => handleFolderDragStart(e, folder.id)}
-                      onDragOver={handleFolderDragOver}
-                      onDrop={(e) => handleFolderDrop(e, folder.id)}
-                      onDragEnd={handleFolderDragEnd}
-                      onClick={() => onSelectFolder(folder.id)}
-                    >
-                     <div className="folder-card-header">
-                        <div className="folder-info">
-                           <span className="folder-icon"><Folder size={14} weight="Outline" /></span>
-                          <h4>{folder.name}</h4>
-                          <span className="profile-count">{profileCountByFolder.get(folder.id) || 0}</span>
+                  {orderedFolders.map((folder) => {
+                    const showIndicator = folderDragOverId === folder.id && draggedFolderId !== folder.id;
+                    return (
+                    <React.Fragment key={folder.id}>
+                      {showIndicator && folderDragOverPos === 'before' && (
+                        <div className="drop-indicator" />
+                      )}
+                      <div
+                        className={`folder-card ${draggedFolderId === folder.id ? 'dragging' : ''} ${selectedFolderId === folder.id ? 'selected' : ''}`}
+                        draggable
+                        onDragStart={(e) => handleFolderDragStart(e, folder.id)}
+                        onDragOver={(e) => handleFolderDragOver(e, folder.id)}
+                        onDragLeave={(e) => handleFolderDragLeave(e, folder.id)}
+                        onDrop={(e) => handleFolderDrop(e, folder.id)}
+                        onDragEnd={handleFolderDragEnd}
+                        onClick={() => onSelectFolder(folder.id)}
+                      >
+                       <div className="folder-card-header">
+                          <div className="folder-info">
+                             <span className="folder-icon"><Folder size={14} weight="Outline" /></span>
+                            <h4>{folder.name}</h4>
+                            <span className="profile-count">{profileCountByFolder.get(folder.id) || 0}</span>
+                          </div>
+                            <div className="folder-actions">
+                              <button
+                                className="action-btn edit-btn"
+                                onClick={() => setEditingFolder(folder)}
+                                title="Edit"
+                              >
+                                <Pen size={14} weight="Outline" />
+                              </button>
+                              <button
+                                className="action-btn delete-btn"
+                                onClick={() => setFolderToDelete(folder)}
+                                title="Delete"
+                              >
+                               <Trash size={14} weight="Outline" />
+                             </button>
+                           </div>
                         </div>
-                          <div className="folder-actions">
-                            <button
-                              className="action-btn edit-btn"
-                              onClick={() => setEditingFolder(folder)}
-                              title="Edit"
-                            >
-                              <Pen size={14} weight="Outline" />
-                            </button>
-                            <button
-                              className="action-btn delete-btn"
-                              onClick={() => setFolderToDelete(folder)}
-                              title="Delete"
-                            >
-                             <Trash size={14} weight="Outline" />
-                           </button>
-                         </div>
-                      </div>
-                     <div className="folder-color" style={{ backgroundColor: folder.color }}></div>
-                   </div>
-                 ))}
+                       <div className="folder-color" style={{ backgroundColor: folder.color }}></div>
+                     </div>
+                     {showIndicator && folderDragOverPos === 'after' && (
+                       <div className="drop-indicator" />
+                     )}
+                    </React.Fragment>
+                    );
+                  })}
                </div>
              )}
           </div>
@@ -528,28 +581,39 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                </div>
               ) : (
                   <div className="profiles-list">
-                       {selectedFolderProfiles.map((profile) => (
-                         <ProfileTab
-                           key={`${profile.id}-${profile.imagePath || 'no-image'}`}
-                           profile={profile}
-                           isActive={activeStatuses.get(profile.id) || false}
-                           isSelected={false}
-                           isDragging={draggedProfileId === profile.id}
-                           onLaunch={() => handleLaunchProfile(profile.id)}
-                           onClose={() => handleCloseProfile(profile.id)}
-                             onDelete={() => setProfileToDelete(profile)}
-                            onEdit={() => handleEditProfile(profile)}
-                            onToggleStar={() => handleToggleStar(profile.id)}
-                            onToggleLock={() => handleToggleLock(profile.id)}
-                           onMoveToFolder={handleMoveProfileToFolder}
-                           folders={folders}
-                           onDragStart={(e) => handleProfileDragStart(e, profile.id)}
-                           onDragOver={handleProfileDragOver}
-                           onDrop={(e) => handleProfileDrop(e, profile.id)}
-                           onDragEnd={handleProfileDragEnd}
-                           disableContextMenu={true}
-                         />
-                       ))}
+                       {selectedFolderProfiles.map((profile) => {
+                         const showIndicator = profileDragOverId === profile.id && draggedProfileId !== profile.id;
+                         return (
+                         <React.Fragment key={`${profile.id}-${profile.imagePath || 'no-image'}`}>
+                           {showIndicator && profileDragOverPos === 'before' && (
+                             <div className="drop-indicator" />
+                           )}
+                           <ProfileTab
+                             profile={profile}
+                             isActive={activeStatuses.get(profile.id) || false}
+                             isSelected={false}
+                             isDragging={draggedProfileId === profile.id}
+                             onLaunch={() => handleLaunchProfile(profile.id)}
+                             onClose={() => handleCloseProfile(profile.id)}
+                               onDelete={() => setProfileToDelete(profile)}
+                              onEdit={() => handleEditProfile(profile)}
+                              onToggleStar={() => handleToggleStar(profile.id)}
+                              onToggleLock={() => handleToggleLock(profile.id)}
+                             onMoveToFolder={handleMoveProfileToFolder}
+                             folders={folders}
+                             onDragStart={(e) => handleProfileDragStart(e, profile.id)}
+                             onDragOver={(e) => handleProfileDragOver(e, profile.id)}
+                             onDragLeave={(e) => handleProfileDragLeave(e, profile.id)}
+                             onDrop={(e) => handleProfileDrop(e, profile.id)}
+                             onDragEnd={handleProfileDragEnd}
+                             disableContextMenu={true}
+                           />
+                           {showIndicator && profileDragOverPos === 'after' && (
+                             <div className="drop-indicator" />
+                           )}
+                         </React.Fragment>
+                         );
+                       })}
                  </div>
               )}
            </div>

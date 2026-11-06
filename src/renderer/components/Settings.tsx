@@ -4,12 +4,13 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Floppy, Archive, FolderOpen, X } from 'reicon-react';
-import { AppSettings, BrowserProfile, ProfileFolder } from '../../types';
+import { AppSettings, BackupInspection, BrowserProfile, ProfileFolder } from '../../types';
 import { useElectronAPI } from '../hooks/useElectronAPI';
 import Sidebar from './Sidebar';
 import ProfileModal from './ProfileModal';
 import CreateFolderModal from './CreateFolderModal';
 import DeleteConfirmModal from './DeleteProfileConfirmModal';
+import BackupSelectionModal, { ExportSelectionOptions } from './BackupSelectionModal';
 import './Settings.css';
 
 interface SettingsProps {
@@ -43,6 +44,8 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [pendingImport, setPendingImport] = useState<{ filePath: string; inspection: BackupInspection } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isDeletingIcons, setIsDeletingIcons] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -140,19 +143,64 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
     }
   };
 
+  const handleExportSelected = async (profileIds: string[], exportOptions: ExportSelectionOptions) => {
+    onBackupStart?.('export');
+    setIsExporting(true);
+    try {
+      const success = await electronAPI.backup.exportSelected(profileIds, exportOptions);
+      if (success) {
+        setShowExportModal(false);
+        showStatus('Selected profiles exported!');
+        onBackupSuccess?.('Selected profiles exported successfully!');
+      } else {
+        showStatus('Export cancelled', 'error');
+        onBackupError?.('Backup export was cancelled');
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Error exporting backup';
+      showStatus(msg, 'error');
+      onBackupError?.(msg);
+      console.error(error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const runRestore = async (filePath: string, targetFolderId?: string | null) => {
+    const result = await electronAPI.backup.restore(filePath, { targetFolderId });
+    const summary = `${result.profilesAdded} profiles added (${result.profilesSkipped} skipped), ` +
+      `${result.passwordsAdded} passwords, ${result.mailsAdded} mails added`;
+    showStatus('Backup imported! Restarting...');
+    onBackupSuccess?.(`Backup imported successfully: ${summary}. The app will now restart.`);
+    setTimeout(() => { window.location.reload(); }, 2000);
+  };
+
   const handleImport = async () => {
     onBackupStart?.('import');
     setIsImporting(true);
     try {
-      const success = await electronAPI.backup.import();
-      if (success) {
-        showStatus('Backup imported! Restarting...');
-        onBackupSuccess?.('Backup imported successfully! The app will now restart.');
-        setTimeout(() => { window.location.reload(); }, 2000);
-      } else {
-        showStatus('Import cancelled', 'error');
-        onBackupError?.('Backup import was cancelled');
+      const picked = await electronAPI.backup.import();
+      if (picked.inspection.type === 'partial') {
+        setPendingImport(picked);
+        return;
       }
+      await runRestore(picked.filePath);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Error importing backup';
+      showStatus(msg, 'error');
+      onBackupError?.(msg);
+      console.error(error);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleConfirmPartialImport = async (targetFolderId: string | null | undefined) => {
+    if (!pendingImport) return;
+    setIsImporting(true);
+    try {
+      await runRestore(pendingImport.filePath, targetFolderId);
+      setPendingImport(null);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Error importing backup';
       showStatus(msg, 'error');
@@ -902,7 +950,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
              <div className="setting-item">
                <label>Backup Profiles</label>
                <p className="section-description">
-                 Export all your profiles, extensions, and settings to a backup file. Import a previously exported backup to restore everything.
+                 Export all your profiles, extensions, and settings to a backup file. Export selected profiles only, or import a previously exported backup to restore everything.
                </p>
                <div className="backup-buttons">
                  <button
@@ -910,7 +958,14 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
                    onClick={handleExport}
                    disabled={isExporting}
                  >
-                    {isExporting ? 'Exporting...' : <><Archive size={14} /> Export</>}
+                    {isExporting ? 'Exporting...' : <><Archive size={14} /> Export All</>}
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => setShowExportModal(true)}
+                    disabled={isExporting}
+                  >
+                    <Archive size={14} /> Export
                  </button>
                  <button
                    className="btn-secondary"
@@ -1006,6 +1061,28 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
           </div>
         )}
       </div>
+
+      {showExportModal && (
+        <BackupSelectionModal
+          mode="export"
+          folders={folders}
+          profiles={profiles}
+          busy={isExporting}
+          onAccept={handleExportSelected}
+          onCancel={() => setShowExportModal(false)}
+        />
+      )}
+
+      {pendingImport && (
+        <BackupSelectionModal
+          mode="import"
+          folders={folders}
+          inspection={pendingImport.inspection}
+          busy={isImporting}
+          onAccept={handleConfirmPartialImport}
+          onCancel={() => setPendingImport(null)}
+        />
+      )}
 
       {showCreateModal && (
         <ProfileModal

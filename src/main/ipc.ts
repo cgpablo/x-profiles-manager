@@ -9,7 +9,7 @@ import { storageManager } from './storage';
 import { chromeLauncher } from './launcher';
 import { passwordManager } from './passwordManager';
 import { mailManager } from './mailManager';
-import { BrowserProfile, AppSettings, IpcResponse, ProfileFolder } from '../types';
+import { BrowserProfile, AppSettings, IpcResponse, ProfileFolder, BackupExportOptions, BackupInspection, BackupRestoreResult } from '../types';
 
 export function setupIpcHandlers(): void {
   // Start process monitoring to detect when Chrome windows close
@@ -243,6 +243,39 @@ export function setupIpcHandlers(): void {
     }
   });
 
+  ipcMain.handle('launcher:isOnHomeUrl', async (_, profileId: string): Promise<IpcResponse<boolean>> => {
+    try {
+      const result = await chromeLauncher.isOnHomeUrl(profileId);
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('launcher:fillPinRecovery', async (_, profileId: string): Promise<IpcResponse<boolean>> => {
+    try {
+      const profile = storageManager.getProfile(profileId);
+      if (!profile) {
+        return { success: false, error: 'Profile not found' };
+      }
+      // No PIN configured is fine — fillPinRecovery will just redirect to /i/chat.
+      const pin = profile.pinPasswordId ? passwordManager.getDecryptedById(profile.pinPasswordId) : null;
+      const result = await chromeLauncher.fillPinRecovery(profileId, pin);
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('launcher:openChat', async (_, profileId: string): Promise<IpcResponse<boolean>> => {
+    try {
+      const result = await chromeLauncher.openChat(profileId);
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
   // ====== SETTINGS HANDLERS ======
 
   ipcMain.handle('settings:get', async (): Promise<IpcResponse<AppSettings>> => {
@@ -410,7 +443,34 @@ export function setupIpcHandlers(): void {
     }
   });
 
-  ipcMain.handle('backup:import', async (): Promise<IpcResponse<boolean>> => {
+  ipcMain.handle('backup:exportSelected', async (_, profileIds: string[], options: Omit<BackupExportOptions, 'profileIds'> = {}): Promise<IpcResponse<boolean>> => {
+    try {
+      if (!Array.isArray(profileIds) || profileIds.length === 0) {
+        return { success: false, error: 'No profiles selected' };
+      }
+
+      const result = await dialog.showSaveDialog({
+        title: 'Export Selected X Profiles',
+        defaultPath: `x-profiles-selected-${new Date().toISOString().split('T')[0]}.zip`,
+        filters: [
+          { name: 'Backup Files', extensions: ['zip'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      });
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, error: 'Export canceled' };
+      }
+
+      await storageManager.createBackup(result.filePath, { ...options, profileIds });
+      return { success: true, data: true };
+    } catch (error) {
+      console.error('Export selected error:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('backup:import', async (): Promise<IpcResponse<{ filePath: string; inspection: BackupInspection } | null>> => {
     try {
       const result = await dialog.showOpenDialog({
         title: 'Import X Profiles Backup',
@@ -425,13 +485,20 @@ export function setupIpcHandlers(): void {
         return { success: false, error: 'Import canceled' };
       }
 
-      const backupPath = result.filePaths[0];
-
-      // Restore backup
-      await storageManager.restoreBackup(backupPath);
-      return { success: true, data: true };
+      const filePath = result.filePaths[0];
+      return { success: true, data: { filePath, inspection: storageManager.inspectBackup(filePath) } };
     } catch (error) {
       console.error('Import error:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('backup:restore', async (_, filePath: string, options: { targetFolderId?: string | null } = {}): Promise<IpcResponse<BackupRestoreResult>> => {
+    try {
+      const result = await storageManager.restoreBackup(filePath, options);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Restore error:', error);
       return { success: false, error: String(error) };
     }
   });
@@ -570,6 +637,18 @@ export function setupIpcHandlers(): void {
     async (_, profileId: string): Promise<IpcResponse<string | null>> => {
       try {
         const pw = passwordManager.getDecryptedForProfile(profileId);
+        return { success: true, data: pw };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    'passwords:getDecryptedById',
+    async (_, id: string): Promise<IpcResponse<string | null>> => {
+      try {
+        const pw = passwordManager.getDecryptedById(id);
         return { success: true, data: pw };
       } catch (error) {
         return { success: false, error: String(error) };

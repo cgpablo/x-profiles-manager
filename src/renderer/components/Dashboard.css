@@ -186,6 +186,7 @@
 }
 
 .folder-card {
+   position: relative;
    display: flex;
    flex-direction: column;
    background: var(--bg-secondary);
@@ -206,6 +207,22 @@
      opacity: 0.5;
      transform: scale(0.95);
    }
+
+  @keyframes dragIndicatorPulse {
+    0%, 100% { opacity: 0.5; transform: scaleX(0.96); }
+    50% { opacity: 1; transform: scaleX(1); }
+  }
+
+  /* Drop indicator: a separator line rendered BETWEEN items (not on top of them)
+     to show exactly where a dragged folder/profile will be inserted. */
+  .drop-indicator {
+    height: 4px;
+    flex-shrink: 0;
+    border-radius: 2px;
+    background: var(--primary);
+    box-shadow: 0 0 10px var(--primary), 0 0 4px var(--primary);
+    animation: dragIndicatorPulse 0.9s ease-in-out infinite;
+  }
 
    .folder-card.selected {
      background: rgba(59, 130, 246, 0.15);

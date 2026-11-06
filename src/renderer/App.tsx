@@ -3,7 +3,7 @@
  */
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { Star, SearchNormal, X, Undo, Floppy } from 'reicon-react';
+import { Star, SearchNormal, X, Undo, Floppy, Check } from 'reicon-react';
 import { BrowserProfile, ProfileFolder } from '../types';
 import { useElectronAPI } from './hooks/useElectronAPI';
 import Dashboard from './components/Dashboard';
@@ -29,6 +29,8 @@ function App() {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null | 'ungrouped' | '__online__' | '__search__' | '__starred__'>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchActive, setSearchActive] = useState(false);
+  const [symbolCopied, setSymbolCopied] = useState(false);
+  const [symbolCount, setSymbolCount] = useState(1);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -316,6 +318,20 @@ function App() {
     }
   };
 
+  const handleCopySymbol = () => {
+    navigator.clipboard.writeText('—'.repeat(symbolCount));
+    setSymbolCopied(true);
+    setTimeout(() => setSymbolCopied(false), 1200);
+  };
+
+  const handleDecrementSymbolCount = () => {
+    setSymbolCount((count) => Math.max(1, count - 1));
+  };
+
+  const handleIncrementSymbolCount = () => {
+    setSymbolCount((count) => Math.min(6, count + 1));
+  };
+
   return (
      <div className="app">
        <nav className="app-nav">
@@ -385,6 +401,35 @@ function App() {
                    <X size={12} />
                 </button>
               )}
+            </div>
+            <div className="symbol-copy-group">
+              <div className="symbol-counter">
+                <button
+                  className="symbol-counter-btn"
+                  onClick={handleDecrementSymbolCount}
+                  disabled={symbolCount <= 1}
+                  title="Menos"
+                >
+                  −
+                </button>
+                <span className="symbol-counter-value">{symbolCount}</span>
+                <button
+                  className="symbol-counter-btn"
+                  onClick={handleIncrementSymbolCount}
+                  disabled={symbolCount >= 6}
+                  title="Más"
+                >
+                  +
+                </button>
+              </div>
+              <span className="symbol-group-divider" />
+              <button
+                className={`btn-copy-symbol${symbolCopied ? ' copied' : ''}`}
+                onClick={handleCopySymbol}
+                title={`Copiar "${'—'.repeat(symbolCount)}" al portapapeles`}
+              >
+                {symbolCopied ? <Check size={14} /> : '—'}
+              </button>
             </div>
          </div>
          {orderSavedMessage && (
@@ -572,6 +617,7 @@ function App() {
             {/* Password Manager - kept mounted to avoid sidebar flicker */}
             <div style={{ display: view === 'password-manager' ? 'flex' : 'none', flex: 1, overflow: 'hidden' }}>
                  <PasswordManagerView
+                   isActive={view === 'password-manager'}
                    folders={folders}
                    profiles={profiles}
                    selectedFolderId={selectedFolderId}
@@ -601,6 +647,7 @@ function App() {
              {/* Mail Manager - kept mounted to avoid sidebar flicker */}
              <div style={{ display: view === 'mail-manager' ? 'flex' : 'none', flex: 1, overflow: 'hidden' }}>
                   <MailManagerView
+                    isActive={view === 'mail-manager'}
                     folders={folders}
                     profiles={profiles}
                     selectedFolderId={selectedFolderId}

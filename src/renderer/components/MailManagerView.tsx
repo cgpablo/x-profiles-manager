@@ -46,6 +46,8 @@ interface MailManagerViewProps {
   showDashboard?: boolean;
   onToggleAllFolders?: (expand: boolean) => void;
   onFoldersChange?: () => void;
+  /** Whether this view is the one currently shown (kept mounted otherwise to avoid sidebar flicker). */
+  isActive?: boolean;
 }
 
 export default function MailManagerView({
@@ -71,6 +73,7 @@ export default function MailManagerView({
   showDashboard = true,
   onToggleAllFolders,
   onFoldersChange,
+  isActive = true,
 }: MailManagerViewProps) {
   const [entries, setEntries] = useState<MailEntry[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -194,6 +197,15 @@ export default function MailManagerView({
   useEffect(() => {
     loadEntries();
   }, []);
+
+  // This view is kept mounted (hidden via display:none) even when not selected, so a mail
+  // link made elsewhere (e.g. editing a profile from the Dashboard) never triggers a refetch
+  // on its own. Refresh whenever the user actually navigates into this view.
+  useEffect(() => {
+    if (isActive) {
+      loadEntries();
+    }
+  }, [isActive]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -348,6 +360,7 @@ export default function MailManagerView({
           onSuccess={() => {
             setShowCreateModal(false);
             setCreateModalFolderId(undefined);
+            loadEntries();
           }}
           selectedFolderId={createModalFolderId || selectedFolderId}
           folders={folders}
@@ -358,7 +371,10 @@ export default function MailManagerView({
         <ProfileModal
           profile={profileForEdit}
           onClose={() => setProfileForEdit(null)}
-          onSuccess={() => setProfileForEdit(null)}
+          onSuccess={() => {
+            setProfileForEdit(null);
+            loadEntries();
+          }}
           folders={folders}
         />
       )}

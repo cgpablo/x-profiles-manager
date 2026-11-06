@@ -46,6 +46,8 @@ interface PasswordManagerViewProps {
   showDashboard?: boolean;
   onToggleAllFolders?: (expand: boolean) => void;
   onFoldersChange?: () => void;
+  /** Whether this view is the one currently shown (kept mounted otherwise to avoid sidebar flicker). */
+  isActive?: boolean;
 }
 
 export default function PasswordManagerView({
@@ -71,6 +73,7 @@ export default function PasswordManagerView({
   showDashboard = true,
   onToggleAllFolders,
   onFoldersChange,
+  isActive = true,
 }: PasswordManagerViewProps) {
   const [entries, setEntries] = useState<PasswordEntry[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -187,6 +190,15 @@ export default function PasswordManagerView({
   useEffect(() => {
     loadEntries();
   }, []);
+
+  // This view is kept mounted (hidden via display:none) even when not selected, so a password
+  // link made elsewhere (e.g. editing a profile from the Dashboard) never triggers a refetch
+  // on its own. Refresh whenever the user actually navigates into this view.
+  useEffect(() => {
+    if (isActive) {
+      loadEntries();
+    }
+  }, [isActive]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -335,6 +347,7 @@ export default function PasswordManagerView({
           onSuccess={() => {
             setShowCreateModal(false);
             setCreateModalFolderId(undefined);
+            loadEntries();
           }}
           selectedFolderId={createModalFolderId || selectedFolderId}
           folders={folders}
@@ -347,6 +360,7 @@ export default function PasswordManagerView({
           onClose={() => setProfileForEdit(null)}
           onSuccess={() => {
             setProfileForEdit(null);
+            loadEntries();
           }}
           folders={folders}
         />

@@ -25,6 +25,9 @@ interface ElectronAPI {
     isActive: (profileId: string) => Promise<boolean>;
     autoLogin: (profileId: string) => Promise<boolean>;
     isLoggedIn: (profileId: string) => Promise<boolean>;
+    isOnHomeUrl: (profileId: string) => Promise<boolean>;
+    fillPinRecovery: (profileId: string) => Promise<boolean>;
+    openChat: (profileId: string) => Promise<boolean>;
   };
   folders: {
     getAll: () => Promise<ProfileFolder[]>;
@@ -52,6 +55,7 @@ interface ElectronAPI {
     update: (id: string, updates: { name?: string; value?: string; profileIds?: string[] }) => Promise<any>;
     delete: (id: string) => Promise<boolean>;
     getDecryptedForProfile: (profileId: string) => Promise<string | null>;
+    getDecryptedById: (id: string) => Promise<string | null>;
   };
   mails: {
     getAll: () => Promise<Array<{ id: string; email: string; profileIds: string[]; createdAt: number; updatedAt?: number }>>;

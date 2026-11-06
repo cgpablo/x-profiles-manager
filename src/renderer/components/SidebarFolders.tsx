@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Pin, Folder, FolderBookmark, FolderConnect, Globe, X, Star, Bookmarks, Pen, Trash, Plus } from 'reicon-react';
+import { Pin, Folder, FolderBookmark, FolderConnect, Globe, X, Star, Bookmarks, Pen, Trash, Plus, ChatRound } from 'reicon-react';
 import { ProfileFolder, BrowserProfile } from '../../types';
 import Tooltip from './Tooltip';
 import ProfileAvatarIcon from './ProfileAvatarIcon';
@@ -447,6 +447,15 @@ export default function SidebarFolders({
                                         <><X size={12} /> Close</>
                                      </button>
                                     )}
+                                    <button
+                                      className="context-menu-item"
+                                      onClick={() => {
+                                        window.electronAPI.launcher.openChat(profile.id).catch(console.error);
+                                        setProfileContextMenu(null);
+                                      }}
+                                    >
+                                      <><ChatRound size={12} /> Chat</>
+                                    </button>
                                    {onToggleStar && profile.locked === false && (
                                      <button
                                        className="context-menu-item"

@@ -68,6 +68,14 @@ export default function ProfileModal({
   const [passwordSearch, setPasswordSearch] = useState('');
   const [passwordDropdownOpen, setPasswordDropdownOpen] = useState(false);
 
+  // PIN selector state — links to a Password Manager entry too, but stored directly on the
+  // profile (profile.pinPasswordId), independent of the regular Password link above.
+  const [selectedPinPasswordId, setSelectedPinPasswordId] = useState<string | null>(
+    isEdit ? (profile.pinPasswordId || null) : null
+  );
+  const [pinSearch, setPinSearch] = useState('');
+  const [pinDropdownOpen, setPinDropdownOpen] = useState(false);
+
   // Mail selector state
   const [mails, setMails] = useState<MailEntry[]>([]);
   const [selectedMailId, setSelectedMailId] = useState<string | null>(null);
@@ -219,6 +227,7 @@ export default function ProfileModal({
           folderId,
           imagePath: imagePath || undefined,
           directoryPath: directoryPath || undefined,
+          pinPasswordId: selectedPinPasswordId || undefined,
         });
         await linkPasswordMail(profile.id);
       } else {
@@ -226,6 +235,9 @@ export default function ProfileModal({
           name, color, imagePath || '', xAccount || undefined, folderId, directoryPath || undefined
         );
         if (newProfile?.id) {
+          if (selectedPinPasswordId) {
+            await electronAPI.profiles.update(newProfile.id, { pinPasswordId: selectedPinPasswordId });
+          }
           await linkPasswordMail(newProfile.id);
         }
       }
@@ -243,6 +255,12 @@ export default function ProfileModal({
     return pw.name.toLowerCase().includes(passwordSearch.toLowerCase());
   });
 
+  const filteredPins = passwords.filter(pw => {
+    if (selectedPinPasswordId === pw.id) return false;
+    if (!pinSearch.trim()) return true;
+    return pw.name.toLowerCase().includes(pinSearch.toLowerCase());
+  });
+
   const filteredMails = mails.filter(m => {
     if (selectedMailId === m.id) return false;
     if (!mailSearch.trim()) return true;
@@ -250,6 +268,7 @@ export default function ProfileModal({
   });
 
   const selectedPassword = passwords.find(pw => pw.id === selectedPasswordId);
+  const selectedPin = passwords.find(pw => pw.id === selectedPinPasswordId);
   const selectedMail = mails.find(m => m.id === selectedMailId);
 
   return (
@@ -459,6 +478,62 @@ export default function ProfileModal({
                     </div>
                   )}
                   {passwordDropdownOpen && passwordSearch.trim() && filteredPasswords.length === 0 && (
+                    <div className="pm-profile-dropdown pm-profile-dropdown-empty">
+                      <span>No matches</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* PIN selector — also links to a Password Manager entry, independently of Password */}
+            <div className="pm-field-group">
+              <label className="pm-field-label">PIN (optional)</label>
+              {selectedPin ? (
+                <div className="pm-profile-chips">
+                  <span className="pm-profile-chip">
+                    {selectedPin.name}
+                    <button
+                      type="button"
+                      className="btn-pm-chip-remove"
+                      onClick={() => setSelectedPinPasswordId(null)}
+                      aria-label="Remove linked PIN"
+                    >
+                      <X size={14} weight="Outline" />
+                    </button>
+                  </span>
+                </div>
+              ) : (
+                <div className="pm-profile-search-wrapper">
+                  <input
+                    type="text"
+                    className="pm-input"
+                    value={pinSearch}
+                    onChange={(e) => setPinSearch(e.target.value)}
+                    onClick={() => setPinDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setPinDropdownOpen(false), 150)}
+                    placeholder="Search password..."
+                    disabled={loading}
+                  />
+                  {pinDropdownOpen && filteredPins.length > 0 && (
+                    <div className="pm-profile-dropdown">
+                      {filteredPins.slice(0, 8).map((pw) => (
+                        <button
+                          key={pw.id}
+                          type="button"
+                          className="pm-profile-option"
+                          onClick={() => {
+                            setSelectedPinPasswordId(pw.id);
+                            setPinSearch('');
+                            setPinDropdownOpen(false);
+                          }}
+                        >
+                          {pw.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {pinDropdownOpen && pinSearch.trim() && filteredPins.length === 0 && (
                     <div className="pm-profile-dropdown pm-profile-dropdown-empty">
                       <span>No matches</span>
                     </div>

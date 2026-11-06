@@ -60,7 +60,9 @@ export interface BrowserProfile {
   hasMail?: boolean;     // True if a mail entry is linked to this profile (runtime-derived)
   xLoggedIn?: boolean;   // Cached X.com login status (updated on launch and after auto-login)
   xLoginCheckedAt?: number; // Timestamp of last login check
+  autoLoginClickedAt?: number; // Timestamp the auto-login button was last clicked; suppresses the button for 20 days
   mailEmail?: string;    // The associated email address (runtime-derived)
+  pinPasswordId?: string; // Optional: id of a Password Manager entry used as this profile's PIN (recovery) code
   installedExtensions?: {
     ublockOriginLite?: boolean;
     twitterControl?: boolean;
@@ -113,4 +115,30 @@ export interface IpcResponse<T = any> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+export interface BackupExportOptions {
+  profileIds?: string[]; // Undefined = export all
+  includePasswords?: boolean;
+  includeMails?: boolean;
+  includeCharacterHub?: boolean;
+}
+
+export interface BackupInspection {
+  type: 'full' | 'partial';
+  exportedAt?: string;
+  profiles: Array<{ id: string; name: string; folderId?: string }>;
+  folders: ProfileFolder[];
+  passwordCount: number;
+  mailCount: number;
+}
+
+export interface BackupRestoreResult {
+  profilesAdded: number;
+  profilesSkipped: number;
+  foldersAdded: number;
+  passwordsAdded: number;
+  passwordsSkipped: number;
+  mailsAdded: number;
+  mailsSkipped: number;
 }

@@ -106,6 +106,18 @@ export const passwordManager = {
     }
   },
 
+  /** Return the plaintext value for a specific entry by id, or null */
+  getDecryptedById(id: string): string | null {
+    const entries = readAll();
+    const entry = entries.find((e) => e.id === id);
+    if (!entry) return null;
+    try {
+      return decrypt(entry.encryptedValue);
+    } catch {
+      return null;
+    }
+  },
+
   /** Return all entries WITH encryptedValue (for backup) */
   getAllRaw(): PasswordEntry[] {
     return readAll();

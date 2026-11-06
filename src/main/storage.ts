@@ -5,7 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
-import { BrowserProfile, AppSettings, ProfileFolder } from '../types';
+import { BrowserProfile, AppSettings, ProfileFolder, BackupExportOptions, BackupInspection, BackupRestoreResult } from '../types';
 import { v4 as uuid } from 'uuid';
 
 export class StorageManager {
@@ -394,11 +394,14 @@ export class StorageManager {
    * Exports all app data as a ZIP containing:
    * - data.json: profiles, folders, passwords (encrypted), mails
    * - images/: all profile images as actual files
+   * If profileIds is provided, only those profiles are exported, together with
+   * their folders, images, and the passwords/mails linked to them.
    */
-  async createBackup(outputPath: string): Promise<string> {
+  async createBackup(outputPath: string, options: BackupExportOptions = {}): Promise<string> {
     const AdmZip = require('adm-zip');
     const { passwordManager } = require('./passwordManager');
     const { mailManager } = require('./mailManager');
+    const { profileIds, includePasswords = true, includeMails = true, includeCharacterHub = true } = options;
 
     try {
       if (!outputPath || typeof outputPath !== 'string') {
@@ -408,13 +411,20 @@ export class StorageManager {
       const zip = new AdmZip();
 
       // Gather all metadata
-      const profiles = this.getAllProfiles();
-      const folders = this.getAllFolders();
-      const passwords = passwordManager.getAllRaw();
-      const mails = mailManager.getAll();
+      const selectedIds = profileIds ? new Set(profileIds) : null;
+      const profiles = this.getAllProfiles()
+        .filter(p => !selectedIds || selectedIds.has(p.id))
+        .map(p => (includeCharacterHub ? p : { ...p, fcInfo: undefined }));
+      const folderIds = new Set(profiles.map(p => p.folderId).filter(Boolean));
+      const folders = this.getAllFolders().filter(f => !selectedIds || folderIds.has(f.id));
+      const linkedToSelection = (entry: { profileIds?: string[] }) =>
+        !selectedIds || (entry.profileIds || []).some(id => selectedIds.has(id));
+      const passwords = includePasswords ? passwordManager.getAllRaw().filter(linkedToSelection) : [];
+      const mails = includeMails ? mailManager.getAll().filter(linkedToSelection) : [];
 
       const data = {
         version: 2,
+        type: selectedIds ? 'partial' : 'full',
         exportedAt: new Date().toISOString(),
         profiles,
         folders,
@@ -476,7 +486,38 @@ export class StorageManager {
    * Imports app data from a ZIP backup file.
    * Restores: profiles, folders, passwords (encrypted), mails, and profile images.
    */
-  async restoreBackup(backupPath: string): Promise<void> {
+  inspectBackup(backupPath: string): BackupInspection {
+    const AdmZip = require('adm-zip');
+    if (!fs.existsSync(backupPath)) {
+      throw new Error('Backup file not found');
+    }
+    const zip = new AdmZip(backupPath);
+    const dataEntry = zip.getEntries().find((e: any) => e.entryName === 'data.json');
+    if (!dataEntry) {
+      throw new Error('Invalid backup file: missing data.json');
+    }
+    const backup = JSON.parse(dataEntry.getData().toString('utf-8'));
+    if (!backup.profiles || !backup.folders) {
+      throw new Error('Invalid backup file: missing profiles or folders');
+    }
+    return {
+      type: backup.type === 'partial' ? 'partial' : 'full',
+      exportedAt: backup.exportedAt,
+      profiles: backup.profiles.map((p: BrowserProfile) => ({ id: p.id, name: p.name, folderId: p.folderId })),
+      folders: backup.folders,
+      passwordCount: Array.isArray(backup.passwords) ? backup.passwords.length : 0,
+      mailCount: Array.isArray(backup.mails) ? backup.mails.length : 0,
+    };
+  }
+
+  /**
+   * Imports app data from a ZIP backup file, merging into existing data.
+   * Profiles, passwords and mails that already exist are skipped.
+   * - targetFolderId undefined: each profile keeps its original folder (missing folders are recreated)
+   * - targetFolderId null: profiles go to Ungrouped
+   * - targetFolderId string: all imported profiles go to that folder
+   */
+  async restoreBackup(backupPath: string, options: { targetFolderId?: string | null } = {}): Promise<BackupRestoreResult> {
     const AdmZip = require('adm-zip');
     const { passwordManager } = require('./passwordManager');
     const { mailManager } = require('./mailManager');
@@ -489,7 +530,6 @@ export class StorageManager {
       const zip = new AdmZip(backupPath);
       const zipEntries = zip.getEntries();
 
-      // Read data.json
       const dataEntry = zipEntries.find((e: any) => e.entryName === 'data.json');
       if (!dataEntry) {
         throw new Error('Invalid backup file: missing data.json');
@@ -501,50 +541,104 @@ export class StorageManager {
         throw new Error('Invalid backup file: missing profiles or folders');
       }
 
-      // Restore images first (so we can update imagePaths before saving profiles)
+      const existingProfiles = this.getAllProfiles();
+      const existingProfileIds = new Set(existingProfiles.map(p => p.id));
+      const existingFolders = this.getAllFolders();
+      const existingFolderIds = new Set(existingFolders.map(f => f.id));
+
+      const newProfiles: BrowserProfile[] = backup.profiles.filter((p: BrowserProfile) => !existingProfileIds.has(p.id));
+      const newProfileIds = new Set(newProfiles.map(p => p.id));
+      const skippedProfileIds = new Set(backup.profiles.map((p: BrowserProfile) => p.id).filter((id: string) => !newProfileIds.has(id)));
+
+      // Restore images of new profiles (skipped profiles keep their local image)
       const imageEntries = zipEntries.filter((e: any) => e.entryName.startsWith('images/') && !e.isDirectory);
       for (const entry of imageEntries) {
         const filename = path.basename(entry.entryName);
-        const destPath = path.join(this.iconsDir, filename);
-        fs.writeFileSync(destPath, entry.getData());
-
-        // If filename matches a profileId (e.g. "uuid.png"), update that profile's imagePath
         const nameWithoutExt = path.parse(filename).name;
-        const profile = backup.profiles.find((p: any) => p.id === nameWithoutExt);
+        if (skippedProfileIds.has(nameWithoutExt)) continue;
+        const destPath = path.join(this.iconsDir, filename);
+        if (!fs.existsSync(destPath)) {
+          fs.writeFileSync(destPath, entry.getData());
+        }
+        const profile = newProfiles.find(p => p.id === nameWithoutExt);
         if (profile) {
           profile.imagePath = destPath;
         }
       }
 
-      // Restore profiles (with updated imagePaths)
-      this.saveProfiles(backup.profiles);
-
-      // Restore folders
-      this.saveFolders(backup.folders);
-
-      // Restore passwords (if present)
-      if (backup.passwords && Array.isArray(backup.passwords)) {
-        passwordManager.restoreAll(backup.passwords);
+      // Assign folders
+      const targetFolderId = options.targetFolderId;
+      const foldersToAdd: ProfileFolder[] = [];
+      for (const profile of newProfiles) {
+        if (targetFolderId !== undefined) {
+          if (targetFolderId) profile.folderId = targetFolderId;
+          else delete profile.folderId;
+          continue;
+        }
+        if (profile.folderId && !existingFolderIds.has(profile.folderId)) {
+          const folder = (backup.folders as ProfileFolder[]).find(f => f.id === profile.folderId);
+          if (folder && !foldersToAdd.some(f => f.id === folder.id)) {
+            foldersToAdd.push(folder);
+            existingFolderIds.add(folder.id);
+          }
+        }
       }
 
-      // Restore mails (if present)
-      if (backup.mails && Array.isArray(backup.mails)) {
-        mailManager.restoreAll(backup.mails);
+      if (newProfiles.length > 0) {
+        const merged = [
+          ...existingProfiles,
+          ...newProfiles.map((p, i) => ({ ...p, orderIndex: existingProfiles.length + i })),
+        ];
+        this.saveProfiles(merged);
+      }
+
+      if (foldersToAdd.length > 0) {
+        this.saveFolders([
+          ...existingFolders,
+          ...foldersToAdd.map((f, i) => ({ ...f, order: existingFolders.length + i })),
+        ]);
+      }
+
+      // Passwords and mails: skip entries whose name already exists
+      const existingPasswords = passwordManager.getAllRaw();
+      const passwordNames = new Set(existingPasswords.map((e: any) => e.name));
+      const incomingPasswords: any[] = Array.isArray(backup.passwords) ? backup.passwords : [];
+      const newPasswords = incomingPasswords.filter(e => !passwordNames.has(e.name));
+      if (newPasswords.length > 0) {
+        passwordManager.restoreAll([...existingPasswords, ...newPasswords]);
+      }
+
+      const existingMails = mailManager.getAll();
+      const mailNames = new Set(existingMails.map((e: any) => e.email));
+      const incomingMails: any[] = Array.isArray(backup.mails) ? backup.mails : [];
+      const newMails = incomingMails.filter(e => !mailNames.has(e.email));
+      if (newMails.length > 0) {
+        mailManager.restoreAll([...existingMails, ...newMails]);
       }
 
       // Create profile data directories (empty, for the browser to initialize on first launch)
-      for (const profile of backup.profiles) {
+      for (const profile of newProfiles) {
         if (profile.dataDir && !fs.existsSync(profile.dataDir)) {
           fs.mkdirSync(profile.dataDir, { recursive: true });
         }
       }
 
       console.log('Backup restored successfully');
+      return {
+        profilesAdded: newProfiles.length,
+        profilesSkipped: skippedProfileIds.size,
+        foldersAdded: foldersToAdd.length,
+        passwordsAdded: newPasswords.length,
+        passwordsSkipped: incomingPasswords.length - newPasswords.length,
+        mailsAdded: newMails.length,
+        mailsSkipped: incomingMails.length - newMails.length,
+      };
     } catch (error) {
       console.error('Error restoring backup:', error);
       throw error;
     }
   }
+
 
   private async removeDirectoryWithRetry(dirPath: string, maxRetries: number = 3, delayMs: number = 500): Promise<void> {
     for (let i = 0; i < maxRetries; i++) {

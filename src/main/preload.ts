@@ -3,7 +3,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { BrowserProfile, AppSettings, ProcessInfo, ProfileFolder } from '../types';
+import { BrowserProfile, AppSettings, ProcessInfo, ProfileFolder, BackupExportOptions, BackupInspection, BackupRestoreResult } from '../types';
 
 interface ElectronAPI {
   platform: 'darwin' | 'win32' | 'linux';
@@ -23,6 +23,9 @@ interface ElectronAPI {
      isActive: (profileId: string) => Promise<boolean>;
      autoLogin: (profileId: string) => Promise<boolean>;
      isLoggedIn: (profileId: string) => Promise<boolean>;
+     isOnHomeUrl: (profileId: string) => Promise<boolean>;
+     fillPinRecovery: (profileId: string) => Promise<boolean>;
+     openChat: (profileId: string) => Promise<boolean>;
    };
   folders: {
     getAll: () => Promise<ProfileFolder[]>;
@@ -47,7 +50,9 @@ interface ElectronAPI {
   };
   backup: {
     export: () => Promise<boolean>;
-    import: () => Promise<boolean>;
+    exportSelected: (profileIds: string[], options?: Omit<BackupExportOptions, "profileIds">) => Promise<boolean>;
+    import: () => Promise<{ filePath: string; inspection: BackupInspection } | null>;
+    restore: (filePath: string, options?: { targetFolderId?: string | null }) => Promise<BackupRestoreResult>;
   };
   icons: {
     backup: (filePath: string) => Promise<string>;
@@ -63,6 +68,7 @@ interface ElectronAPI {
     update: (id: string, updates: { name?: string; value?: string; profileIds?: string[] }) => Promise<any>;
     delete: (id: string) => Promise<boolean>;
     getDecryptedForProfile: (profileId: string) => Promise<string | null>;
+    getDecryptedById: (id: string) => Promise<string | null>;
   };
   mails: {
     getAll: () => Promise<Array<{ id: string; email: string; profileIds: string[]; createdAt: number; updatedAt?: number }>>;
@@ -115,6 +121,12 @@ const electronAPI: ElectronAPI = {
         unwrapResponse(ipcRenderer.invoke('launcher:autoLogin', profileId)),
       isLoggedIn: (profileId: string) =>
         unwrapResponse(ipcRenderer.invoke('launcher:isLoggedIn', profileId)),
+      isOnHomeUrl: (profileId: string) =>
+        unwrapResponse(ipcRenderer.invoke('launcher:isOnHomeUrl', profileId)),
+      fillPinRecovery: (profileId: string) =>
+        unwrapResponse(ipcRenderer.invoke('launcher:fillPinRecovery', profileId)),
+      openChat: (profileId: string) =>
+        unwrapResponse(ipcRenderer.invoke('launcher:openChat', profileId)),
     },
    folders: {
      getAll: () => unwrapResponse(ipcRenderer.invoke('folders:getAll')),
@@ -147,8 +159,12 @@ const electronAPI: ElectronAPI = {
      backup: {
        export: () =>
          unwrapResponse(ipcRenderer.invoke('backup:export')),
+        exportSelected: (profileIds: string[], options: Omit<BackupExportOptions, "profileIds"> = {}) =>
+          unwrapResponse(ipcRenderer.invoke('backup:exportSelected', profileIds, options)),
        import: () =>
          unwrapResponse(ipcRenderer.invoke('backup:import')),
+       restore: (filePath: string, options: { targetFolderId?: string | null } = {}) =>
+         unwrapResponse(ipcRenderer.invoke('backup:restore', filePath, options)),
      },
       icons: {
         backup: (filePath: string) =>
@@ -173,6 +189,8 @@ const electronAPI: ElectronAPI = {
             unwrapResponse<boolean>(ipcRenderer.invoke('passwords:delete', id)),
           getDecryptedForProfile: (profileId: string) =>
             unwrapResponse<string | null>(ipcRenderer.invoke('passwords:getDecryptedForProfile', profileId)),
+          getDecryptedById: (id: string) =>
+            unwrapResponse<string | null>(ipcRenderer.invoke('passwords:getDecryptedById', id)),
         },
         mails: {
           getAll: () =>

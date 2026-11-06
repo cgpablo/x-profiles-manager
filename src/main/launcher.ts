@@ -10,6 +10,9 @@ import { storageManager } from './storage';
 import { ProcessInfo, BrowserProfile, BrowserEngine } from '../types';
 
 export class ChromeLauncher {
+  /** Routes considered "already browsing logged-in" — shared by isOnHomeUrl and the PIN flow. */
+  private static readonly HOME_LIKE_PATHS = ['/home', '/notifications', '/i/history', '/i/chat'];
+
   private runningProcesses: Map<string, ProcessInfo> = new Map();
   private browserWindowMap: Map<number, string> = new Map();
   private profileMetadataMap: Map<string, any> = new Map();
@@ -1009,6 +1012,28 @@ end tell`;
   }
 
   /**
+   * Check if a profile's window is currently on one of a small set of "already browsing
+   * logged-in" routes (/home, /notifications, /i/history, /i/chat). Used to decide whether
+   * the auto-login button should reappear after its 20-day cooldown.
+   */
+  async isOnHomeUrl(profileId: string): Promise<boolean> {
+    const debugPort = this.debugPorts.get(profileId);
+    if (!debugPort) return false;
+    try {
+      const pagesJson = await this.makeHttpRequest(`http://localhost:${debugPort}/json`);
+      const pages = JSON.parse(pagesJson) as Array<{ url: string; type: string }>;
+
+      return pages.some(p =>
+        p.type === 'page' &&
+        (p.url.includes('x.com') || p.url.includes('twitter.com')) &&
+        ChromeLauncher.HOME_LIKE_PATHS.some(path => p.url.includes(path))
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Auto-login on X.com using CDP.
    * Steps:
    * 1. Focus the browser window
@@ -1045,13 +1070,316 @@ end tell`;
       }
 
       const wsUrl = target.webSocketDebuggerUrl;
-      
+
       // Connect via WebSocket and run the login sequence
       return await this.runLoginSequence(wsUrl, username, password);
     } catch (error: any) {
       console.error(`[AutoLogin] Error: ${error.message}`);
       return false;
     }
+  }
+
+  /**
+   * Redirect a profile's active tab to /i/chat, and — only if a PIN is provided (i.e. the
+   * profile has one configured) — also fill it in if that lands on /i/chat/pin/recovery.
+   * Works regardless of the tab's current route (it's always safe to open /i/chat).
+   * Steps:
+   * 1. Find the tab that is actually the active/selected one in the window
+   * 2. Focus the browser window (same as the eye/focus button)
+   * 3. If not already on /i/chat/pin/recovery, navigate to /i/chat
+   * 4. If `pin` is set and we're (now) on /i/chat/pin/recovery, press Tab and type the PIN
+   *    digit by digit with a 0.5s delay. If `pin` is null, stop after the redirect.
+   */
+  async fillPinRecovery(profileId: string, pin: string | null): Promise<boolean> {
+    const debugPort = this.debugPorts.get(profileId);
+    if (!debugPort) {
+      console.error(`[PinFill] No debug port for profile ${profileId}`);
+      return false;
+    }
+
+    try {
+      const pagesJson = await this.makeHttpRequest(`http://localhost:${debugPort}/json`);
+      const pages = JSON.parse(pagesJson) as Array<{ id: string; url: string; webSocketDebuggerUrl: string; type: string }>;
+
+      const candidates = pages.filter(p =>
+        p.type === 'page' &&
+        (p.url.includes('x.com') || p.url.includes('twitter.com')) &&
+        !!p.webSocketDebuggerUrl
+      );
+      console.log(`[PinFill] Candidate tabs: ${candidates.map(p => p.url).join(', ')}`);
+
+      const activeTab = await this.findActiveTab(candidates);
+      if (!activeTab) {
+        console.log('[PinFill] No active tab found');
+        return false;
+      }
+
+      const alreadyOnPinRecovery = activeTab.url.includes('/i/chat/pin/recovery');
+
+      // Focus the window now, same as the eye/focus button, before acting
+      try {
+        await this.focusWindow(profileId);
+      } catch {}
+
+      return await this.runPinFlow(activeTab.webSocketDebuggerUrl, alreadyOnPinRecovery, pin);
+    } catch (error: any) {
+      console.error(`[PinFill] Error: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Open a profile at /i/chat: launches it fresh at that URL if not already running,
+   * otherwise navigates its currently active tab there (opening a new tab if none is open).
+   * Used by the profile context menu's "Chat" action.
+   */
+  async openChat(profileId: string): Promise<boolean> {
+    const debugPort = this.debugPorts.get(profileId);
+
+    if (!debugPort || !this.runningProcesses.has(profileId)) {
+      const result = await this.launchProfile(profileId, 'https://x.com/i/chat');
+      return !!result;
+    }
+
+    try {
+      const pagesJson = await this.makeHttpRequest(`http://localhost:${debugPort}/json`);
+      const pages = JSON.parse(pagesJson) as Array<{ url: string; type: string; webSocketDebuggerUrl: string }>;
+      const candidates = pages.filter(p =>
+        p.type === 'page' &&
+        (p.url.includes('x.com') || p.url.includes('twitter.com')) &&
+        !!p.webSocketDebuggerUrl
+      );
+
+      try {
+        await this.focusWindow(profileId);
+      } catch {}
+
+      if (candidates.length === 0) {
+        await this.makeHttpCdpRequest(debugPort, 'https://x.com/i/chat');
+        return true;
+      }
+
+      const activeTab = await this.findActiveTab(candidates);
+      if (!activeTab) return false;
+
+      return await this.navigateTab(activeTab.webSocketDebuggerUrl, 'https://x.com/i/chat');
+    } catch (error: any) {
+      console.error(`[OpenChat] Error: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Navigate an already-open tab to a URL via CDP, without any further polling/typing.
+   */
+  private navigateTab(wsUrl: string, url: string): Promise<boolean> {
+    const WebSocket = require('ws');
+    return new Promise((resolve) => {
+      const ws = new WebSocket(wsUrl);
+      let msgId = 1;
+      const pending = new Map<number, (result: any) => void>();
+      let timeoutHandle: NodeJS.Timeout;
+
+      const send = (method: string, params: any = {}): Promise<any> => {
+        return new Promise((res) => {
+          const id = msgId++;
+          pending.set(id, res);
+          ws.send(JSON.stringify({ id, method, params }));
+        });
+      };
+
+      const cleanup = (result: boolean) => {
+        clearTimeout(timeoutHandle);
+        try { ws.close(); } catch {}
+        resolve(result);
+      };
+
+      timeoutHandle = setTimeout(() => cleanup(false), 5000);
+
+      ws.on('error', () => cleanup(false));
+
+      ws.on('message', (data: Buffer) => {
+        try {
+          const msg = JSON.parse(data.toString());
+          if (msg.id && pending.has(msg.id)) {
+            const cb = pending.get(msg.id)!;
+            pending.delete(msg.id);
+            cb(msg.result || msg.error);
+          }
+        } catch {}
+      });
+
+      ws.on('open', async () => {
+        try {
+          await send('Page.enable');
+          await send('Page.navigate', { url });
+          cleanup(true);
+        } catch (error: any) {
+          console.error(`[OpenChat] Navigate error: ${error.message}`);
+          cleanup(false);
+        }
+      });
+    });
+  }
+
+  /**
+   * Given a set of candidate tabs for a profile, find the one that is currently the
+   * active/selected tab within its window (document.visibilityState === "visible").
+   * Falls back to the first candidate if none can be determined (e.g. window minimized).
+   */
+  private async findActiveTab(
+    candidates: Array<{ url: string; webSocketDebuggerUrl: string }>
+  ): Promise<{ url: string; webSocketDebuggerUrl: string } | null> {
+    if (candidates.length === 0) return null;
+    if (candidates.length === 1) return candidates[0];
+
+    for (const tab of candidates) {
+      try {
+        const visible = await this.checkTabVisible(tab.webSocketDebuggerUrl);
+        if (visible) return tab;
+      } catch {
+        // ignore and try the next candidate
+      }
+    }
+    return candidates[0];
+  }
+
+  /**
+   * Check whether a specific tab is the currently selected one in its window via CDP.
+   */
+  private checkTabVisible(wsUrl: string): Promise<boolean> {
+    const WebSocket = require('ws');
+    return new Promise((resolve) => {
+      const ws = new WebSocket(wsUrl);
+      let timeoutHandle: NodeJS.Timeout;
+
+      const cleanup = (result: boolean) => {
+        clearTimeout(timeoutHandle);
+        try { ws.close(); } catch {}
+        resolve(result);
+      };
+
+      timeoutHandle = setTimeout(() => cleanup(false), 3000);
+
+      ws.on('error', () => cleanup(false));
+
+      ws.on('message', (data: Buffer) => {
+        try {
+          const msg = JSON.parse(data.toString());
+          if (msg.id === 1) {
+            cleanup(!!msg.result?.result?.value);
+          }
+        } catch {
+          cleanup(false);
+        }
+      });
+
+      ws.on('open', () => {
+        ws.send(JSON.stringify({
+          id: 1,
+          method: 'Runtime.evaluate',
+          params: { expression: 'document.visibilityState === "visible"' },
+        }));
+      });
+    });
+  }
+
+  /**
+   * Run the full PIN flow over a single CDP WebSocket connection:
+   * - If `pin` is null (no PIN configured for this profile), just redirect to /i/chat
+   *   (skipping the navigation if already on /i/chat/pin/recovery) and stop there.
+   * - Otherwise, if not already on /i/chat/pin/recovery, navigate to /i/chat and see
+   *   whether X redirects there on its own.
+   * - If (now) on /i/chat/pin/recovery, press Tab then type the PIN digit by digit with
+   *   a 0.5s delay between characters.
+   * - Otherwise (navigated to /i/chat but no redirect happened), stop — nothing more to do.
+   */
+  private runPinFlow(wsUrl: string, alreadyOnPinRecovery: boolean, pin: string | null): Promise<boolean> {
+    const WebSocket = require('ws');
+
+    return new Promise((resolve) => {
+      const ws = new WebSocket(wsUrl);
+      let msgId = 1;
+      const pending = new Map<number, (result: any) => void>();
+      let timeoutHandle: NodeJS.Timeout;
+
+      const send = (method: string, params: any = {}): Promise<any> => {
+        return new Promise((res) => {
+          const id = msgId++;
+          pending.set(id, res);
+          ws.send(JSON.stringify({ id, method, params }));
+        });
+      };
+
+      const cleanup = (result: boolean) => {
+        clearTimeout(timeoutHandle);
+        try { ws.close(); } catch {}
+        resolve(result);
+      };
+
+      // Timeout after 30s (0.5s/char means longer PINs take a while)
+      timeoutHandle = setTimeout(() => {
+        console.error('[PinFill] Timed out after 30s');
+        cleanup(false);
+      }, 30000);
+
+      ws.on('error', () => cleanup(false));
+
+      ws.on('message', (data: Buffer) => {
+        try {
+          const msg = JSON.parse(data.toString());
+          if (msg.id && pending.has(msg.id)) {
+            const cb = pending.get(msg.id)!;
+            pending.delete(msg.id);
+            cb(msg.result || msg.error);
+          }
+        } catch {}
+      });
+
+      ws.on('open', async () => {
+        try {
+          await send('Page.enable');
+          await send('Runtime.enable');
+
+          if (!pin) {
+            // No PIN configured for this profile — the whole job is just the redirect.
+            if (!alreadyOnPinRecovery) {
+              console.log('[PinFill] No PIN configured — navigating to /i/chat only');
+              await send('Page.navigate', { url: 'https://x.com/i/chat' });
+            }
+            cleanup(true);
+            return;
+          }
+
+          let onPinRecovery = alreadyOnPinRecovery;
+
+          if (!onPinRecovery) {
+            // Redirect to /i/chat and see if X sends us on to the PIN recovery page.
+            console.log('[PinFill] Navigating to /i/chat');
+            await send('Page.navigate', { url: 'https://x.com/i/chat' });
+            await this.delay(1000);
+            onPinRecovery = await this.pollForUrlPath(send, '/i/chat/pin/recovery', 8000);
+          }
+
+          if (!onPinRecovery) {
+            console.log('[PinFill] Did not land on /i/chat/pin/recovery — redirect only, done');
+            cleanup(true);
+            return;
+          }
+
+          // Move focus into the PIN input, then type the PIN digit by digit
+          await this.pressTab(send);
+          await this.delay(500);
+          await this.typeTextWithDelay(send, pin, 500);
+          console.log('✓ PinFill: PIN typed');
+
+          cleanup(true);
+        } catch (error: any) {
+          console.error(`[PinFill] Sequence error: ${error.message}`);
+          cleanup(false);
+        }
+      });
+    });
   }
 
   /**
@@ -1222,6 +1550,31 @@ end tell`;
   }
 
   /**
+   * Poll location.pathname until it contains the given substring (e.g. after a navigation
+   * that may trigger a client-side redirect), or until timeout.
+   */
+  private async pollForUrlPath(
+    send: (method: string, params?: any) => Promise<any>,
+    pathSubstring: string,
+    timeoutMs: number
+  ): Promise<boolean> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      try {
+        const result = await send('Runtime.evaluate', { expression: 'location.pathname' });
+        const currentPath = result?.result?.value;
+        if (typeof currentPath === 'string' && currentPath.includes(pathSubstring)) {
+          return true;
+        }
+      } catch {
+        // Execution context may briefly be destroyed during navigation — just retry.
+      }
+      await this.delay(400);
+    }
+    return false;
+  }
+
+  /**
    * Press the Enter key via CDP
    */
   private async pressEnter(
@@ -1246,6 +1599,28 @@ end tell`;
   }
 
   /**
+   * Press the Tab key via CDP
+   */
+  private async pressTab(
+    send: (method: string, params?: any) => Promise<any>
+  ): Promise<void> {
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    });
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    });
+  }
+
+  /**
    * Type text character by character using CDP Input.dispatchKeyEvent
    */
   private async typeText(
@@ -1265,6 +1640,30 @@ end tell`;
       });
       // Small delay between keystrokes to mimic human typing
       await this.delay(30);
+    }
+  }
+
+  /**
+   * Type text character by character using CDP Input.dispatchKeyEvent, with a custom
+   * delay between each character (used for the PIN fill, which needs a slower 0.5s pace).
+   */
+  private async typeTextWithDelay(
+    send: (method: string, params?: any) => Promise<any>,
+    text: string,
+    delayMs: number
+  ): Promise<void> {
+    for (const char of text) {
+      await send('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: char,
+        text: char,
+      });
+      await send('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: char,
+        text: char,
+      });
+      await this.delay(delayMs);
     }
   }
 
