@@ -133,7 +133,7 @@ Cada hito deja desktop funcionando.
 | M3 ✅ | Pasar a npm workspaces: `packages/core`, `packages/ui`, `apps/desktop`. | `npm run dist` genera el `.dmg` y la app empaquetada funciona. **Falta probar el `.exe` en Windows** | Pequeño-medio |
 | M4 ✅ | `apps/mobile` con Capacitor, adaptadores móviles y un launcher simulado. | La UI arranca, se importa un backup de desktop y las contraseñas se descifran. **Probado en emulador Android 17 (arm64); falta repetirlo en la tablet física** | Medio |
 | M5 ✅ | Plugin Kotlin real: lanzar y cambiar de perfil, autologin, PIN, `isLoggedIn`, extensiones, prompts. | Los 4 checkpoints del spike dentro de la app real. **Probado en emulador; falta la tablet y una cuenta real (login, Chat/PIN)** | Medio-grande |
-| M6 | Pulido para tablet, `capabilities` y empaquetado del APK. | Uso diario | Pequeño |
+| M6 ✅ | Pulido para tablet, `capabilities` y empaquetado del APK. | Uso diario. **Probado en emulador; falta la tablet física** | Pequeño |
 
 ### Cómo se verificó M2
 
@@ -186,7 +186,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - **UI bajo las barras del sistema (edge-to-edge).** Android dibuja la app debajo de la barra de estado y de la de gestos, y en esas franjas el toque lo recibe el sistema. Capacitor ya expone los márgenes (`--safe-area-inset-*` / `env(safe-area-inset-*)`), pero la UI no los usaba. `apps/mobile/src/safe-area.css` los aplica a `#root`; en desktop valen 0.
 - **Táctil:** `apps/mobile/src/touch.css`, solo con `@media (pointer: coarse)`: zonas de pulsación ≥ 44 px (la auditoría pasó de 32 controles pequeños a 0), `touch-action: manipulation` (sin retardo por doble toque) y filas de casilla pulsables enteras. La auditoría (qué elemento recibe el toque en el centro de cada control) no encontró capas que tapen controles. Se hizo en un WebView con viewport de tablet; falta validarlo con el dedo en la tablet real.
 - **Importar un backup "recortado" (`invalid zip data`).** No es un fallo del export: un backup completo exportado por la app se reimporta bien. Reproducido en emulador: si se copia con `adb push` un fichero con **el mismo nombre** que otro ya existente, el selector de Android sigue usando el tamaño antiguo guardado en su índice (MediaStore) y entrega el fichero recortado a ese tamaño. Con otro nombre, el mismo fichero se importa bien. La app ahora explica el error en vez de mostrar el mensaje técnico.
-- Pendiente de pulir (M6): la UI es la de escritorio, sin adaptar a táctil; `Settings` muestra campos que no aplican en Android (rutas de navegador); las escrituras del almacén no son atómicas (se escribe directamente sobre el fichero).
+- Pendiente: las escrituras del almacén no son atómicas (se escribe directamente sobre el fichero).
 
 **Cómo se verificó M4:**
 - **Paridad en Node** de los adaptadores móviles reales (con `Filesystem` simulado sobre disco) frente a desktop: 126 comprobaciones, 0 diferencias. Incluye zips de `fflate` restaurados por `adm-zip` y al revés, y cifrado cruzado `@noble` ↔ `crypto`. Se verificó que el test detecta fallos introducidos a propósito. Ignora solo lo que difiere por diseño (ajustes por defecto, `dataDir`, carpetas de datos).
@@ -221,6 +221,26 @@ Lado TypeScript: `src/platform/profileBrowser.ts` (el plugin) y `androidLauncher
 **Cómo se verificó (emulador Android 17 arm64, por la API real de la app):** el gestor lanza un perfil y aparece la `BrowserActivity` con X cargado; Atrás vuelve al gestor sin cerrar el perfil; un segundo perfil añade su chip; el cambio entre perfiles; la extensión se instala sola con su URL de opciones; el panel de ajustes y el popup se abren sobre X sin sacarte de la página; **autologin completo** con credenciales falsas (usuario → contraseña → envío, y X responde "contraseña incorrecta"), con la API devolviendo `true`; `openChat`, `fillPinRecovery` y `focusWindow` devuelven `true`; `close` deja los activos en 0; un perfil inexistente se rechaza; cero cierres inesperados.
 
 **Sin verificar todavía:** el flujo con una **cuenta real** (el login completo hasta entrar, y Chat/PIN en la página real de recuperación; el tecleo de PIN es el mismo código validado en el spike) y todo en la **tablet física**.
+
+### Notas de M6 (tablet y release)
+
+**Táctil.** El drag & drop HTML5 se mantiene (en Chrome Android el arrastre se inicia con pulsación larga); el menú contextual de las tarjetas también. `touch.css` solo agranda `.btn-primary/.btn-secondary/.btn-danger/.modal-close`: un `min-height` general deformaba los botones-icono y las etiquetas. Los tooltips solo aparecen con ratón (con el dedo se quedaban pegados). El selector de color usa eventos de puntero (toque y arrastre); Esc lo cierra sin cerrar el modal de debajo.
+
+**`capabilities`.** Todas `false` en Android: `Settings` oculta Storage Location, Browser Configuration y Platform Preferences (y muestra una tarjeta "Browser"); `ProfileModal` y las tarjetas ocultan el directorio del perfil.
+
+**Botón Atrás.** `MainActivity` pregunta a `window.__xpmBack()` (`src/platform/backButton.ts`): cierra el menú o el modal superior; si no hay nada, minimiza la app.
+
+**Navegador.** Pestañas con el color del perfil y una × para cerrar. Menú ⋮: Iniciar sesión automático, Chat / PIN (si hay PIN) y Ajustes de la extensión. Como el WebView del gestor está en pausa con el navegador delante, el gestor entrega usuario, contraseña y PIN a la parte nativa al abrir el perfil y **solo viven en memoria** (`ProfileSession`). El tecleo va a 120 ms por carácter: a 30 ms Gecko desordenaba las teclas en la tablet.
+
+**Orientación.** `sensorLandscape` más `PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY`: Android 16+ ignora el bloqueo de orientación en tablets con `targetSdk` 36 salvo con esa propiedad, que desaparece con `targetSdk` 37.
+
+**Release (`npm run mobile:apk`).**
+- Salida: `apps/mobile/android/app/build/outputs/apk/release/app-release.apk` (≈185 MB, arm64).
+- **Firma:** `apps/mobile/android/keystore/xpm-release.jks` y `keystore.properties` (ambos ignorados por git). **Hay que guardar copia del keystore y de su contraseña**: sin ellos no se puede actualizar la app instalada, solo desinstalar y reinstalar (con export de los datos antes).
+- El release no se instala sobre el debug (firmas distintas): desinstalar el debug primero.
+- **Versión:** sale de `apps/desktop/package.json` (`1.3.0` → `versionCode 10300`), así que `scripts/bump-version.js` la actualiza también para Android.
+- **R8** activado con `minifyEnabled` + `shrinkResources` y reglas en `app/proguard-rules.pro` (GeckoView, Capacitor y los plugins propios). Verificado: arranque, lanzar un perfil, Gecko, extensión, y autologin con teclado real.
+- Icono generado desde `apps/desktop/assets/icon.icns`.
 
 ## 6. Adaptación de la UI a tablet
 

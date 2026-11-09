@@ -123,6 +123,7 @@ npm run dist -- --win   # Package for Windows only
 npm run bump            # Bump the app version
 npm run build:mobile    # Build core + the Android web app (apps/mobile/www)
 npm run mobile:sync     # Build and sync it into the Android project
+npm run mobile:apk      # Signed release APK (needs apps/mobile/android/keystore.properties)
 ```
 
 Android (work in progress, see `docs/android-migration.md`): after `npm run mobile:sync`, build with

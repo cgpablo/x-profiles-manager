@@ -19,3 +19,18 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# --- X Profiles Manager ---
+# GeckoView: el motor usa JNI y reflexión
+-keep class org.mozilla.geckoview.** { *; }
+-keep class org.mozilla.gecko.** { *; }
+-keep class org.mozilla.thirdparty.** { *; }
+-dontwarn org.mozilla.**
+
+# Capacitor: plugins propios (se instancian y se invocan por reflexión)
+-keep class com.getcapacitor.** { *; }
+-keep @com.getcapacitor.annotation.CapacitorPlugin class * { *; }
+-keepclassmembers class * { @com.getcapacitor.PluginMethod public *; }
+-keep class com.xprofilesmanager.app.** { *; }
+-keepattributes *Annotation*, JavascriptInterface
+-keepclassmembers class * { @android.webkit.JavascriptInterface <methods>; }

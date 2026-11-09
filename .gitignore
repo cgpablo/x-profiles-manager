@@ -52,3 +52,7 @@ opencode-session-id.sh
 
 # Mobile build output
 apps/mobile/www/
+
+# Firma del APK de release: nunca al repositorio
+apps/mobile/android/keystore/
+apps/mobile/android/keystore.properties
