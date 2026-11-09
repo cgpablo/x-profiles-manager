@@ -41,6 +41,8 @@ interface SidebarFoldersProps {
   onToggleStar?: (profileId: string) => void;
 }
 
+import { useCapabilities } from '../hooks/usePlatformAPI';
+
 export default function SidebarFolders({
   folders,
   profiles,
@@ -68,6 +70,7 @@ export default function SidebarFolders({
   onDeleteProfile,
   onToggleStar,
 }: SidebarFoldersProps) {
+  const caps = useCapabilities();
   const [showContextMenu, setShowContextMenu] = useState<string | null>(null);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
   const [profileContextMenu, setProfileContextMenu] = useState<string | null>(null);
@@ -465,7 +468,7 @@ export default function SidebarFolders({
                                         {profile.starred ? <><Star size={12} weight="Filled" /> Remove favorite</> : <><Star size={12} weight="Outline" /> Add favorite</>}
                                       </button>
                                     )}
-                                     {profile.directoryPath && (
+                                     {profile.directoryPath && caps.openDirectory && (
                                        <button
                                          className="context-menu-item"
                                          onClick={() => {
@@ -767,7 +770,7 @@ export default function SidebarFolders({
                                         {profile.starred ? <><Star size={12} weight="Filled" /> Remove favorite</> : <><Star size={12} weight="Outline" /> Add favorite</>}
                                       </button>
                                     )}
-                                     {profile.directoryPath && (
+                                     {profile.directoryPath && caps.openDirectory && (
                                        <button
                                          className="context-menu-item"
                                          onClick={() => {

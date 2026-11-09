@@ -1,6 +1,7 @@
 package com.xprofilesmanager.app;
 
 import android.os.Bundle;
+import androidx.activity.OnBackPressedCallback;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -10,5 +11,18 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(FileSaverPlugin.class);
         registerPlugin(ProfileBrowserPlugin.class);
         super.onCreate(savedInstanceState);
+
+        // Atrás cierra primero el menú o el modal abierto; si no hay ninguno, minimiza la app
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                getBridge().getWebView().evaluateJavascript(
+                    "(function(){return !!(window.__xpmBack && window.__xpmBack());})()",
+                    value -> {
+                        if (!"true".equals(value)) moveTaskToBack(true);
+                    }
+                );
+            }
+        });
     }
 }

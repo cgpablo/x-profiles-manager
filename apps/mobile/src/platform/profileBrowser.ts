@@ -5,6 +5,10 @@ interface ProfileInfo {
   profileId: string;
   name?: string;
   color?: string;
+  /** Solo en memoria nativa: para el autologin desde el menú del navegador */
+  username?: string;
+  password?: string;
+  pin?: string;
 }
 
 /** Plugin propio (Kotlin: ProfileBrowserPlugin.kt): el navegador GeckoView de Android. */

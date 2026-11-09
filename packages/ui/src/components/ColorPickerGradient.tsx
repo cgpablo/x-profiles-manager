@@ -175,7 +175,7 @@ export default function ColorPickerGradient({
     setHexInput(hex);
   };
 
-  const handleGradientClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleGradientPointer = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = gradientCanvasRef.current;
     if (!canvas) return;
 
@@ -183,8 +183,9 @@ export default function ColorPickerGradient({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const newSat = Math.max(0, Math.min(100, (x / canvas.width) * 100));
-    const newBri = Math.max(0, Math.min(100, 100 - (y / canvas.height) * 100));
+    // El canvas puede mostrarse más pequeño que su tamaño interno: se usa el tamaño en pantalla
+    const newSat = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    const newBri = Math.max(0, Math.min(100, 100 - (y / rect.height) * 100));
 
     updateColor(hue, newSat, newBri);
   };
@@ -249,7 +250,13 @@ export default function ColorPickerGradient({
           width={300}
           height={200}
           className="gradient-canvas"
-          onClick={handleGradientClick}
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            handleGradientPointer(e);
+          }}
+          onPointerMove={(e) => {
+            if (e.currentTarget.hasPointerCapture(e.pointerId)) handleGradientPointer(e);
+          }}
         />
       </div>
 

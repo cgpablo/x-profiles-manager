@@ -1,5 +1,21 @@
 .backup-select-modal {
   max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+/* Cabecera y botonera fijas: solo la lista central hace scroll */
+.backup-select-modal .modal-header,
+.backup-select-modal .modal-footer {
+  flex-shrink: 0;
+}
+
+.backup-select-modal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .backup-select-toolbar {
@@ -28,8 +44,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  max-height: 55vh;
-  overflow-y: auto;
 }
 
 .backup-select-group {

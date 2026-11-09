@@ -48,6 +48,15 @@ class ProfileBrowserPlugin : Plugin() {
         return id
     }
 
+    /** Abre (o recupera) la sesión y guarda en memoria las credenciales del perfil, si las hay. */
+    private fun openSession(call: PluginCall, id: String, url: String?): com.xprofilesmanager.app.browser.ProfileSession {
+        val ps = SessionRegistry.open(context, id, call.getString("name"), call.getString("color"), url)
+        ps.username = call.getString("username")
+        ps.password = call.getString("password")
+        ps.chatPin = call.getString("pin")
+        return ps
+    }
+
     private fun showBrowser(profileId: String) {
         val intent = Intent(activity, BrowserActivity::class.java)
             .putExtra(BrowserActivity.EXTRA_PROFILE_ID, profileId)
@@ -58,7 +67,7 @@ class ProfileBrowserPlugin : Plugin() {
     @PluginMethod
     fun launch(call: PluginCall) = onMain(call) {
         val id = profileId(call) ?: return@onMain
-        val ps = SessionRegistry.open(context, id, call.getString("name"), call.getString("color"), call.getString("url"))
+        val ps = openSession(call, id, call.getString("url"))
         showBrowser(id)
         call.resolve(JSObject().put("startTime", ps.startTime))
     }
@@ -114,7 +123,7 @@ class ProfileBrowserPlugin : Plugin() {
     fun openChat(call: PluginCall) = onMain(call) {
         val id = profileId(call) ?: return@onMain
         val existed = SessionRegistry.get(id) != null
-        val ps = SessionRegistry.open(context, id, call.getString("name"), call.getString("color"), XUrls.CHAT)
+        val ps = openSession(call, id, XUrls.CHAT)
         if (existed) XFlows.openChat(ps, null)
         showBrowser(id)
         call.resolve(JSObject().put("value", true))
@@ -125,7 +134,7 @@ class ProfileBrowserPlugin : Plugin() {
     fun fillPinRecovery(call: PluginCall) = onMain(call) {
         val id = profileId(call) ?: return@onMain
         val existed = SessionRegistry.get(id) != null
-        val ps = SessionRegistry.open(context, id, call.getString("name"), call.getString("color"), XUrls.CHAT)
+        val ps = openSession(call, id, XUrls.CHAT)
         // Si la sesión es nueva ya carga el chat al abrirse: solo hay que dejar el PIN pendiente
         XFlows.openChat(ps, call.getString("pin"), navigate = existed)
         showBrowser(id)
@@ -142,7 +151,7 @@ class ProfileBrowserPlugin : Plugin() {
             call.reject("Faltan usuario o contraseña")
             return@onMain
         }
-        val ps = SessionRegistry.open(context, id, call.getString("name"), call.getString("color"), XUrls.HOME)
+        val ps = openSession(call, id, XUrls.HOME)
         showBrowser(id)
         XFlows.startLogin(ps, username, password) { success ->
             call.resolve(JSObject().put("value", success))

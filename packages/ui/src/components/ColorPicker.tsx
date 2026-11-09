@@ -33,6 +33,19 @@ export default function ColorPicker({ value, onChange, disabled = false }: Color
      setPending(value);
    }, [value]);
 
+   // Escape cierra solo el selector de color, no el modal de perfil que hay debajo
+   useEffect(() => {
+     if (!showGradientPicker) return;
+     const onKeyDown = (e: KeyboardEvent) => {
+       if (e.key === 'Escape') {
+         e.stopPropagation();
+         setShowGradientPicker(false);
+       }
+     };
+     document.addEventListener('keydown', onKeyDown, true);
+     return () => document.removeEventListener('keydown', onKeyDown, true);
+   }, [showGradientPicker]);
+
    const handlePresetClick = (color: string) => {
      setPending(color);
      onChange(color);

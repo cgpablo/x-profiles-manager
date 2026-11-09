@@ -9,7 +9,11 @@
     touch-action: manipulation;
   }
 
-  button,
+  /* Solo los botones de acción grandes: un min-height general deforma los botones-icono y las etiquetas */
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .modal-close,
   select,
   input[type='text'],
   input[type='password'],

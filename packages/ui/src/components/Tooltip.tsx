@@ -16,7 +16,9 @@ export default function Tooltip({ text, children, position = 'top' }: TooltipPro
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseEnter = () => {
+  const handleMouseEnter = (e: React.PointerEvent) => {
+    // Con el dedo no hay "pasar por encima": el tooltip se quedaría pegado tras tocar
+    if (e.pointerType !== 'mouse') return;
     if (wrapperRef.current) {
       const rect = wrapperRef.current.getBoundingClientRect();
       // Use fixed positioning relative to viewport
@@ -46,8 +48,8 @@ export default function Tooltip({ text, children, position = 'top' }: TooltipPro
     <div
       ref={wrapperRef}
       className={`tooltip-wrapper tooltip-${position}`}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={() => setShowTooltip(false)}
+      onPointerEnter={handleMouseEnter}
+      onPointerLeave={() => setShowTooltip(false)}
     >
       {children}
       {showTooltip && (

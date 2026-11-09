@@ -31,4 +31,9 @@ class ProfileSession(
     var canGoBack: Boolean = false
     var loginTask: LoginTask? = null
     var pin: String? = null
+
+    /** Para el autologin desde el menú del navegador (el gestor está en pausa y no puede dárselas entonces). Solo en memoria. */
+    var username: String? = null
+    var password: String? = null
+    var chatPin: String? = null
 }

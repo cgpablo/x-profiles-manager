@@ -13,7 +13,10 @@ export class AndroidLauncher implements BrowserLauncher {
   private meta = new Map<string, { name: string; color?: string }>();
 
   /** `exists` consulta la base de datos de perfiles: un perfil que no existe no se puede abrir (como en desktop). */
-  constructor(private exists: (profileId: string) => boolean) {
+  constructor(
+    private exists: (profileId: string) => boolean,
+    private credentialsFor: (profileId: string) => { username?: string; password?: string; pin?: string }
+  ) {
     void ProfileBrowser.addListener('sessionsChanged', (event) => {
       this.active = new Set(event.profileIds);
     });
@@ -38,7 +41,7 @@ export class AndroidLauncher implements BrowserLauncher {
 
   private info(profileId: string) {
     const meta = this.meta.get(profileId);
-    return { profileId, name: meta?.name, color: meta?.color };
+    return { profileId, name: meta?.name, color: meta?.color, ...this.credentialsFor(profileId) };
   }
 
   async launch(profileId: string, url?: string): Promise<ProcessInfo | null> {

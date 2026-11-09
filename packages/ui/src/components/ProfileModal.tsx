@@ -8,7 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { getPlatformAPI } from '../platform';
 import { X, Folder } from 'reicon-react';
 import type { BrowserProfile } from '@xpm/core';
-import { usePlatformAPI } from '../hooks/usePlatformAPI';
+import { usePlatformAPI, useCapabilities } from '../hooks/usePlatformAPI';
 import { useModalClose } from '../hooks/useModalClose';
 import ColorPicker from './ColorPicker';
 import './CreateProfileModal.css';
@@ -45,6 +45,7 @@ export default function ProfileModal({
 }: ProfileModalProps) {
   const isEdit = profile !== undefined;
   const platformAPI = usePlatformAPI();
+  const caps = useCapabilities();
   const modalRef = useModalClose({ onClose });
 
   // Profile fields
@@ -401,6 +402,7 @@ export default function ProfileModal({
           </div>
 
           {/* Directory path */}
+          {caps.openDirectory && (
           <div className="form-group">
             <label>Directory (optional)</label>
             <div className="directory-input-row">
@@ -428,6 +430,7 @@ export default function ProfileModal({
               </button>
             </div>
           </div>
+          )}
 
           {/* Password + Mail selectors */}
           <div className="pm-field-row">

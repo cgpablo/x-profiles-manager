@@ -9,7 +9,7 @@ import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
-import android.widget.PopupMenu
+import androidx.appcompat.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -152,22 +152,42 @@ class BrowserActivity : AppCompatActivity() {
         val dp = resources.displayMetrics.density
         for (ps in SessionRegistry.all()) {
             val selected = ps.profileId == currentProfileId
-            val chip = TextView(this).apply {
+            val profileColor = ps.color?.let { runCatching { Color.parseColor(it) }.getOrNull() }
+            val fill = if (selected) (profileColor ?: Color.parseColor("#1D4ED8")) else Color.parseColor("#1F2937")
+            // Texto oscuro sobre colores claros para que se lea
+            val textColor = when {
+                !selected -> Color.parseColor("#9CA3AF")
+                androidx.core.graphics.ColorUtils.calculateLuminance(fill) > 0.5 -> Color.parseColor("#111827")
+                else -> Color.WHITE
+            }
+            val chip = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                background = GradientDrawable().apply {
+                    cornerRadius = 20 * dp
+                    setColor(fill)
+                    profileColor?.let { setStroke((2 * dp).toInt(), it) }
+                }
+            }
+            val label = TextView(this).apply {
                 text = ps.name
-                setTextColor(if (selected) Color.WHITE else Color.parseColor("#9CA3AF"))
+                setTextColor(textColor)
                 textSize = 15f
                 gravity = Gravity.CENTER
                 maxLines = 1
-                setPadding((16 * dp).toInt(), 0, (16 * dp).toInt(), 0)
                 minHeight = (40 * dp).toInt()
-                background = GradientDrawable().apply {
-                    cornerRadius = 20 * dp
-                    setColor(if (selected) Color.parseColor("#1D4ED8") else Color.parseColor("#1F2937"))
-                    ps.color?.let { runCatching { Color.parseColor(it) }.getOrNull() }
-                        ?.let { setStroke((2 * dp).toInt(), it) }
-                }
+                setPadding((16 * dp).toInt(), 0, (4 * dp).toInt(), 0)
                 setOnClickListener { show(ps.profileId) }
             }
+            val close = android.widget.ImageView(this).apply {
+                setImageResource(R.drawable.ic_close)
+                setColorFilter(textColor)
+                contentDescription = "Cerrar perfil"
+                setPadding((8 * dp).toInt(), (8 * dp).toInt(), (10 * dp).toInt(), (8 * dp).toInt())
+                setOnClickListener { SessionRegistry.close(ps.profileId) }
+            }
+            chip.addView(label)
+            chip.addView(close, LinearLayout.LayoutParams((36 * dp).toInt(), (40 * dp).toInt()))
             chips.addView(chip, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { marginEnd = (8 * dp).toInt() })
@@ -176,20 +196,32 @@ class BrowserActivity : AppCompatActivity() {
 
     private fun showMenu(anchor: View) {
         val menu = PopupMenu(this, anchor)
-        menu.menu.add(0, 1, 0, "Ajustes de la extensión")
-        menu.menu.add(0, 2, 1, "Panel rápido de la extensión")
-        menu.menu.add(0, 3, 2, "Ir al inicio de X")
-        menu.menu.add(0, 4, 3, "Cerrar este perfil")
+        menu.menu.add(0, 1, 0, "Iniciar sesión automático").setIcon(R.drawable.ic_login)
+        if (!currentSession()?.chatPin.isNullOrEmpty()) {
+            menu.menu.add(0, 3, 1, "Chat / PIN").setIcon(R.drawable.ic_chat)
+        }
+        menu.menu.add(0, 2, 2, "Ajustes de la extensión").setIcon(R.drawable.ic_tune)
+        menu.setForceShowIcon(true)
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
-                1 -> showOptionsPage()
-                2 -> openExtensionPopup()
-                3 -> currentSession()?.gecko?.loadUri("${XUrls.HOME}/home")
-                4 -> currentProfileId?.let { SessionRegistry.close(it) }
+                1 -> requestAutoLogin()
+                2 -> showOptionsPage()
+                3 -> currentSession()?.let { XFlows.openChat(it, it.chatPin) }
             }
             true
         }
         menu.show()
+    }
+
+    private fun requestAutoLogin() {
+        val ps = currentSession() ?: return
+        val user = ps.username
+        val pass = ps.password
+        if (user.isNullOrEmpty() || pass.isNullOrEmpty()) {
+            Toast.makeText(this, "Este perfil no tiene usuario y contraseña vinculados", Toast.LENGTH_LONG).show()
+            return
+        }
+        XFlows.startLogin(ps, user, pass) { }
     }
 
     // ---- Panel flotante de las extensiones ----

@@ -25,6 +25,7 @@ interface FolderSidebarProps {
   onMoveProfileToFolder?: (profileId: string, folderId: string | undefined) => void;
 }
 
+
 export default function FolderSidebar({
   folders,
   profiles,

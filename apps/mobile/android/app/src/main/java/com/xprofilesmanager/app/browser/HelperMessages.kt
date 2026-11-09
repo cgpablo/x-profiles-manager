@@ -47,7 +47,7 @@ object HelperMessages : WebExtension.MessageDelegate {
         val view = BrowserHost.viewShowing(ps)
         if (text == null || view == null) return reply(JSONObject().put("ok", false))
         val result = GeckoResult<Any>()
-        KeyTyper.type(view, text, 30) {
+        KeyTyper.type(view, text, 120) {
             KeyTyper.press(view, KeyEvent.KEYCODE_ENTER)
             after()
             result.complete(JSONObject().put("ok", true).toString() as Any)

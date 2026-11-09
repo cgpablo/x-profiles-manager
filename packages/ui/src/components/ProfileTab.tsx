@@ -5,7 +5,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { getPlatformAPI } from '../platform';
 import type { BrowserProfile } from '@xpm/core';
-import { usePlatformAPI } from '../hooks/usePlatformAPI';
+import { usePlatformAPI, useCapabilities } from '../hooks/usePlatformAPI';
 import Tooltip from './Tooltip';
 import CharacterInfoModal from './CharacterInfoModal';
 import { Star, Lock, LockOpen, Check, Key, Envelope, Globe, Eye, X, Pen, Trash, Gear, Pin, FolderConnect, Bookmarks, Login, ChatRound } from 'reicon-react';
@@ -58,6 +58,7 @@ export default function ProfileTab({
   disableContextMenu = false,
   showDirectory = false,
 }: ProfileTabProps) {
+  const caps = useCapabilities();
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
   const [copiedXAccount, setCopiedXAccount] = useState(false);
@@ -498,9 +499,9 @@ export default function ProfileTab({
                 )}
 
                 {/* Row 3: Directory + Character Hub buttons */}
-                {(hasFcInfo || profile.directoryPath) && (
+                {(hasFcInfo || (profile.directoryPath && caps.openDirectory)) && (
                   <div className="action-row">
-                    {profile.directoryPath && (
+                    {profile.directoryPath && caps.openDirectory && (
                       <Tooltip text="Open directory" position="top">
                         <button
                           className="action-btn dir-btn"
@@ -592,7 +593,7 @@ export default function ProfileTab({
             >
               <><ChatRound size={12} /> Chat</>
             </button>
-            {profile.directoryPath && (
+            {profile.directoryPath && caps.openDirectory && (
               <button
                 className="context-menu-item"
                 onClick={() => {

@@ -6,7 +6,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { getPlatformAPI } from '../platform';
 import { Floppy, Archive, FolderOpen, X } from 'reicon-react';
 import type { AppSettings, BackupInspection, BrowserProfile, ProfileFolder } from '@xpm/core';
-import { usePlatformAPI } from '../hooks/usePlatformAPI';
+import { usePlatformAPI, useCapabilities } from '../hooks/usePlatformAPI';
 import Sidebar from './Sidebar';
 import ProfileModal from './ProfileModal';
 import CreateFolderModal from './CreateFolderModal';
@@ -39,6 +39,7 @@ interface SettingsProps {
 
 export default function Settings({ folders, profiles, selectedFolderId, onSelectFolder, onSettingsChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToFolders, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, onGoToMailManager, activeStatuses = new Map(), onSettingsSaved, onBackupStart, onBackupSuccess, onBackupError }: SettingsProps) {
   const platformAPI = usePlatformAPI();
+  const caps = useCapabilities();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [originalSettings, setOriginalSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -410,12 +411,34 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
               <strong>App Version</strong>
               <span>1.3.0</span>
             </div>
-            <div className="info-item">
-              <strong>Storage Location</strong>
-              <span className="mono">{settings.profilesDir}</span>
-            </div>
+            {caps.profilesDir && (
+              <div className="info-item">
+                <strong>Storage Location</strong>
+                <span className="mono">{settings.profilesDir}</span>
+              </div>
+            )}
           </div>
 
+{!caps.browserPaths && (
+            <div className="settings-section">
+              <h3>Browser</h3>
+              <div className="setting-item">
+                <label>Engine</label>
+                <p className="section-description">
+                  Built-in Firefox engine (GeckoView). You don't need to install any browser.
+                </p>
+              </div>
+              <div className="setting-item">
+                <label>Extensions</label>
+                <p className="section-description">
+                  Control Panel for Twitter is installed automatically and shared by all your profiles. Open a profile
+                  and use the ⋮ menu → Extension settings or Quick panel to change its options.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {(caps.browserPaths || caps.profilesDir) && (
           <div className="settings-section">
             <h3>Browser Configuration</h3>
 
@@ -542,7 +565,9 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
               <small>Where profile data is stored</small>
             </div>
           </div>
+          )}
 
+{(caps.windowManagement || caps.openDirectory) && (
           <div className="settings-section">
             <h3>Platform Preferences</h3>
             
@@ -746,8 +771,9 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
             )}
 
            </div>
+          )}
 
-           <div className="settings-section">
+          <div className="settings-section">
              <h3>Sidebar Configuration</h3>
 
              <div className="setting-item">
