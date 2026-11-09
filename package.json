@@ -13,7 +13,9 @@
     "build:ui": "npm run build -w @xpm/ui",
     "build:desktop": "npm run build -w x-profiles-manager",
     "build": "npm run build:core && npm run build:ui && npm run build:desktop",
-    "type-check": "npm run build:core && npm run type-check -w @xpm/core -w @xpm/ui -w x-profiles-manager",
+    "build:mobile": "npm run build:core && npm run build -w @xpm/mobile",
+    "mobile:sync": "npm run build:core && npm run cap:sync -w @xpm/mobile",
+    "type-check": "npm run build:core && npm run type-check -w @xpm/core -w @xpm/ui -w @xpm/mobile -w x-profiles-manager",
     "dist": "npm run build && npm run dist -w x-profiles-manager",
     "bump": "node scripts/bump-version.js"
   },

@@ -144,6 +144,12 @@ export class BackupService {
         }
       }
 
+      // Profiles created on a platform without browser data folders (Android) arrive with an empty
+      // dataDir: give them the one that belongs to this platform
+      for (const profile of newProfiles) {
+        if (!profile.dataDir) profile.dataDir = this.profiles.defaultDataDir(profile.name);
+      }
+
       // Assign folders
       const targetFolderId = options.targetFolderId;
       const foldersToAdd: ProfileFolder[] = [];

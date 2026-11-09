@@ -4,9 +4,11 @@
   "private": true,
   "description": "Lógica de la app independiente de la plataforma: tipos, servicios y puertos",
   "main": "dist/index.js",
+  "module": "dist/esm/index.js",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json",
     "type-check": "tsc -p tsconfig.json --noEmit"
   }
 }

@@ -121,7 +121,12 @@ npm run dist            # Build and package for distribution (output in apps/des
 npm run dist -- --mac   # Package for macOS only (extra args go to electron-builder)
 npm run dist -- --win   # Package for Windows only
 npm run bump            # Bump the app version
+npm run build:mobile    # Build core + the Android web app (apps/mobile/www)
+npm run mobile:sync     # Build and sync it into the Android project
 ```
+
+Android (work in progress, see `docs/android-migration.md`): after `npm run mobile:sync`, build with
+`cd apps/mobile/android && ./gradlew assembleDebug` and install with `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
 
 ### Project Structure
 
@@ -139,6 +144,7 @@ x-profiles-manager/
 │       ├── vite.config.ts
 │       └── src/             # App.tsx, components/, hooks/
 ├── apps/
+│   ├── mobile/              # Capacitor app for Android (adapters in src/platform, native project in android/)
 │   └── desktop/             # Electron app (macOS + Windows)
 │       ├── src/main/        # Main process: ipc, launcher, preload, adapters/
 │       ├── assets/          # App icons

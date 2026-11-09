@@ -3,6 +3,10 @@
   "version": "1.3.0",
   "private": true,
   "description": "Interfaz de la app (React). La misma para todas las plataformas",
+  "exports": {
+    "./main": "./src/main.tsx",
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "dev": "vite --port 3000",
     "build": "vite build",

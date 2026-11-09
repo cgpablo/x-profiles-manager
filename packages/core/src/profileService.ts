@@ -45,6 +45,11 @@ export class ProfileService {
     this.saveAll(updated);
   }
 
+  /** Directorio de datos del navegador que le corresponde a un perfil con este nombre en esta plataforma. */
+  defaultDataDir(profileName: string): string {
+    return this.deps.profileData.dataDirFor(this.settings.get().profilesDir, profileName);
+  }
+
   get(profileId: string): BrowserProfile | null {
     return this.getAll().find((p) => p.id === profileId) || null;
   }

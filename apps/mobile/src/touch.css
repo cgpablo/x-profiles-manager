@@ -1,0 +1,45 @@
+/*
+ * La UI se diseñó para ratón. En pantallas táctiles (pointer: coarse) se agrandan las zonas de pulsación
+ * (mínimo ≈44 px) y se quita el retardo del doble toque. En desktop no se aplica nada de esto.
+ */
+@media (pointer: coarse) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+    /* Sin zoom por doble toque: el toque responde al instante. El zoom con dos dedos sigue disponible */
+    touch-action: manipulation;
+  }
+
+  button,
+  select,
+  input[type='text'],
+  input[type='password'],
+  input[type='email'],
+  input[type='search'] {
+    min-height: 44px;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  /* Casilla + etiqueta: toda la fila es pulsable y cómoda */
+  .checkbox-group {
+    min-height: 44px;
+    align-items: center;
+  }
+  .checkbox-group label {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 6px 0;
+  }
+
+  .btn-add-folder,
+  .btn-folder-menu {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

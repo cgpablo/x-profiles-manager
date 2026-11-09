@@ -1,0 +1,8 @@
+/*
+ * Android dibuja la app bajo las barras del sistema (barra de estado arriba, de navegación/gestos abajo).
+ * En esas franjas el toque lo recibe el sistema y no la app, así que se reserva su espacio.
+ * Capacitor pasa los márgenes por env(safe-area-inset-*); en desktop valdrían 0.
+ */
+html #root {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}

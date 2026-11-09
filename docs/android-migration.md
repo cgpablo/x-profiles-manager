@@ -131,7 +131,7 @@ Cada hito deja desktop funcionando.
 | M1 ✅ | Definir `PlatformAPI`. El renderer usa `getPlatformAPI()`. El preload de Electron la implementa. | Desktop idéntico | Pequeño |
 | M2 ✅ | Extraer servicios a puertos dentro del repo actual. `ipc.ts` pasa a ser un adaptador fino. | Paridad con el código anterior (ver abajo) | Medio |
 | M3 ✅ | Pasar a npm workspaces: `packages/core`, `packages/ui`, `apps/desktop`. | `npm run dist` genera el `.dmg` y la app empaquetada funciona. **Falta probar el `.exe` en Windows** | Pequeño-medio |
-| M4 | `apps/mobile` con Capacitor, adaptadores móviles y un launcher simulado. | La UI arranca en la tablet, se importa un backup de desktop y las contraseñas se descifran | Medio |
+| M4 ✅ | `apps/mobile` con Capacitor, adaptadores móviles y un launcher simulado. | La UI arranca, se importa un backup de desktop y las contraseñas se descifran. **Probado en emulador Android 17 (arm64); falta repetirlo en la tablet física** | Medio |
 | M5 | Plugin Kotlin real: lanzar y cambiar de perfil, autologin, PIN, `isLoggedIn`, extensiones, prompts. | Los 4 checkpoints del spike dentro de la app real | Medio-grande |
 | M6 | Pulido para tablet, `capabilities` y empaquetado del APK. | Uso diario | Pequeño |
 
@@ -149,9 +149,48 @@ Test de paridad entre el código anterior (commit `a977d82`) y el nuevo, ejecuta
 - `npm run type-check` funciona de nuevo. El `moduleResolution: bundler` que lo rompía con TypeScript 4.9 pasó a `node`, sin subir versiones.
 - La versión de la app vive en `apps/desktop/package.json` (la usa `electron-builder`); `scripts/bump-version.js` la actualiza junto con la de `Settings.tsx`.
 
-### Primer paso de M4 (riesgo)
+### Notas de M4 (Android con Capacitor)
 
-Antes de escribir código, comprobar que **Capacitor es compatible con AGP 9, Kotlin 2.4.20 y `compileSdk` 37.2**, que son los requisitos de GeckoView. Si no lo es, hay que ajustar versiones o plantear el plugin como módulo separado.
+**Resultado del chequeo de compatibilidad (el riesgo que teníamos anotado).** Capacitor 8.6 + GeckoView 159 + Kotlin 2.4.20 **sí conviven**, con estos ajustes sobre la plantilla que genera `cap add android` (en `apps/mobile/android/`):
+
+| Ajuste | Valor | Por qué |
+|---|---|---|
+| Android Gradle Plugin | `9.5.1` (la plantilla trae 8.13.0) | GeckoView arrastra `androidx.core 1.19.1`, que exige AGP ≥ 9.1 |
+| Gradle | `9.6.0` | lo exige AGP 9.5 |
+| `compileSdk` (módulo `app`) | `37` con `minorApiLevel = 2` | GeckoView 159 exige 37.2. Solo el módulo `app` lo necesita, los plugins de Capacitor siguen con 36 |
+| `minSdk` | `26` (la plantilla trae 24) | mínimo de GeckoView |
+| Kotlin | `kotlin-gradle-plugin:2.4.20` en el `classpath` del `build.gradle` raíz | el Kotlin integrado de AGP (2.2) no lee las librerías de GeckoView. Comprobado compilando Kotlin contra clases de GeckoView |
+| Repositorio | `https://maven.mozilla.org/maven2/` limitado al grupo `org.mozilla.geckoview` | origen de GeckoView |
+| ABI | `abiFilters 'arm64-v8a'` + `geckoview-arm64-v8a` | tablet y emulador son arm64 |
+| ProGuard | `proguard-android-optimize.txt` | AGP 9 ya no admite `proguard-android.txt` |
+
+Los módulos de Capacitor (`capacitor-android`, `filesystem`, `share`, `cordova-android-plugins`) compilan sin cambios con AGP 9.5.1. El APK de debug pesa ≈190 MB, como el del spike.
+
+**Cómo construir y probar:**
+```bash
+npm run mobile:sync                       # compila core + UI móvil y sincroniza con el proyecto Android
+cd apps/mobile/android && ./gradlew assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+**Estructura de `apps/mobile`:** `src/boot.ts` prepara el core con los adaptadores de `src/platform/` (documentos, iconos, zip, cifrado, directorios de datos, ajustes, ficheros y `PlatformAPI`), expone `window.platformAPI` y solo entonces monta la UI (`@xpm/ui/main`). El lanzador es provisional (`UnavailableLauncher`) hasta M5.
+
+**Decisiones y hallazgos:**
+- **El core se publica en dos formatos:** CommonJS (`main`, para Electron) y ESM (`module`, para Vite). Con solo CJS, Rollup no ve los exports nombrados de un `export *`.
+- **Versiones fijadas:** `@noble/hashes` y `@noble/ciphers` en major 1, porque la 2 es solo ESM con `exports` y TypeScript 4.9 no resuelve sus tipos.
+- **Compatibilidad entre plataformas:** un perfil creado en Android tiene `dataDir` vacío. Al restaurarlo en desktop, `BackupService` le asigna el directorio de esta plataforma (si no, el lanzador usaría una ruta vacía). Los perfiles de desktop importados en Android conservan su `dataDir` sin efecto.
+- **Mensajes de error iguales que en desktop:** `PlatformAPI` móvil aplica las mismas reglas que el `ipc.ts` (mensajes planos para `Profile not found`, `Unknown error from main process`...).
+- **Acceso al registro de npm:** desde la sesión del asistente el registro corporativo devolvía 403, así que los paquetes nuevos (`@capacitor/*`, `fflate`, `@noble/*`) los instaló el usuario.
+- **Exportar backup = plugin propio `FileSaver`** (`FileSaverPlugin.kt`), no `@capacitor/share`. La hoja de compartir solo ofrece aplicaciones y no permite "guardar en la tablet". `FileSaver` abre el cuadro *Guardar como…* del sistema (Storage Access Framework, `ACTION_CREATE_DOCUMENT`) y copia el zip allí, sin permisos de almacenamiento. Es el primer plugin Kotlin propio: se registra en `MainActivity` antes de `super.onCreate`, y M5 sigue el mismo patrón. Cancelar devuelve `Export canceled`, como desktop. Probado en emulador: el zip guardado es válido y desktop descifra sus contraseñas.
+- **Gradle con el JDK de Android Studio (25):** los módulos de Capacitor 8 piden Java 21. `settings.gradle` incluye el plugin Foojay para que Gradle descargue el JDK 21 si falta.
+- **UI bajo las barras del sistema (edge-to-edge).** Android dibuja la app debajo de la barra de estado y de la de gestos, y en esas franjas el toque lo recibe el sistema. Capacitor ya expone los márgenes (`--safe-area-inset-*` / `env(safe-area-inset-*)`), pero la UI no los usaba. `apps/mobile/src/safe-area.css` los aplica a `#root`; en desktop valen 0.
+- **Táctil:** `apps/mobile/src/touch.css`, solo con `@media (pointer: coarse)`: zonas de pulsación ≥ 44 px (la auditoría pasó de 32 controles pequeños a 0), `touch-action: manipulation` (sin retardo por doble toque) y filas de casilla pulsables enteras. La auditoría (qué elemento recibe el toque en el centro de cada control) no encontró capas que tapen controles. Se hizo en un WebView con viewport de tablet; falta validarlo con el dedo en la tablet real.
+- **Importar un backup "recortado" (`invalid zip data`).** No es un fallo del export: un backup completo exportado por la app se reimporta bien. Reproducido en emulador: si se copia con `adb push` un fichero con **el mismo nombre** que otro ya existente, el selector de Android sigue usando el tamaño antiguo guardado en su índice (MediaStore) y entrega el fichero recortado a ese tamaño. Con otro nombre, el mismo fichero se importa bien. La app ahora explica el error en vez de mostrar el mensaje técnico.
+- Pendiente de pulir (M6): la UI es la de escritorio, sin adaptar a táctil; `Settings` muestra campos que no aplican en Android (rutas de navegador); las escrituras del almacén no son atómicas (se escribe directamente sobre el fichero).
+
+**Cómo se verificó M4:**
+- **Paridad en Node** de los adaptadores móviles reales (con `Filesystem` simulado sobre disco) frente a desktop: 126 comprobaciones, 0 diferencias. Incluye zips de `fflate` restaurados por `adm-zip` y al revés, y cifrado cruzado `@noble` ↔ `crypto`. Se verificó que el test detecta fallos introducidos a propósito. Ignora solo lo que difiere por diseño (ajustes por defecto, `dataDir`, carpetas de datos).
+- **En el WebView real de Android** (emulador, controlado por el puerto de depuración): restaurar un backup de desktop (2 perfiles, 1 carpeta, 2 contraseñas, 1 correo), omitir duplicados en una segunda restauración, descifrar las contraseñas, leer una imagen como data URL, crear un perfil y una contraseña con caracteres no ASCII, y comprobar que todo persiste tras cerrar y reabrir la app.
 
 ## 6. Adaptación de la UI a tablet
 
