@@ -42,3 +42,13 @@ coverage/
 # Misc
 .cache/
 .parcel-cache/
+
+# Graphify
+graphify-out/
+
+# OpenCode / skills
+opencode-session-id.sh
+*.skill
+
+# Mobile build output
+apps/mobile/www/
