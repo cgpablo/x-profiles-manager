@@ -1,0 +1,12 @@
+{
+  "name": "@xpm/core",
+  "version": "1.3.0",
+  "private": true,
+  "description": "Lógica de la app independiente de la plataforma: tipos, servicios y puertos",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "type-check": "tsc -p tsconfig.json --noEmit"
+  }
+}

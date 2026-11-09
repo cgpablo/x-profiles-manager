@@ -130,7 +130,7 @@ Cada hito deja desktop funcionando.
 |---|---|---|---|
 | M1 ✅ | Definir `PlatformAPI`. El renderer usa `getPlatformAPI()`. El preload de Electron la implementa. | Desktop idéntico | Pequeño |
 | M2 ✅ | Extraer servicios a puertos dentro del repo actual. `ipc.ts` pasa a ser un adaptador fino. | Paridad con el código anterior (ver abajo) | Medio |
-| M3 | Pasar a npm workspaces: `packages/core`, `packages/ui`, `apps/desktop`. | `npm run dist` en macOS y Windows | Pequeño-medio |
+| M3 ✅ | Pasar a npm workspaces: `packages/core`, `packages/ui`, `apps/desktop`. | `npm run dist` genera el `.dmg` y la app empaquetada funciona. **Falta probar el `.exe` en Windows** | Pequeño-medio |
 | M4 | `apps/mobile` con Capacitor, adaptadores móviles y un launcher simulado. | La UI arranca en la tablet, se importa un backup de desktop y las contraseñas se descifran | Medio |
 | M5 | Plugin Kotlin real: lanzar y cambiar de perfil, autologin, PIN, `isLoggedIn`, extensiones, prompts. | Los 4 checkpoints del spike dentro de la app real | Medio-grande |
 | M6 | Pulido para tablet, `capabilities` y empaquetado del APK. | Uso diario | Pequeño |
@@ -138,6 +138,16 @@ Cada hito deja desktop funcionando.
 ### Cómo se verificó M2
 
 Test de paridad entre el código anterior (commit `a977d82`) y el nuevo, ejecutando las mismas operaciones en carpetas de datos separadas y comparando los ficheros resultantes (ids y fechas normalizados): CRUD de perfiles, carpetas, contraseñas y correos, iconos, renombrado de directorios, errores, `clearAllData`, backups completos, parciales y sin Character Hub, y una matriz de 18 restauraciones (cada zip en las dos implementaciones, con `targetFolderId` sin definir, `null` y un id). Incluye cifrado cruzado: cada implementación descifra las contraseñas creadas por la otra. 146 comprobaciones, 0 diferencias, y el test detecta fallos introducidos a propósito. Además, prueba extremo a extremo en la app real por IPC con una carpeta de datos temporal, comprobando los mensajes de error uno a uno.
+
+### Notas de M3 (estructura y empaquetado)
+
+- `@xpm/core` se compila a `packages/core/dist` (CommonJS + `.d.ts`) y desktop lo consume como dependencia de workspace. En el core, `"types": []` y `lib: ["ES2020","DOM"]` hacen que el compilador rechace cualquier uso de APIs de Node.
+- La UI importa los tipos con `import type ... from '@xpm/core'`, así que Vite nunca necesita el runtime del core. El preload también usa `import type`, porque corre en un contexto restringido.
+- **El `name` de `apps/desktop/package.json` debe seguir siendo `x-profiles-manager`**, sin `productName` en el nivel superior: de él sale la carpeta de datos del usuario (`~/Library/Application Support/x-profiles-manager`). Cambiarlo haría que la app "perdiera" los datos.
+- **`electron-builder` en un workspace:** hay que fijar la versión exacta de `electron` (`33.4.11`) en `apps/desktop`, porque no encuentra `node_modules/electron` al estar hoisteado. Y hay que poner `"npmRebuild": false`: sin eso intenta reinstalar las dependencias de producción y **poda el `node_modules` de la raíz** (probado, se pierde `electron`, `electron-builder`...). `koffi` trae binarios precompilados, así que no necesita recompilarse.
+- El paquete pasa de 25 MB a 3,3 MB: `react`, `react-dom` y `reicon-react` ya no se incluyen en `node_modules` del paquete porque Vite los mete en el bundle del renderer. Son dependencias de `@xpm/ui`, no de la app de escritorio.
+- `npm run type-check` funciona de nuevo. El `moduleResolution: bundler` que lo rompía con TypeScript 4.9 pasó a `node`, sin subir versiones.
+- La versión de la app vive en `apps/desktop/package.json` (la usa `electron-builder`); `scripts/bump-version.js` la actualiza junto con la de `Settings.tsx`.
 
 ### Primer paso de M4 (riesgo)
 

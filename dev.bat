@@ -1,7 +1,11 @@
 @echo off
+REM Build core and the Electron main process
+call npm run build:core
+call npm run build:desktop
+
 REM Start React dev server in background
 echo Starting React dev server...
-start /B npm run react-dev
+start /B npm run dev -w @xpm/ui
 
 REM Wait for Vite to be ready (max 30 seconds)
 echo Waiting for Vite to be ready...
@@ -19,6 +23,6 @@ for /L %%i in (1,1,30) do (
 :vite_ready
 REM Start Electron
 echo Starting Electron...
-npm run electron
+npm start -w x-profiles-manager
 
 pause
