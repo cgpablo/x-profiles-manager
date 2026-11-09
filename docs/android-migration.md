@@ -132,7 +132,7 @@ Cada hito deja desktop funcionando.
 | M2 ✅ | Extraer servicios a puertos dentro del repo actual. `ipc.ts` pasa a ser un adaptador fino. | Paridad con el código anterior (ver abajo) | Medio |
 | M3 ✅ | Pasar a npm workspaces: `packages/core`, `packages/ui`, `apps/desktop`. | `npm run dist` genera el `.dmg` y la app empaquetada funciona. **Falta probar el `.exe` en Windows** | Pequeño-medio |
 | M4 ✅ | `apps/mobile` con Capacitor, adaptadores móviles y un launcher simulado. | La UI arranca, se importa un backup de desktop y las contraseñas se descifran. **Probado en emulador Android 17 (arm64); falta repetirlo en la tablet física** | Medio |
-| M5 | Plugin Kotlin real: lanzar y cambiar de perfil, autologin, PIN, `isLoggedIn`, extensiones, prompts. | Los 4 checkpoints del spike dentro de la app real | Medio-grande |
+| M5 ✅ | Plugin Kotlin real: lanzar y cambiar de perfil, autologin, PIN, `isLoggedIn`, extensiones, prompts. | Los 4 checkpoints del spike dentro de la app real. **Probado en emulador; falta la tablet y una cuenta real (login, Chat/PIN)** | Medio-grande |
 | M6 | Pulido para tablet, `capabilities` y empaquetado del APK. | Uso diario | Pequeño |
 
 ### Cómo se verificó M2
@@ -191,6 +191,36 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 **Cómo se verificó M4:**
 - **Paridad en Node** de los adaptadores móviles reales (con `Filesystem` simulado sobre disco) frente a desktop: 126 comprobaciones, 0 diferencias. Incluye zips de `fflate` restaurados por `adm-zip` y al revés, y cifrado cruzado `@noble` ↔ `crypto`. Se verificó que el test detecta fallos introducidos a propósito. Ignora solo lo que difiere por diseño (ajustes por defecto, `dataDir`, carpetas de datos).
 - **En el WebView real de Android** (emulador, controlado por el puerto de depuración): restaurar un backup de desktop (2 perfiles, 1 carpeta, 2 contraseñas, 1 correo), omitir duplicados en una segunda restauración, descifrar las contraseñas, leer una imagen como data URL, crear un perfil y una contraseña con caracteres no ASCII, y comprobar que todo persiste tras cerrar y reabrir la app.
+
+### Notas de M5 (el navegador GeckoView)
+
+**Arquitectura.** La UI sigue en el WebView de Capacitor (el gestor). El navegador está en una `BrowserActivity` aparte, con una barra con los perfiles abiertos (chips con el color del perfil), "‹ Gestor", recargar y un menú. Las sesiones **no son de la pantalla**: viven en `SessionRegistry` (un `GeckoSession` por perfil, `contextId = profileId`), así que "Gestor" o Atrás no cierran los perfiles; solo cerrar el perfil, desde el menú o desde el gestor, lo cierra. Un único `GeckoRuntime`.
+
+Código en `apps/mobile/android/app/src/main/java/com/xprofilesmanager/app/`:
+
+| Fichero | Papel |
+|---|---|
+| `ProfileBrowserPlugin.kt` | Plugin Capacitor: `launch`, `focus`, `close`, `closeAll`, `getActive`, `updateProfile`, `isLoggedIn`, `isOnHomeUrl`, `openChat`, `fillPinRecovery`, `autoLogin` y el evento `sessionsChanged` |
+| `browser/BrowserEngine.kt` | `GeckoRuntime` único; prepara la extensión interna y **instala Control Panel for Twitter** desde AMO la primera vez (necesita red) |
+| `browser/SessionRegistry.kt`, `ProfileSession.kt` | Sesiones por perfil, estado (URL, "puede ir atrás", login pendiente, PIN), recuperación si el proceso de contenido muere, enlaces `target=_blank` en la misma sesión |
+| `browser/BrowserActivity.kt` + `res/layout/activity_browser.xml` | Pantalla del navegador, barra de perfiles, panel flotante de la extensión (popup y ajustes), respeta las barras del sistema |
+| `browser/XFlows.kt`, `XUrls.kt` | Autologin, Chat/PIN y las reglas de `isLoggedIn`/`isHomeLike` (las mismas listas que `launcher.ts`) |
+| `browser/HelperMessages.kt`, `KeyTyper.kt` | Mensajería con la extensión interna y tecleo con eventos de teclado reales |
+| `browser/ExtensionBridge.kt`, `PromptHandler.kt` | Acciones/popup de la extensión; desplegables, alertas y confirmaciones |
+| `assets/messaging/` | Extensión interna "X Profiles Helper" (portada del spike, sin trazas de depuración) |
+
+Lado TypeScript: `src/platform/profileBrowser.ts` (el plugin) y `androidLauncher.ts`, que implementa `BrowserLauncher` y sustituye al lanzador provisional de M4.
+
+**Decisiones y hallazgos:**
+- **`isActive`/`getActive` son síncronos en el contrato `BrowserLauncher`, pero el plugin es asíncrono.** `AndroidLauncher` mantiene una caché de perfiles abiertos, actualizada por `sessionsChanged` y refrescada al volver al gestor (`visibilitychange`): mientras el navegador está delante, el WebView del gestor está en pausa.
+- **Validación como en desktop:** lanzar un perfil que no existe devuelve `Failed to launch profile` (la comprobación consulta la base de datos, no una caché, que se quedaría vieja tras restaurar un backup).
+- **El objeto que devuelve `install()` llega sin la URL de opciones** de la extensión; hay que volver a pedirla a `list()` tras instalar.
+- **Las llamadas que acaban dentro del navegador** (como `autoLogin`) se resuelven cuando termina el flujo, pero el WebView del gestor está pausado entonces: la respuesta llega al volver a "Gestor".
+- Escribir usuario, contraseña y PIN solo funciona con la sesión **a la vista** (Gecko recibe las teclas en la `GeckoView` visible). Si cambias de perfil a mitad del login, el paso falla y el flujo caduca (90 s).
+
+**Cómo se verificó (emulador Android 17 arm64, por la API real de la app):** el gestor lanza un perfil y aparece la `BrowserActivity` con X cargado; Atrás vuelve al gestor sin cerrar el perfil; un segundo perfil añade su chip; el cambio entre perfiles; la extensión se instala sola con su URL de opciones; el panel de ajustes y el popup se abren sobre X sin sacarte de la página; **autologin completo** con credenciales falsas (usuario → contraseña → envío, y X responde "contraseña incorrecta"), con la API devolviendo `true`; `openChat`, `fillPinRecovery` y `focusWindow` devuelven `true`; `close` deja los activos en 0; un perfil inexistente se rechaza; cero cierres inesperados.
+
+**Sin verificar todavía:** el flujo con una **cuenta real** (el login completo hasta entrar, y Chat/PIN en la página real de recuperación; el tecleo de PIN es el mismo código validado en el spike) y todo en la **tablet física**.
 
 ## 6. Adaptación de la UI a tablet
 

@@ -13,7 +13,7 @@ import { NobleSecretCipher } from './platform/cipher';
 import { mobileDefaultSettings } from './platform/defaults';
 import { CapacitorDocumentStore } from './platform/documentStore';
 import { MobileFiles } from './platform/files';
-import { UnavailableLauncher } from './platform/launcher';
+import { AndroidLauncher } from './platform/androidLauncher';
 import { createMobilePlatformApi } from './platform/platformApi';
 import { NoProfileData } from './platform/profileData';
 
@@ -31,7 +31,10 @@ async function boot(): Promise<void> {
     now: () => Date.now(),
   };
 
-  const backend = createBackend(createDataServices(deps), new UnavailableLauncher(), deps);
+  const data = createDataServices(deps);
+  const launcher = new AndroidLauncher((profileId) => data.profiles.get(profileId) !== null);
+  launcher.loadProfiles(data.profiles.getAll());
+  const backend = createBackend(data, launcher, deps);
   window.platformAPI = createMobilePlatformApi(backend, new MobileFiles());
 
   await import('@xpm/ui/main');
