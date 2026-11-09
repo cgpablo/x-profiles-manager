@@ -75,7 +75,7 @@ export default function BrowserPreview({ profile, onClose, isActive }: BrowserPr
                   <button 
                     className="btn-focus-chrome"
                     onClick={() => {
-                      (window as any).electronAPI?.launcher?.focusWindow?.(profile.id);
+                      (window as any).platformAPI?.launcher?.focusWindow?.(profile.id);
                     }}
                   >
                     Focus Browser Window
@@ -83,7 +83,7 @@ export default function BrowserPreview({ profile, onClose, isActive }: BrowserPr
                   <button 
                     className="btn-close-profile"
                     onClick={() => {
-                      (window as any).electronAPI?.launcher?.close?.(profile.id);
+                      (window as any).platformAPI?.launcher?.close?.(profile.id);
                       onClose();
                     }}
                   >

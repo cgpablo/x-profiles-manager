@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { getPlatformAPI } from '../platform';
 import { createPortal } from 'react-dom';
 import { Pin, Folder, FolderBookmark, FolderConnect, Globe, X, Star, Bookmarks, Pen, Trash, Plus, ChatRound } from 'reicon-react';
 import { ProfileFolder, BrowserProfile } from '../../types';
@@ -352,7 +353,7 @@ export default function SidebarFolders({
                              onClick={() => {
                                if (isActive) {
                                  // If profile is active, focus the window
-                                 window.electronAPI.launcher.focusWindow(profile.id).catch(console.error);
+                                 getPlatformAPI().launcher.focusWindow(profile.id).catch(console.error);
                                } else {
                                  // If inactive, select the folder
                                  onSelectFolder('ungrouped');
@@ -450,7 +451,7 @@ export default function SidebarFolders({
                                     <button
                                       className="context-menu-item"
                                       onClick={() => {
-                                        window.electronAPI.launcher.openChat(profile.id).catch(console.error);
+                                        getPlatformAPI().launcher.openChat(profile.id).catch(console.error);
                                         setProfileContextMenu(null);
                                       }}
                                     >
@@ -468,7 +469,7 @@ export default function SidebarFolders({
                                        <button
                                          className="context-menu-item"
                                          onClick={() => {
-                                           window.electronAPI.shell.openPath(profile.directoryPath!).catch(console.error);
+                                           getPlatformAPI().shell.openPath(profile.directoryPath!).catch(console.error);
                                            setProfileContextMenu(null);
                                          }}
                                        >
@@ -659,7 +660,7 @@ export default function SidebarFolders({
                              onClick={() => {
                                if (isActive) {
                                  // If profile is active, focus the window
-                                 window.electronAPI.launcher.focusWindow(profile.id).catch(console.error);
+                                 getPlatformAPI().launcher.focusWindow(profile.id).catch(console.error);
                                } else {
                                  // If inactive, select the folder
                                  onSelectFolder(folder.id);
@@ -770,7 +771,7 @@ export default function SidebarFolders({
                                        <button
                                          className="context-menu-item"
                                          onClick={() => {
-                                           window.electronAPI.shell.openPath(profile.directoryPath!).catch(console.error);
+                                           getPlatformAPI().shell.openPath(profile.directoryPath!).catch(console.error);
                                            setProfileContextMenu(null);
                                          }}
                                        >

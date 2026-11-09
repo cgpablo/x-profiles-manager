@@ -3,9 +3,10 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { getPlatformAPI } from '../platform';
 import { Floppy, Archive, FolderOpen, X } from 'reicon-react';
 import { AppSettings, BackupInspection, BrowserProfile, ProfileFolder } from '../../types';
-import { useElectronAPI } from '../hooks/useElectronAPI';
+import { usePlatformAPI } from '../hooks/usePlatformAPI';
 import Sidebar from './Sidebar';
 import ProfileModal from './ProfileModal';
 import CreateFolderModal from './CreateFolderModal';
@@ -37,7 +38,7 @@ interface SettingsProps {
 }
 
 export default function Settings({ folders, profiles, selectedFolderId, onSelectFolder, onSettingsChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToFolders, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, onGoToMailManager, activeStatuses = new Map(), onSettingsSaved, onBackupStart, onBackupSuccess, onBackupError }: SettingsProps) {
-  const electronAPI = useElectronAPI();
+  const platformAPI = usePlatformAPI();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [originalSettings, setOriginalSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,11 +71,11 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
 
   useEffect(() => {
     loadSettings();
-  }, [electronAPI]);
+  }, [platformAPI]);
 
   const loadSettings = async () => {
     try {
-      const result = await electronAPI.settings.get();
+      const result = await platformAPI.settings.get();
       setSettings(result);
       setOriginalSettings(result);
     } catch (error) {
@@ -88,7 +89,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
   const handleSave = async () => {
     if (!settings) return;
     try {
-      await electronAPI.settings.update(settings);
+      await platformAPI.settings.update(settings);
       setOriginalSettings(settings);
       showStatus('Settings saved!');
       onSettingsSaved?.();
@@ -101,7 +102,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
   const handleClearAllData = async () => {
     setIsClearing(true);
     try {
-      const success = await electronAPI.system.clearAllData();
+      const success = await platformAPI.system.clearAllData();
       if (success) {
         showStatus('Clearing data... App will restart.');
         onBackupSuccess?.('All data has been cleared. The app will now restart.');
@@ -125,7 +126,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
     onBackupStart?.('export');
     setIsExporting(true);
     try {
-      const success = await electronAPI.backup.export();
+      const success = await platformAPI.backup.export();
       if (success) {
         showStatus('Backup exported!');
         onBackupSuccess?.('Backup exported successfully!');
@@ -147,7 +148,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
     onBackupStart?.('export');
     setIsExporting(true);
     try {
-      const success = await electronAPI.backup.exportSelected(profileIds, exportOptions);
+      const success = await platformAPI.backup.exportSelected(profileIds, exportOptions);
       if (success) {
         setShowExportModal(false);
         showStatus('Selected profiles exported!');
@@ -167,7 +168,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
   };
 
   const runRestore = async (filePath: string, targetFolderId?: string | null) => {
-    const result = await electronAPI.backup.restore(filePath, { targetFolderId });
+    const result = await platformAPI.backup.restore(filePath, { targetFolderId });
     const summary = `${result.profilesAdded} profiles added (${result.profilesSkipped} skipped), ` +
       `${result.passwordsAdded} passwords, ${result.mailsAdded} mails added`;
     showStatus('Backup imported! Restarting...');
@@ -179,7 +180,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
     onBackupStart?.('import');
     setIsImporting(true);
     try {
-      const picked = await electronAPI.backup.import();
+      const picked = await platformAPI.backup.import();
       if (picked.inspection.type === 'partial') {
         setPendingImport(picked);
         return;
@@ -214,7 +215,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
   const handleDeleteBackedUpIcons = async () => {
     setIsDeletingIcons(true);
     try {
-      await window.electronAPI.icons.deleteAll();
+      await getPlatformAPI().icons.deleteAll();
       showStatus('Icons deleted');
       onBackupSuccess?.('Backed up icons deleted successfully');
     } catch (error) {
@@ -235,7 +236,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
 
     const handleMoveProfileToFolder = async (profileId: string, folderId: string | undefined) => {
       try {
-        await electronAPI.profiles.update(profileId, { folderId });
+        await platformAPI.profiles.update(profileId, { folderId });
         onSettingsChange();
       } catch (error) {
         console.error('Error moving profile to folder:', error);
@@ -245,7 +246,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
     // Handlers for sidebar
     const handleLaunchProfile = async (profileId: string) => {
       try {
-        await electronAPI.launcher.launch(profileId, 'https://x.com');
+        await platformAPI.launcher.launch(profileId, 'https://x.com');
         onSettingsChange();
       } catch (error) {
         console.error('Error launching profile:', error);
@@ -253,7 +254,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
     };
     const handleCloseProfile = async (profileId: string) => {
       try {
-        await electronAPI.launcher.close(profileId);
+        await platformAPI.launcher.close(profileId);
         onSettingsChange();
       } catch (error) {
         console.error('Error closing profile:', error);
@@ -263,7 +264,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
       const folderProfiles = profiles.filter(p => p.folderId === folderId || (folderId === 'ungrouped' && !p.folderId));
       for (const profile of folderProfiles) {
         try {
-          await electronAPI.launcher.launch(profile.id, 'https://x.com');
+          await platformAPI.launcher.launch(profile.id, 'https://x.com');
         } catch (error) {
           console.error('Error launching profile in browser:', profile.id, error);
         }
@@ -280,7 +281,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
       for (const profile of folderProfiles) {
         if (activeStatuses?.get(profile.id)) {
           try {
-            await electronAPI.launcher.close(profile.id);
+            await platformAPI.launcher.close(profile.id);
           } catch (error) {
             console.error('Error closing profile:', profile.id, error);
           }
@@ -312,7 +313,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
         if (activeStatuses?.get(profileId)) {
           await handleCloseProfile(profileId);
         }
-        await electronAPI.profiles.delete(profileId);
+        await platformAPI.profiles.delete(profileId);
         onSettingsChange();
       } catch (error) {
         console.error('Error deleting profile:', error);
@@ -323,7 +324,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
       const profile = profiles.find(p => p.id === profileId);
       if (!profile) return;
       try {
-        await electronAPI.profiles.update(profileId, { starred: !profile.starred });
+        await platformAPI.profiles.update(profileId, { starred: !profile.starred });
         onSettingsChange();
       } catch (error) {
         console.error('Error toggling star:', error);
@@ -450,7 +451,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
                     className="explore-button"
                     onClick={async () => {
                       try {
-                        const path = await window.electronAPI.system.selectFile();
+                        const path = await getPlatformAPI().system.selectFile();
                         setSettings({ ...settings, chromePath: path });
                       } catch (error) {
                         console.error('Error selecting Chrome path:', error);
@@ -480,7 +481,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
                     className="explore-button"
                     onClick={async () => {
                       try {
-                        const path = await window.electronAPI.system.selectFile();
+                        const path = await getPlatformAPI().system.selectFile();
                         setSettings({ ...settings, geckoPath: path });
                       } catch (error) {
                         console.error('Error selecting browser path:', error);
@@ -527,7 +528,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
                   className="explore-button"
                   onClick={async () => {
                     try {
-                      const path = await window.electronAPI.system.selectDirectory();
+                      const path = await getPlatformAPI().system.selectDirectory();
                       setSettings({ ...settings, profilesDir: path });
                     } catch (error) {
                       console.error('Error selecting profiles directory:', error);
@@ -597,7 +598,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
               <small>Shows advanced settings and debug options</small>
             </div>
 
-            {settings.platformPreferences?.developerMode && window.electronAPI.platform === 'win32' && (
+            {settings.platformPreferences?.developerMode && getPlatformAPI().platform === 'win32' && (
               <>
                 <div className="setting-item">
                   <label>Windows Focus Method</label>

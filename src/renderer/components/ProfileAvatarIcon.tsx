@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { getPlatformAPI } from '../platform';
 import { BrowserProfile } from '../../types';
 
 interface ProfileAvatarIconProps {
@@ -17,7 +18,7 @@ export default function ProfileAvatarIcon({ profile }: ProfileAvatarIconProps) {
       setImgSrc(null);
       return;
     }
-    window.electronAPI.dialog
+    getPlatformAPI().dialog
       .fileToDataUrl(profile.imagePath)
       .then((url) => setImgSrc(url))
       .catch(() => setImgSrc(null));

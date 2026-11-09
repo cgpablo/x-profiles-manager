@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import { X } from 'reicon-react';
 import { BrowserProfile, FCCharacterInfo } from '../../types';
-import { useElectronAPI } from '../hooks/useElectronAPI';
+import { usePlatformAPI } from '../hooks/usePlatformAPI';
 import { useModalClose } from '../hooks/useModalClose';
 import './EditFCCharacterModal.css';
 
@@ -16,7 +16,7 @@ interface EditFCCharacterModalProps {
 }
 
 export default function EditFCCharacterModal({ profile, onClose, onSaved }: EditFCCharacterModalProps) {
-  const electronAPI = useElectronAPI();
+  const platformAPI = usePlatformAPI();
   const modalRef = useModalClose({ onClose });
 
   const [igTags, setIgTags] = useState<string[]>(profile.fcInfo?.ig ?? []);
@@ -74,7 +74,7 @@ export default function EditFCCharacterModal({ profile, onClose, onSaved }: Edit
         x: xTags.length > 0 ? xTags : undefined,
         sc: scLinks.length > 0 ? scLinks : undefined,
       };
-      await electronAPI.profiles.update(profile.id, { fcInfo } as any);
+      await platformAPI.profiles.update(profile.id, { fcInfo } as any);
       onSaved();
     } catch (err) {
       console.error('Error saving FC info:', err);

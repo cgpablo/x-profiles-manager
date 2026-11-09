@@ -3,6 +3,7 @@
  */
 
 import React, { useState } from 'react';
+import { getPlatformAPI } from '../platform';
 import { X, EyeOff, Eye } from 'reicon-react';
 import { BrowserProfile } from '../../types';
 import { useModalClose } from '../hooks/useModalClose';
@@ -70,13 +71,13 @@ export default function CreatePasswordModal({
     setLoading(true);
     try {
       if (isEditing) {
-        await window.electronAPI.passwords.update(editingEntry!.id, {
+        await getPlatformAPI().passwords.update(editingEntry!.id, {
           name: name.trim(),
           ...(password.trim() ? { value: password.trim() } : {}),
           profileIds: selectedProfileIds,
         });
       } else {
-        await window.electronAPI.passwords.create(
+        await getPlatformAPI().passwords.create(
           name.trim(),
           password.trim(),
           selectedProfileIds

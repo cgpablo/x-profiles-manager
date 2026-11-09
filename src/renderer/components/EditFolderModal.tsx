@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import { ProfileFolder } from '../../types';
-import { useElectronAPI } from '../hooks/useElectronAPI';
+import { usePlatformAPI } from '../hooks/usePlatformAPI';
 import { useModalClose } from '../hooks/useModalClose';
 import ColorPicker from './ColorPicker';
 import './CreateFolderModal.css';
@@ -16,7 +16,7 @@ interface EditFolderModalProps {
 }
 
 export default function EditFolderModal({ folder, onClose, onUpdated }: EditFolderModalProps) {
-  const electronAPI = useElectronAPI();
+  const platformAPI = usePlatformAPI();
   const [name, setName] = useState(folder.name);
   const [selectedColor, setSelectedColor] = useState(folder.color);
   const [error, setError] = useState('');
@@ -34,7 +34,7 @@ export default function EditFolderModal({ folder, onClose, onUpdated }: EditFold
     setError('');
 
     try {
-      await electronAPI.folders.update(folder.id, {
+      await platformAPI.folders.update(folder.id, {
         name,
         color: selectedColor,
         icon: '📁',
@@ -53,7 +53,7 @@ export default function EditFolderModal({ folder, onClose, onUpdated }: EditFold
       setError('');
 
       try {
-        await electronAPI.folders.delete(folder.id);
+        await platformAPI.folders.delete(folder.id);
         onUpdated();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to delete folder');

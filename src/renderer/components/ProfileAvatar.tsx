@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { getPlatformAPI } from '../platform';
 import { BrowserProfile } from '../../types';
 import './ProfileAvatar.css';
 
@@ -23,7 +24,7 @@ export default function ProfileAvatar({ profile, className, title, style }: Prof
       setImgSrc(null);
       return;
     }
-    window.electronAPI.dialog
+    getPlatformAPI().dialog
       .fileToDataUrl(profile.imagePath)
       .then((url) => setImgSrc(url))
       .catch(() => setImgSrc(null));

@@ -5,9 +5,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { getPlatformAPI } from '../platform';
 import { X, Folder } from 'reicon-react';
 import { BrowserProfile } from '../../types';
-import { useElectronAPI } from '../hooks/useElectronAPI';
+import { usePlatformAPI } from '../hooks/usePlatformAPI';
 import { useModalClose } from '../hooks/useModalClose';
 import ColorPicker from './ColorPicker';
 import './CreateProfileModal.css';
@@ -43,7 +44,7 @@ export default function ProfileModal({
   folders = [],
 }: ProfileModalProps) {
   const isEdit = profile !== undefined;
-  const electronAPI = useElectronAPI();
+  const platformAPI = usePlatformAPI();
   const modalRef = useModalClose({ onClose });
 
   // Profile fields
@@ -89,7 +90,7 @@ export default function ProfileModal({
   // Load existing image preview in edit mode
   useEffect(() => {
     if (isEdit && profile.imagePath) {
-      window.electronAPI.dialog.fileToDataUrl(profile.imagePath)
+      getPlatformAPI().dialog.fileToDataUrl(profile.imagePath)
         .then(setImagePreviewUrl)
         .catch(() => setImagePreviewUrl(`file://${profile.imagePath}`));
     }
@@ -100,8 +101,8 @@ export default function ProfileModal({
     const loadData = async () => {
       try {
         const [allPasswords, allMails] = await Promise.all([
-          window.electronAPI.passwords.getAll(),
-          window.electronAPI.mails.getAll(),
+          getPlatformAPI().passwords.getAll(),
+          getPlatformAPI().mails.getAll(),
         ]);
         setPasswords(allPasswords);
         setMails(allMails);
@@ -127,22 +128,22 @@ export default function ProfileModal({
 
   const handleSelectImage = async () => {
     try {
-      const files = await window.electronAPI.dialog.openFile({
+      const files = await getPlatformAPI().dialog.openFile({
         filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'] }],
       });
       if (files && files.length > 0) {
         let finalPath = files[0];
         try {
-          const settings = await window.electronAPI.settings.get();
+          const settings = await getPlatformAPI().settings.get();
           if (settings?.backupIcons) {
-            finalPath = await window.electronAPI.icons.backup(files[0]);
+            finalPath = await getPlatformAPI().icons.backup(files[0]);
           }
         } catch {
           // if settings/backup fails, continue with original path
         }
         setImagePath(finalPath);
         try {
-          const dataUrl = await window.electronAPI.dialog.fileToDataUrl(finalPath);
+          const dataUrl = await getPlatformAPI().dialog.fileToDataUrl(finalPath);
           setImagePreviewUrl(dataUrl);
         } catch {
           setImagePreviewUrl(`file://${finalPath}`);
@@ -165,7 +166,7 @@ export default function ProfileModal({
       if (initialPasswordId) {
         const oldPw = passwords.find(pw => pw.id === initialPasswordId);
         if (oldPw) {
-          await window.electronAPI.passwords.update(initialPasswordId, {
+          await getPlatformAPI().passwords.update(initialPasswordId, {
             profileIds: oldPw.profileIds.filter(id => id !== profileId),
           });
         }
@@ -173,7 +174,7 @@ export default function ProfileModal({
       if (selectedPasswordId) {
         const newPw = passwords.find(pw => pw.id === selectedPasswordId);
         if (newPw && !newPw.profileIds.includes(profileId)) {
-          await window.electronAPI.passwords.update(selectedPasswordId, {
+          await getPlatformAPI().passwords.update(selectedPasswordId, {
             profileIds: [...newPw.profileIds, profileId],
           });
         }
@@ -185,7 +186,7 @@ export default function ProfileModal({
       if (initialMailId) {
         const oldMail = mails.find(m => m.id === initialMailId);
         if (oldMail) {
-          await window.electronAPI.mails.update(initialMailId, {
+          await getPlatformAPI().mails.update(initialMailId, {
             profileIds: oldMail.profileIds.filter(id => id !== profileId),
           });
         }
@@ -193,7 +194,7 @@ export default function ProfileModal({
       if (selectedMailId) {
         const newMail = mails.find(m => m.id === selectedMailId);
         if (newMail && !newMail.profileIds.includes(profileId)) {
-          await window.electronAPI.mails.update(selectedMailId, {
+          await getPlatformAPI().mails.update(selectedMailId, {
             profileIds: [...newMail.profileIds, profileId],
           });
         }
@@ -220,7 +221,7 @@ export default function ProfileModal({
 
     try {
       if (isEdit) {
-        await electronAPI.profiles.update(profile.id, {
+        await platformAPI.profiles.update(profile.id, {
           name,
           color,
           xAccount: xAccount || undefined,
@@ -231,12 +232,12 @@ export default function ProfileModal({
         });
         await linkPasswordMail(profile.id);
       } else {
-        const newProfile = await electronAPI.profiles.create(
+        const newProfile = await platformAPI.profiles.create(
           name, color, imagePath || '', xAccount || undefined, folderId, directoryPath || undefined
         );
         if (newProfile?.id) {
           if (selectedPinPasswordId) {
-            await electronAPI.profiles.update(newProfile.id, { pinPasswordId: selectedPinPasswordId });
+            await platformAPI.profiles.update(newProfile.id, { pinPasswordId: selectedPinPasswordId });
           }
           await linkPasswordMail(newProfile.id);
         }
@@ -416,7 +417,7 @@ export default function ProfileModal({
                 disabled={loading}
                 onClick={async () => {
                   try {
-                    const selected = await window.electronAPI.system.selectDirectory();
+                    const selected = await getPlatformAPI().system.selectDirectory();
                     if (selected) setDirectoryPath(selected);
                   } catch {
                     // cancelled or error — ignore

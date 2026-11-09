@@ -3,6 +3,7 @@
  */
 
 import React, { useState } from 'react';
+import { getPlatformAPI } from '../platform';
 import { X } from 'reicon-react';
 import { BrowserProfile } from '../../types';
 import { useModalClose } from '../hooks/useModalClose';
@@ -67,12 +68,12 @@ export default function CreateMailModal({
     setLoading(true);
     try {
       if (isEditing) {
-        await window.electronAPI.mails.update(editingEntry!.id, {
+        await getPlatformAPI().mails.update(editingEntry!.id, {
           email: email.trim(),
           profileIds: selectedProfileIds,
         });
       } else {
-        await window.electronAPI.mails.create(
+        await getPlatformAPI().mails.create(
           email.trim(),
           selectedProfileIds
         );

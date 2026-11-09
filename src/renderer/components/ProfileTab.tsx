@@ -3,8 +3,9 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { getPlatformAPI } from '../platform';
 import { BrowserProfile } from '../../types';
-import { useElectronAPI } from '../hooks/useElectronAPI';
+import { usePlatformAPI } from '../hooks/usePlatformAPI';
 import Tooltip from './Tooltip';
 import CharacterInfoModal from './CharacterInfoModal';
 import { Star, Lock, LockOpen, Check, Key, Envelope, Globe, Eye, X, Pen, Trash, Gear, Pin, FolderConnect, Bookmarks, Login, ChatRound } from 'reicon-react';
@@ -90,7 +91,7 @@ export default function ProfileTab({
     setHomeCheckDone(false);
     const timer = setTimeout(async () => {
       try {
-        const result = await window.electronAPI.launcher.isOnHomeUrl(profile.id);
+        const result = await getPlatformAPI().launcher.isOnHomeUrl(profile.id);
         setOnHomePage(result);
       } catch {
         setOnHomePage(false);
@@ -116,7 +117,7 @@ export default function ProfileTab({
   const [imageUrl, setImageUrl] = useState<string>('');
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const electronAPI = useElectronAPI();
+  const platformAPI = usePlatformAPI();
 
   // Derived: whether this profile has character hub info
   const hasFcInfo =
@@ -129,7 +130,7 @@ export default function ProfileTab({
     if (profile.imagePath) {
       (async () => {
         try {
-          const dataUrl = await window.electronAPI.dialog.fileToDataUrl(profile.imagePath!);
+          const dataUrl = await getPlatformAPI().dialog.fileToDataUrl(profile.imagePath!);
           setImageUrl(dataUrl);
         } catch (error) {
           console.error('Error converting image to data URL:', error);
@@ -204,7 +205,7 @@ export default function ProfileTab({
   const handleCopyPassword = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const pw = await window.electronAPI.passwords.getDecryptedForProfile(profile.id);
+      const pw = await getPlatformAPI().passwords.getDecryptedForProfile(profile.id);
       if (!pw) return;
       await navigator.clipboard.writeText(pw);
       setCopiedPassword(true);
@@ -228,7 +229,7 @@ export default function ProfileTab({
     if (pinFilling) return;
     setPinFilling(true);
     try {
-      const filled = await window.electronAPI.launcher.fillPinRecovery(profile.id);
+      const filled = await getPlatformAPI().launcher.fillPinRecovery(profile.id);
       if (filled) {
         setPinFilled(true);
         setTimeout(() => setPinFilled(false), 800);
@@ -408,8 +409,8 @@ export default function ProfileTab({
                           // Optimistic instant-hide; the persisted 20-day cooldown (written
                           // right below) is what actually keeps it hidden going forward.
                           setJustClickedLogin(true);
-                          window.electronAPI.launcher.autoLogin(profile.id);
-                          window.electronAPI.profiles.update(profile.id, { autoLoginClickedAt: Date.now() }).catch(() => {});
+                          getPlatformAPI().launcher.autoLogin(profile.id);
+                          getPlatformAPI().profiles.update(profile.id, { autoLoginClickedAt: Date.now() }).catch(() => {});
                         }}
                       >
                         <Login size={14} weight="Outline" />
@@ -432,7 +433,7 @@ export default function ProfileTab({
                         onClick={async () => {
                           onCloseContextMenus?.();
                           try {
-                            await window.electronAPI.launcher.focusWindow(profile.id);
+                            await getPlatformAPI().launcher.focusWindow(profile.id);
                           } catch (error) {
                             console.error('Error focusing window:', error);
                           }
@@ -486,7 +487,7 @@ export default function ProfileTab({
                         className="action-btn dir-btn"
                         onClick={(e) => {
                           e.stopPropagation();
-                          window.electronAPI.shell.openPath(profile.dataDir).catch(console.error);
+                          getPlatformAPI().shell.openPath(profile.dataDir).catch(console.error);
                         }}
                       >
                          <Gear size={14} />
@@ -505,7 +506,7 @@ export default function ProfileTab({
                           className="action-btn dir-btn"
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.electronAPI.shell.openPath(profile.directoryPath!);
+                            getPlatformAPI().shell.openPath(profile.directoryPath!);
                           }}
                         >
                           <FolderConnect size={14} weight="Outline" />
@@ -584,7 +585,7 @@ export default function ProfileTab({
             <button
               className="context-menu-item"
               onClick={() => {
-                window.electronAPI.launcher.openChat(profile.id).catch((err) => console.error('Error opening chat:', err));
+                getPlatformAPI().launcher.openChat(profile.id).catch((err) => console.error('Error opening chat:', err));
                 onCloseContextMenus?.();
                 setShowContextMenu(false);
               }}
@@ -595,7 +596,7 @@ export default function ProfileTab({
               <button
                 className="context-menu-item"
                 onClick={() => {
-                  window.electronAPI.shell.openPath(profile.directoryPath!);
+                  getPlatformAPI().shell.openPath(profile.directoryPath!);
                   setShowContextMenu(false);
                 }}
               >

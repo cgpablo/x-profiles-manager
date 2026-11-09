@@ -3,80 +3,8 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { BrowserProfile, AppSettings, ProcessInfo, ProfileFolder, BackupExportOptions, BackupInspection, BackupRestoreResult } from '../types';
-
-interface ElectronAPI {
-  platform: 'darwin' | 'win32' | 'linux';
-  profiles: {
-    getAll: () => Promise<BrowserProfile[]>;
-    create: (name: string, color?: string, icon?: string, xAccount?: string, folderId?: string) => Promise<BrowserProfile>;
-    update: (profileId: string, updates: Partial<BrowserProfile>) => Promise<BrowserProfile | null>;
-    delete: (profileId: string) => Promise<boolean>;
-    saveOrder: (profileIds: string[]) => Promise<boolean>;
-  };
-  launcher: {
-     launch: (profileId: string, url?: string) => Promise<ProcessInfo | null>;
-     close: (profileId: string) => Promise<boolean>;
-     closeAll: () => Promise<number>;
-     focusWindow: (profileId: string) => Promise<boolean>;
-     getActive: () => Promise<string[]>;
-     isActive: (profileId: string) => Promise<boolean>;
-     autoLogin: (profileId: string) => Promise<boolean>;
-     isLoggedIn: (profileId: string) => Promise<boolean>;
-     isOnHomeUrl: (profileId: string) => Promise<boolean>;
-     fillPinRecovery: (profileId: string) => Promise<boolean>;
-     openChat: (profileId: string) => Promise<boolean>;
-   };
-  folders: {
-    getAll: () => Promise<ProfileFolder[]>;
-    create: (name: string, color: string, icon: string) => Promise<ProfileFolder>;
-    update: (folderId: string, updates: Partial<ProfileFolder>) => Promise<ProfileFolder>;
-    delete: (folderId: string) => Promise<boolean>;
-    saveOrder: (folderIds: string[]) => Promise<boolean>;
-  };
-  settings: {
-    get: () => Promise<AppSettings>;
-    update: (updates: Partial<AppSettings>) => Promise<AppSettings>;
-  };
-  system: {
-    getInfo: () => Promise<any>;
-    clearAllData: () => Promise<boolean>;
-    selectFile: () => Promise<string>;
-    selectDirectory: () => Promise<string>;
-  };
-  dialog: {
-    openFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<string[]>;
-    fileToDataUrl: (filePath: string) => Promise<string>;
-  };
-  backup: {
-    export: () => Promise<boolean>;
-    exportSelected: (profileIds: string[], options?: Omit<BackupExportOptions, "profileIds">) => Promise<boolean>;
-    import: () => Promise<{ filePath: string; inspection: BackupInspection } | null>;
-    restore: (filePath: string, options?: { targetFolderId?: string | null }) => Promise<BackupRestoreResult>;
-  };
-  icons: {
-    backup: (filePath: string) => Promise<string>;
-    deleteAll: () => Promise<boolean>;
-  };
-  shell: {
-    openExternal: (url: string) => Promise<boolean>;
-    openPath: (filePath: string) => Promise<boolean>;
-  };
-  passwords: {
-    getAll: () => Promise<Array<{ id: string; name: string; profileIds: string[]; createdAt: number; updatedAt?: number }>>;
-    create: (name: string, value: string, profileIds: string[]) => Promise<any>;
-    update: (id: string, updates: { name?: string; value?: string; profileIds?: string[] }) => Promise<any>;
-    delete: (id: string) => Promise<boolean>;
-    getDecryptedForProfile: (profileId: string) => Promise<string | null>;
-    getDecryptedById: (id: string) => Promise<string | null>;
-  };
-  mails: {
-    getAll: () => Promise<Array<{ id: string; email: string; profileIds: string[]; createdAt: number; updatedAt?: number }>>;
-    create: (email: string, profileIds: string[]) => Promise<any>;
-    update: (id: string, updates: { email?: string; profileIds?: string[] }) => Promise<any>;
-    delete: (id: string) => Promise<boolean>;
-  };
-}
+import { BackupExportOptions } from '../types';
+import { PlatformAPI, PlatformCapabilities } from '../types/platform';
 
 /**
  * Helper function to unwrap IPC responses
@@ -92,12 +20,22 @@ const unwrapResponse = async <T>(promise: Promise<any>): Promise<T> => {
   throw new Error('Unknown error from main process');
 };
 
-const electronAPI: ElectronAPI = {
+const capabilities: PlatformCapabilities = {
+  browserPaths: true,
+  profilesDir: true,
+  windowManagement: true,
+  openDirectory: true,
+  perProfileExtensions: true,
+  autoLaunchOnStartup: true,
+};
+
+const platformAPI: PlatformAPI = {
    platform: process.platform as 'darwin' | 'win32' | 'linux',
+   capabilities,
     profiles: {
      getAll: () => unwrapResponse(ipcRenderer.invoke('profiles:getAll')),
-     create: (name, color, icon, xAccount, folderId) =>
-       unwrapResponse(ipcRenderer.invoke('profiles:create', name, color, icon, xAccount, folderId)),
+     create: (name, color, icon, xAccount, folderId, directoryPath) =>
+       unwrapResponse(ipcRenderer.invoke('profiles:create', name, color, icon, xAccount, folderId, directoryPath)),
      update: (profileId, updates) =>
        unwrapResponse(ipcRenderer.invoke('profiles:update', profileId, updates)),
      delete: (profileId) =>
@@ -204,10 +142,10 @@ const electronAPI: ElectronAPI = {
         },
 };
 
-contextBridge.exposeInMainWorld('electronAPI', electronAPI);
+contextBridge.exposeInMainWorld('platformAPI', platformAPI);
 
 declare global {
   interface Window {
-    electronAPI: ElectronAPI;
+    platformAPI: PlatformAPI;
   }
 }

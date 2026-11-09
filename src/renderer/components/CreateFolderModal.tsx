@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { useElectronAPI } from '../hooks/useElectronAPI';
+import { usePlatformAPI } from '../hooks/usePlatformAPI';
 import { useModalClose } from '../hooks/useModalClose';
 import ColorPicker from './ColorPicker';
 import './CreateFolderModal.css';
@@ -16,7 +16,7 @@ interface CreateFolderModalProps {
 }
 
 export default function CreateFolderModal({ onClose, onCreated }: CreateFolderModalProps) {
-  const electronAPI = useElectronAPI();
+  const platformAPI = usePlatformAPI();
   const [name, setName] = useState('');
   const [selectedColor, setSelectedColor] = useState(DEFAULT_FOLDER_COLOR);
   const [error, setError] = useState('');
@@ -38,7 +38,7 @@ export default function CreateFolderModal({ onClose, onCreated }: CreateFolderMo
     setError('');
 
     try {
-      await electronAPI.folders.create(name, selectedColor, '📁');
+      await platformAPI.folders.create(name, selectedColor, '📁');
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create folder');

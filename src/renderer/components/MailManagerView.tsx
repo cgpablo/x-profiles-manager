@@ -3,9 +3,10 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { getPlatformAPI } from '../platform';
 import { Pen, Trash } from 'reicon-react';
 import { BrowserProfile, ProfileFolder } from '../../types';
-import { useElectronAPI } from '../hooks/useElectronAPI';
+import { usePlatformAPI } from '../hooks/usePlatformAPI';
 import Sidebar from './Sidebar';
 import CreateMailModal from './CreateMailModal';
 import ProfileAvatar from './ProfileAvatar';
@@ -80,7 +81,7 @@ export default function MailManagerView({
   const [editingEntry, setEditingEntry] = useState<MailEntry | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const electronAPI = useElectronAPI();
+  const platformAPI = usePlatformAPI();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalFolderId, setCreateModalFolderId] = useState<string | undefined>(undefined);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
@@ -96,7 +97,7 @@ export default function MailManagerView({
 
   const handleLaunchProfile = async (profileId: string) => {
     try {
-      await electronAPI.launcher.launch(profileId, 'https://x.com');
+      await platformAPI.launcher.launch(profileId, 'https://x.com');
     } catch (error) {
       console.error('Error launching profile:', error);
     }
@@ -104,7 +105,7 @@ export default function MailManagerView({
 
   const handleCloseProfile = async (profileId: string) => {
     try {
-      await electronAPI.launcher.close(profileId);
+      await platformAPI.launcher.close(profileId);
     } catch (error) {
       console.error('Error closing profile:', error);
     }
@@ -112,7 +113,7 @@ export default function MailManagerView({
 
   const handleDeleteProfile = async (profileId: string) => {
     try {
-      await electronAPI.profiles.delete(profileId);
+      await platformAPI.profiles.delete(profileId);
     } catch (error) {
       console.error('Error deleting profile:', error);
     }
@@ -125,7 +126,7 @@ export default function MailManagerView({
 
   const handleDeleteFolder = async (folderId: string) => {
     try {
-      await electronAPI.folders.delete(folderId);
+      await platformAPI.folders.delete(folderId);
       onFoldersChange?.();
     } catch (error) {
       console.error('Error deleting folder:', error);
@@ -134,7 +135,7 @@ export default function MailManagerView({
 
   const handleMoveProfileToFolder = async (profileId: string, folderId: string | undefined) => {
     try {
-      await electronAPI.profiles.update(profileId, { folderId });
+      await platformAPI.profiles.update(profileId, { folderId });
     } catch (error) {
       console.error('Error moving profile to folder:', error);
     }
@@ -144,7 +145,7 @@ export default function MailManagerView({
     const profile = profiles.find(p => p.id === profileId);
     if (!profile) return;
     try {
-      await electronAPI.profiles.update(profileId, { starred: !profile.starred });
+      await platformAPI.profiles.update(profileId, { starred: !profile.starred });
     } catch (error) {
       console.error('Error toggling star:', error);
     }
@@ -154,7 +155,7 @@ export default function MailManagerView({
     const folderProfiles = profiles.filter(p => p.folderId === folderId || (folderId === 'ungrouped' && !p.folderId));
     for (const profile of folderProfiles) {
       try {
-        await electronAPI.launcher.launch(profile.id, 'https://x.com');
+        await platformAPI.launcher.launch(profile.id, 'https://x.com');
       } catch (error) {
         console.error('Error launching profile:', profile.id, error);
       }
@@ -167,7 +168,7 @@ export default function MailManagerView({
     for (const profile of folderProfiles) {
       if (activeStatuses.get(profile.id)) {
         try {
-          await electronAPI.launcher.close(profile.id);
+          await platformAPI.launcher.close(profile.id);
         } catch (error) {
           console.error('Error closing profile:', profile.id, error);
         }
@@ -185,7 +186,7 @@ export default function MailManagerView({
 
   const loadEntries = async () => {
     try {
-      const data = await window.electronAPI.mails.getAll();
+      const data = await getPlatformAPI().mails.getAll();
       setEntries(data);
     } catch (err) {
       console.error('Error loading mails:', err);
@@ -209,7 +210,7 @@ export default function MailManagerView({
 
   const handleDelete = async (id: string) => {
     try {
-      await window.electronAPI.mails.delete(id);
+      await getPlatformAPI().mails.delete(id);
       loadEntries();
     } catch (err) {
       console.error('Error deleting mail entry:', err);

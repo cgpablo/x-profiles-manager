@@ -3,9 +3,10 @@
  */
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { getPlatformAPI } from './platform';
 import { Star, SearchNormal, X, Undo, Floppy, Check } from 'reicon-react';
 import { BrowserProfile, ProfileFolder } from '../types';
-import { useElectronAPI } from './hooks/useElectronAPI';
+import { usePlatformAPI } from './hooks/usePlatformAPI';
 import Dashboard from './components/Dashboard';
 import Folders from './components/Folders';
 import Settings from './components/Settings';
@@ -18,7 +19,7 @@ import './App.css';
 type View = 'dashboard' | 'folders' | 'settings' | 'character-hub' | 'password-manager' | 'mail-manager';
 
 function App() {
-  const electronAPI = useElectronAPI();
+  const platformAPI = usePlatformAPI();
   const [view, setView] = useState<View>('dashboard');
   const [profiles, setProfiles] = useState<BrowserProfile[]>([]);
   const [folders, setFolders] = useState<any[]>([]);
@@ -135,7 +136,7 @@ function App() {
 
   const loadSidebarSettings = async (isInitialLoad = false) => {
     try {
-      const result = await electronAPI.settings.get();
+      const result = await platformAPI.settings.get();
       setShowPasswordManager(result.platformPreferences?.showPasswordManager ?? false);
       setShowMailManager(result.platformPreferences?.showMailManager ?? false);
       setShowCharacterHub(result.platformPreferences?.showCharacterHub ?? false);
@@ -156,9 +157,9 @@ function App() {
     try {
       setError(null);
       const [result, passwords, mails] = await Promise.all([
-        electronAPI.profiles.getAll(),
-        electronAPI.passwords.getAll().catch(() => [] as { profileIds: string[] }[]),
-        window.electronAPI.mails.getAll().catch(() => [] as { profileIds: string[]; email: string }[]),
+        platformAPI.profiles.getAll(),
+        platformAPI.passwords.getAll().catch(() => [] as { profileIds: string[] }[]),
+        getPlatformAPI().mails.getAll().catch(() => [] as { profileIds: string[]; email: string }[]),
       ]);
       const passwordProfileIds = new Set(passwords.flatMap(pw => pw.profileIds));
       // Build profileId → email map (last entry wins if a profile has multiple mails)
@@ -190,7 +191,7 @@ function App() {
 
   const loadFolders = async () => {
     try {
-      const result = await electronAPI.folders.getAll();
+      const result = await platformAPI.folders.getAll();
       const sorted = result.sort((a, b) => {
         const aOrder = a.order ?? 0;
         const bOrder = b.order ?? 0;
@@ -236,7 +237,7 @@ function App() {
 
   const handleCloseAll = async () => {
     try {
-      const count = await electronAPI.launcher.closeAll();
+      const count = await platformAPI.launcher.closeAll();
       console.log(`Closed ${count} profiles`);
       loadProfiles();
     } catch (error) {
@@ -261,7 +262,7 @@ function App() {
     if (!pendingOrderRef.current) return;
     try {
       const { profiles: orderedProfiles, folders: orderedFolders } = pendingOrderRef.current;
-      await electronAPI.folders.saveOrder(orderedFolders.map(f => f.id));
+      await platformAPI.folders.saveOrder(orderedFolders.map(f => f.id));
       const allProfileIds: string[] = [];
       for (const folder of orderedFolders) {
         const fps = orderedProfiles.get(folder.id) || [];
@@ -269,7 +270,7 @@ function App() {
       }
       const ungrouped = orderedProfiles.get('ungrouped') || [];
       allProfileIds.push(...ungrouped.map(p => p.id));
-      await electronAPI.profiles.saveOrder(allProfileIds);
+      await platformAPI.profiles.saveOrder(allProfileIds);
       setHasPendingOrder(false);
       setOrderSavedMessage(true);
       setTimeout(() => setOrderSavedMessage(false), 3000);
