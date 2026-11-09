@@ -84,19 +84,23 @@ Misma forma que el `ElectronAPI` actual, para tocar lo mínimo en los componente
 
 ### 4.2 Servicios de `core` y puertos
 
-Los servicios (`ProfileService`, `FolderService`, `SettingsService`, `PasswordService`, `MailService`, `BackupService`) dependen solo de estos puertos:
+Implementado en M2 en `src/core/` (sin importaciones de Node, Electron ni Capacitor). Los servicios (`SettingsService`, `ProfileService`, `FolderService`, `PasswordService`, `MailService`, `BackupService`) y el `Backend` dependen solo de estos **puertos** (`src/core/ports.ts`):
 
-| Puerto | Desktop | Android |
-|---|---|---|
-| `FileStore` (JSON e imágenes) | `fs` | Capacitor Filesystem |
-| `SecretCipher` (mismo formato `iv:data`) | `crypto` | `@noble/hashes` (scrypt) + WebCrypto |
-| `ArchiveCodec` (zip) | `adm-zip` | `fflate` |
-| `BrowserLauncher` | `launcher.ts` actual | plugin Kotlin GeckoView |
-| `PlatformServices` (abrir enlace, selector de ficheros, info) | Electron | Capacitor |
+| Puerto | Qué abstrae | Desktop (`src/main/adapters/`) | Android (M4) |
+|---|---|---|---|
+| `DocumentStore` | JSON de perfiles, carpetas, ajustes, contraseñas y correos. **Síncrono** | `fs`, mismas rutas que antes | caché en memoria + escritura diferida (Capacitor Filesystem) |
+| `AssetStore` | Imágenes e iconos, lectura de ficheros por ruta. Asíncrono | `fs` | Capacitor Filesystem |
+| `ProfileDataPort` | Directorio de datos del navegador por perfil | `fs` | no-op (`dataDirFor` devuelve `''`) |
+| `ArchiveCodec` | Zip del backup, con `Uint8Array` | `adm-zip` | `fflate` |
+| `SecretCipher` | Cifrado de contraseñas, mismo formato `iv:data` | `crypto` (scrypt + AES-256-CBC) | `@noble/hashes` + `@noble/ciphers` (ambos síncronos) |
+| `BrowserLauncher` | Lanzador del navegador | `desktopLauncher.ts` sobre `launcher.ts` | plugin Kotlin GeckoView |
+| `CoreDeps` | `defaultSettings()`, `newId()`, `now()` | ajustes con detección de Chrome/Gecko | ajustes de Android |
 
-La orquestación de `autoLogin`, `fillPinRecovery`, `isLoggedIn`, etc. pasa de `ipc.ts` a `core`. Cada `BrowserLauncher` recibe solo lo mínimo, por ejemplo `autoLogin(profileId, username, password)` y `fillPinRecovery(profileId, pin | null)`.
+**Decisión: el almacén de documentos es síncrono.** `launcher.ts` consulta ajustes y perfiles desde funciones síncronas (`getBrowserEngine()`, `getBrowserPath()`...). Convertirlo a `async` obligaba a tocar 1675 líneas con Win32 y CDP, que es el mayor riesgo del proyecto. Android carga los JSON en memoria al arrancar (son pequeños) y escribe en segundo plano. Lo que es inherentemente asíncrono (imágenes, zip, navegador) sí lo es en los puertos.
 
-La lógica de negocio corre **en JS dentro del WebView de Capacitor** en Android. Kotlin solo se ocupa del navegador.
+**Decisión: el backup trabaja con bytes.** `BackupService` recibe y devuelve `Uint8Array`. Leer y escribir el fichero y los diálogos quedan en el borde de cada plataforma (`ipc.ts` en desktop, el plugin en Android).
+
+**`Backend`** (`src/core/backend.ts`) tiene la misma forma que `PlatformAPI` sin diálogos ni rutas, y contiene la orquestación que estaba mezclada en `ipc.ts` (autologin, PIN, persistencia de `xLoggedIn`, cierre de todos los perfiles...). Convenciones: los errores visibles son `UserFacingError`, las operaciones booleanas devuelven `false` si no hicieron nada y las búsquedas devuelven `null` si no existe. En desktop, `ipc.ts` solo registra canales y traduce esas convenciones al formato de respuesta de siempre.
 
 ### 4.3 Plugin Android `ProfileBrowser`
 
@@ -124,12 +128,16 @@ Cada hito deja desktop funcionando.
 
 | # | Hito | Qué se verifica | Tamaño |
 |---|---|---|---|
-| M1 | Definir `PlatformAPI`. El renderer usa `getPlatformAPI()`. El preload de Electron la implementa. | Desktop idéntico | Pequeño |
-| M2 | Extraer servicios a puertos dentro del repo actual. `ipc.ts` pasa a ser un adaptador fino. | Backup exportar/importar y contraseñas en desktop | Medio |
+| M1 ✅ | Definir `PlatformAPI`. El renderer usa `getPlatformAPI()`. El preload de Electron la implementa. | Desktop idéntico | Pequeño |
+| M2 ✅ | Extraer servicios a puertos dentro del repo actual. `ipc.ts` pasa a ser un adaptador fino. | Paridad con el código anterior (ver abajo) | Medio |
 | M3 | Pasar a npm workspaces: `packages/core`, `packages/ui`, `apps/desktop`. | `npm run dist` en macOS y Windows | Pequeño-medio |
 | M4 | `apps/mobile` con Capacitor, adaptadores móviles y un launcher simulado. | La UI arranca en la tablet, se importa un backup de desktop y las contraseñas se descifran | Medio |
 | M5 | Plugin Kotlin real: lanzar y cambiar de perfil, autologin, PIN, `isLoggedIn`, extensiones, prompts. | Los 4 checkpoints del spike dentro de la app real | Medio-grande |
 | M6 | Pulido para tablet, `capabilities` y empaquetado del APK. | Uso diario | Pequeño |
+
+### Cómo se verificó M2
+
+Test de paridad entre el código anterior (commit `a977d82`) y el nuevo, ejecutando las mismas operaciones en carpetas de datos separadas y comparando los ficheros resultantes (ids y fechas normalizados): CRUD de perfiles, carpetas, contraseñas y correos, iconos, renombrado de directorios, errores, `clearAllData`, backups completos, parciales y sin Character Hub, y una matriz de 18 restauraciones (cada zip en las dos implementaciones, con `targetFolderId` sin definir, `null` y un id). Incluye cifrado cruzado: cada implementación descifra las contraseñas creadas por la otra. 146 comprobaciones, 0 diferencias, y el test detecta fallos introducidos a propósito. Además, prueba extremo a extremo en la app real por IPC con una carpeta de datos temporal, comprobando los mensajes de error uno a uno.
 
 ### Primer paso de M4 (riesgo)
 

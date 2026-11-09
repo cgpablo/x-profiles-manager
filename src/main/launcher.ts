@@ -6,7 +6,7 @@ import { spawn, ChildProcess, execSync } from 'child_process';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
-import { storageManager } from './storage';
+import { data as appData } from './storageServices';
 import { ProcessInfo, BrowserProfile, BrowserEngine } from '../types';
 
 export class ChromeLauncher {
@@ -84,14 +84,14 @@ export class ChromeLauncher {
    * Returns the active browser engine from settings
    */
   private getBrowserEngine(): BrowserEngine {
-    return storageManager.getSettings().browserEngine || 'chromium';
+    return appData.settings.get().browserEngine || 'chromium';
   }
 
   /**
    * Returns the browser executable path based on current engine
    */
   private getBrowserPath(): string {
-    const settings = storageManager.getSettings();
+    const settings = appData.settings.get();
     if (settings.browserEngine === 'gecko') {
       return settings.geckoPath || '';
     }
@@ -254,7 +254,7 @@ export class ChromeLauncher {
     if (this.getBrowserEngine() === 'gecko') {
       const profileId = Array.from(this.runningProcesses.entries())
         .find(([_, info]) => info.pid === processInfo.pid)?.[0];
-      const profile = profileId ? storageManager.getProfile(profileId) : null;
+      const profile = profileId ? appData.profiles.get(profileId) : null;
       if (profile) {
         try {
           const dataDirEscaped = profile.dataDir.replace(/\\/g, '\\\\');
@@ -301,7 +301,7 @@ export class ChromeLauncher {
         const { execSync } = require('child_process');
         const profileId = Array.from(this.runningProcesses.entries())
           .find(([_, info]) => info.pid === processInfo.pid)?.[0];
-        const profile = profileId ? storageManager.getProfile(profileId) : null;
+        const profile = profileId ? appData.profiles.get(profileId) : null;
         if (profile) {
           try {
             execSync(`pgrep -f ${JSON.stringify(profile.dataDir)}`, { stdio: 'ignore' });
@@ -319,10 +319,10 @@ export class ChromeLauncher {
    * Lanza el navegador con un perfil específico
    */
   async launchProfile(profileId: string, url: string = 'https://x.com'): Promise<ProcessInfo | null> {
-    const profile = storageManager.getProfile(profileId);
+    const profile = appData.profiles.get(profileId);
     if (!profile) return null;
 
-    const settings = storageManager.getSettings();
+    const settings = appData.settings.get();
     const engine = settings.browserEngine || 'chromium';
 
     // If already running, return existing process info
@@ -489,7 +489,7 @@ export class ChromeLauncher {
       // Resolve the actual live PID by searching for the profile dir in the process list.
       // The stored PID may be stale (Firefox re-execs itself after launch).
       let targetPid = processInfo.pid;
-      const profile = storageManager.getProfile(profileId);
+      const profile = appData.profiles.get(profileId);
       if (profile) {
         try {
           const output = execSync(
@@ -765,7 +765,7 @@ end tell`;
       return false;
     }
 
-    const profile = storageManager.getProfile(profileId);
+    const profile = appData.profiles.get(profileId);
     if (!profile) {
       console.warn(`✗ Profile ${profileId} not found`);
       return false;
@@ -776,7 +776,7 @@ end tell`;
         return this.focusWindowMacOS(profileId, processInfo);
       } else if (process.platform === 'win32') {
         // Check Windows focus method setting
-        const settings = storageManager.getSettings();
+        const settings = appData.settings.get();
         const focusMethod = settings.platformPreferences?.focusMethodWindows || 'auto';
         const engine = settings.browserEngine || 'chromium';
         
@@ -822,7 +822,7 @@ end tell`;
     if (!processInfo) return false;
 
     try {
-      const profile = storageManager.getProfile(profileId);
+      const profile = appData.profiles.get(profileId);
       
       if (process.platform === 'win32') {
         this.closeProcessWindows(processInfo);
@@ -857,7 +857,7 @@ end tell`;
     if (!processInfo) return false;
 
     try {
-      const profile = storageManager.getProfile(profileId);
+      const profile = appData.profiles.get(profileId);
       let isAlive = false;
 
       if (process.platform === 'darwin') {
