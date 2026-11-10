@@ -4,8 +4,9 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const PKG_PATH = path.join(__dirname, '..', 'package.json');
-const SETTINGS_PATH = path.join(__dirname, '..', 'src', 'renderer', 'components', 'Settings.tsx');
+// La versión de la app de escritorio es la fuente de verdad (electron-builder la usa para los instaladores)
+const PKG_PATH = path.join(__dirname, '..', 'apps', 'desktop', 'package.json');
+const SETTINGS_PATH = path.join(__dirname, '..', 'packages', 'ui', 'src', 'components', 'Settings.tsx');
 
 const pkg = JSON.parse(fs.readFileSync(PKG_PATH, 'utf8'));
 const current = pkg.version;

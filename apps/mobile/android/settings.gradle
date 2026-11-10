@@ -1,0 +1,11 @@
+// Los módulos de Capacitor 8 compilan con Java 21 (toolchain). Si el JDK de Gradle no es el 21
+// (p. ej. el de Android Studio es el 25), este resolutor descarga uno automáticamente.
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+include ':app'
+include ':capacitor-cordova-android-plugins'
+project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
+
+apply from: 'capacitor.settings.gradle'

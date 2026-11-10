@@ -1,0 +1,16 @@
+{
+  "manifest_version": 2,
+  "name": "X Profiles Helper",
+  "version": "1.0",
+  "browser_specific_settings": {
+    "gecko": { "id": "xprofiles-helper@local" }
+  },
+  "permissions": ["nativeMessaging", "nativeMessagingFromContent", "geckoViewAddons"],
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*", "https://twitter.com/*", "https://mobile.x.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

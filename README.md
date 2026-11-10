@@ -107,39 +107,53 @@ Download pre-built versions:
 
 ### Available Scripts
 
+Run them from the repository root (it is an npm workspaces monorepo):
+
 ```bash
-npm run dev              # Start development server with hot reload
-npm run build           # Build React and Electron for production
-npm run build:react     # Build React app only
-npm run build:electron  # Build Electron main process only
-npm run electron        # Run Electron directly
-npm run dist            # Package for distribution (macOS + Windows)
-npm run dist -- --mac   # Package for macOS only
+npm install             # Install everything and link the workspaces
+npm run dev             # Build core + Electron main, then start Vite and Electron with hot reload
+npm run build           # Build everything: core, UI and Electron main process
+npm run build:core      # Build @xpm/core only
+npm run build:ui        # Build the React UI only (outputs to apps/desktop/dist/renderer)
+npm run build:desktop   # Build the Electron main process only
+npm run type-check      # Type-check core, UI and desktop
+npm run dist            # Build and package for distribution (output in apps/desktop/release)
+npm run dist -- --mac   # Package for macOS only (extra args go to electron-builder)
 npm run dist -- --win   # Package for Windows only
+npm run bump            # Bump the app version
+npm run build:mobile    # Build core + the Android web app (apps/mobile/www)
+npm run mobile:sync     # Build and sync it into the Android project
+npm run mobile:apk      # Signed release APK (needs apps/mobile/android/keystore.properties)
 ```
+
+Android (work in progress, see `docs/android-migration.md`): after `npm run mobile:sync`, build with
+`cd apps/mobile/android && ./gradlew assembleDebug` and install with `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
 
 ### Project Structure
 
 ```
 x-profiles-manager/
-├── src/
-│   ├── main/                 # Electron main process
-│   │   ├── index.ts         # Main entry point
-│   │   ├── launcher.ts      # Chrome launching logic
-│   │   └── db.ts            # SQLite database
-│   ├── renderer/            # React UI
-│   │   ├── App.tsx          # Main app component
-│   │   ├── components/      # UI components
-│   │   │   ├── Dashboard.tsx
-│   │   │   ├── Sidebar.tsx
-│   │   │   ├── Settings.tsx
-│   │   │   └── ...
-│   │   └── hooks/
-│   │       └── useElectronAPI.ts
-│   └── types/               # TypeScript definitions
-├── dist/                    # Build output
-├── package.json
-└── tsconfig.json
+├── packages/
+│   ├── core/                # @xpm/core: platform-independent logic (no Node, no Electron)
+│   │   └── src/
+│   │       ├── types/       # Shared types and the PlatformAPI contract
+│   │       ├── ports.ts     # Interfaces each platform implements
+│   │       ├── backend.ts   # Orchestration (login, PIN, backups...)
+│   │       └── *Service.ts  # Profiles, folders, settings, passwords, mails, backup
+│   └── ui/                  # @xpm/ui: React UI (same for every platform)
+│       ├── index.html
+│       ├── vite.config.ts
+│       └── src/             # App.tsx, components/, hooks/
+├── apps/
+│   ├── mobile/              # Capacitor app for Android (adapters in src/platform, native project in android/)
+│   └── desktop/             # Electron app (macOS + Windows)
+│       ├── src/main/        # Main process: ipc, launcher, preload, adapters/
+│       ├── assets/          # App icons
+│       ├── dist/            # Build output (generated)
+│       └── release/         # Installers (generated)
+├── docs/                    # Design docs (see android-migration.md)
+├── package.json             # Workspaces root
+└── tsconfig.base.json
 ```
 
 ### Key Technologies

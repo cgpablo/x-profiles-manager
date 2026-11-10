@@ -279,8 +279,8 @@ npm run dist
 ```
 
 **Output:**
-- **macOS:** Creates `.dmg` and `.zip` files in `dist/`
-- **Windows:** Creates `.exe` and `.nsis` installer in `dist/`
+- **macOS:** Creates the `.dmg` in `apps/desktop/release/`
+- **Windows:** Creates the portable `.exe` in `apps/desktop/release/`
 - **Both:** Ready to distribute and install on other machines
 
 **Time:** 2-3 minutes depending on your system
@@ -288,8 +288,7 @@ npm run dist
 ### macOS Distribution
 
 After `npm run dist`, you'll find:
-- `dist/X Profiles Manager-<version>.dmg` - Drag & drop installer
-- `dist/X Profiles Manager-<version>-mac.zip` - Compressed app
+- `apps/desktop/release/X Profiles Manager-<version>-<arch>.dmg` - Drag & drop installer
 
 **To distribute:**
 1. Upload `.dmg` to your server
@@ -299,8 +298,7 @@ After `npm run dist`, you'll find:
 ### Windows Distribution
 
 After `npm run dist`, you'll find:
-- `dist/X Profiles Manager Setup <version>.exe` - Full installer
-- `dist/X Profiles Manager <version>.exe` - Portable version
+- `apps/desktop/release/X Profiles Manager <version>.exe` - Portable version
 
 **To distribute:**
 1. Upload `.exe` files to your server
@@ -450,18 +448,17 @@ Remove-Item "$env:TEMP\*squirrel*" -Recurse -Force -ErrorAction SilentlyContinue
 
 ```bash
 # Development
-npm run dev                 # Start dev environment (both React + Electron)
-npm run react-dev          # Start only Vite dev server (port 3000)
-npm run electron-dev       # Start only Electron (waits for React dev server)
+npm run dev                 # Build core + Electron main, then start Vite and Electron
 
 # Building
-npm run build              # Build both React and Electron for production
-npm run build:react        # Build only React bundle
-npm run build:electron     # Build only Electron main process
-npm run dist               # Build + create platform installers
+npm run build              # Build core, UI and Electron main process
+npm run build:core         # Build only @xpm/core
+npm run build:ui           # Build only the React UI
+npm run build:desktop      # Build only the Electron main process
+npm run dist               # Build + create platform installers (apps/desktop/release)
 
 # Quality checks
-npm run type-check         # Check TypeScript for errors
+npm run type-check         # Type-check core, UI and desktop
 ```
 
 ---
@@ -576,7 +573,7 @@ lsof -i :3000
 # Kill the process
 kill -9 <PID>
 
-# Or use a different port (modify vite.config.ts)
+# Or use a different port (modify packages/ui/vite.config.ts)
 ```
 
 **Windows (PowerShell):**
@@ -587,7 +584,7 @@ netstat -ano | findstr :3000
 # Kill the process (replace PID)
 taskkill /PID <PID> /F
 
-# Or use a different port (modify vite.config.ts)
+# Or use a different port (modify packages/ui/vite.config.ts)
 ```
 
 ### Data and Cleanup
@@ -622,35 +619,30 @@ This removes:
 
 ```
 x-profiles-manager/
-├── src/
-│   ├── main/                   # Electron main process
-│   │   ├── index.ts           # App window creation & lifecycle
-│   │   ├── storage.ts         # Save/load profiles (JSON)
-│   │   ├── launcher.ts        # Launch Chrome with profiles
-│   │   ├── ipc.ts             # IPC communication handlers
-│   │   └── preload.ts         # Security bridge
+├── packages/
+│   ├── core/                   # @xpm/core: logic shared by every platform
+│   │   └── src/
+│   │       ├── types/          # Shared types + PlatformAPI contract
+│   │       ├── ports.ts        # Interfaces each platform implements
+│   │       ├── backend.ts      # Orchestration (login, PIN, backups...)
+│   │       └── *Service.ts     # Profiles, folders, settings, passwords, mails, backup
 │   │
-│   ├── renderer/               # React frontend
-│   │   ├── main.tsx           # React entry point
-│   │   ├── App.tsx            # Main app component
-│   │   ├── index.css          # Global styles
-│   │   └── components/
-│   │       ├── Dashboard.tsx   # Profile grid view
-│   │       ├── ProfileTab.tsx  # Profile card component
-│   │       ├── CreateProfileModal.tsx
-│   │       └── Settings.tsx    # Configuration page
-│   │
-│   └── types/
-│       └── index.ts           # TypeScript interfaces
+│   └── ui/                     # @xpm/ui: React frontend
+│       ├── index.html          # HTML entry point
+│       ├── vite.config.ts      # Vite build config
+│       └── src/
+│           ├── main.tsx        # React entry point
+│           ├── App.tsx         # Main app component
+│           └── components/     # Dashboard, ProfileTab, Settings...
 │
-├── dist/                       # Build outputs (generated)
-│   ├── main/                  # Compiled Electron
-│   └── renderer/              # Compiled React
+├── apps/
+│   └── desktop/                # Electron app
+│       ├── src/main/           # index.ts, ipc.ts, launcher.ts, preload.ts, adapters/
+│       ├── dist/               # Build outputs (generated)
+│       └── release/            # Installers (generated)
 │
-├── package.json               # Dependencies & build config
-├── tsconfig.json              # TypeScript config
-├── vite.config.ts             # Vite build config
-└── index.html                 # HTML entry point
+├── package.json                # Workspaces root
+└── tsconfig.base.json          # Shared TypeScript config
 ```
 
 ---

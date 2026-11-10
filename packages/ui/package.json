@@ -1,0 +1,27 @@
+{
+  "name": "@xpm/ui",
+  "version": "1.3.0",
+  "private": true,
+  "description": "Interfaz de la app (React). La misma para todas las plataformas",
+  "exports": {
+    "./main": "./src/main.tsx",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "dev": "vite --port 3000",
+    "build": "vite build",
+    "type-check": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "reicon-react": "^1.1.302"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@xpm/core": "*",
+    "vite": "^4.3.9"
+  }
+}
