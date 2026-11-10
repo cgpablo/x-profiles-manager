@@ -232,6 +232,8 @@ Lado TypeScript: `src/platform/profileBrowser.ts` (el plugin) y `androidLauncher
 
 **Navegador.** Pestañas con el color del perfil y una × para cerrar. Menú ⋮: Iniciar sesión automático, Chat / PIN (si hay PIN) y Ajustes de la extensión. Como el WebView del gestor está en pausa con el navegador delante, el gestor entrega usuario, contraseña y PIN a la parte nativa al abrir el perfil y **solo viven en memoria** (`ProfileSession`). El tecleo va a 120 ms por carácter: a 30 ms Gecko desordenaba las teclas en la tablet.
 
+**Panel lateral del navegador.** El botón de panel (junto a recargar) abre a la derecha una lista de perfiles con Show favorites, buscador, Close actives y el contador + copiar la raya (`ProfilePanel.kt`). El ancho se ajusta arrastrando el divisor (se recuerda; si se suelta muy estrecho se cierra). Es nativo porque el WebView del gestor está en pausa: el gestor le entrega nombre, color, favorito y cuenta de cada perfil (`syncProfiles`, `ProfileDirectory`). Los perfiles abiertos desde el panel no llevan credenciales en memoria (solo las recibe el que se abre desde el gestor), así que "Iniciar sesión automático" del menú ⋮ avisa de que faltan.
+
 **Orientación.** `sensorLandscape` más `PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY`: Android 16+ ignora el bloqueo de orientación en tablets con `targetSdk` 36 salvo con esa propiedad, que desaparece con `targetSdk` 37.
 
 **Release (`npm run mobile:apk`).**

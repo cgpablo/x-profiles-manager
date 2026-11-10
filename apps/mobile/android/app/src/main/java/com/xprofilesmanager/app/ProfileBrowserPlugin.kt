@@ -64,6 +64,34 @@ class ProfileBrowserPlugin : Plugin() {
         activity.startActivity(intent)
     }
 
+    /** El gestor entrega perfiles y carpetas para el panel lateral del navegador. */
+    @PluginMethod
+    fun syncProfiles(call: PluginCall) {
+        val array = call.getArray("profiles") ?: JSArray()
+        val list = (0 until array.length()).mapNotNull { i ->
+            val o = array.optJSONObject(i) ?: return@mapNotNull null
+            com.xprofilesmanager.app.browser.ProfileDirectory.Entry(
+                o.getString("id"),
+                o.optString("name"),
+                o.optString("color").takeIf { it.isNotEmpty() },
+                o.optBoolean("starred"),
+                o.optString("account").takeIf { it.isNotEmpty() },
+                o.optString("folderId").takeIf { it.isNotEmpty() }
+            )
+        }
+        val folderArray = call.getArray("folders") ?: JSArray()
+        val folders = (0 until folderArray.length()).mapNotNull { i ->
+            val o = folderArray.optJSONObject(i) ?: return@mapNotNull null
+            com.xprofilesmanager.app.browser.ProfileDirectory.Folder(
+                o.getString("id"),
+                o.optString("name"),
+                o.optString("color").takeIf { it.isNotEmpty() }
+            )
+        }
+        activity.runOnUiThread { com.xprofilesmanager.app.browser.ProfileDirectory.set(list, folders) }
+        call.resolve()
+    }
+
     @PluginMethod
     fun launch(call: PluginCall) = onMain(call) {
         val id = profileId(call) ?: return@onMain

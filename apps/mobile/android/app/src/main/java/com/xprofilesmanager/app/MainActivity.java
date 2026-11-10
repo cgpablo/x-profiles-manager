@@ -1,6 +1,8 @@
 package com.xprofilesmanager.app;
 
 import android.os.Bundle;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.activity.OnBackPressedCallback;
 import com.getcapacitor.BridgeActivity;
 
@@ -11,6 +13,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(FileSaverPlugin.class);
         registerPlugin(ProfileBrowserPlugin.class);
         super.onCreate(savedInstanceState);
+        useLightSystemBarIcons();
 
         // Atrás cierra primero el menú o el modal abierto; si no hay ninguno, minimiza la app
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -24,5 +27,19 @@ public class MainActivity extends BridgeActivity {
                 );
             }
         });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        useLightSystemBarIcons();
+    }
+
+    /** La app es oscura: iconos claros en las barras de estado y de navegación (si no, salen negros sobre negro). */
+    private void useLightSystemBarIcons() {
+        WindowInsetsControllerCompat controller =
+            WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        controller.setAppearanceLightStatusBars(false);
+        controller.setAppearanceLightNavigationBars(false);
     }
 }

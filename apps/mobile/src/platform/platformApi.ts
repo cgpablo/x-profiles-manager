@@ -9,6 +9,7 @@ const capabilities: PlatformCapabilities = {
   openDirectory: false,
   perProfileExtensions: false,
   autoLaunchOnStartup: false,
+  browserView: true,
 };
 
 /**

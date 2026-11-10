@@ -41,6 +41,7 @@ interface SidebarFoldersProps {
   onToggleStar?: (profileId: string) => void;
 }
 
+import { showProfileOnly } from '../profileFocus';
 import { useCapabilities } from '../hooks/usePlatformAPI';
 
 export default function SidebarFolders({
@@ -358,9 +359,8 @@ export default function SidebarFolders({
                                  // If profile is active, focus the window
                                  getPlatformAPI().launcher.focusWindow(profile.id).catch(console.error);
                                } else {
-                                 // If inactive, select the folder
-                                 onSelectFolder('ungrouped');
-                                 onGoToFolders?.();
+                                 // If inactive, show only this profile (as if it had been searched)
+                                 showProfileOnly(profile.id);
                                }
                              }}
                           onContextMenu={(e) => {
@@ -665,9 +665,8 @@ export default function SidebarFolders({
                                  // If profile is active, focus the window
                                  getPlatformAPI().launcher.focusWindow(profile.id).catch(console.error);
                                } else {
-                                 // If inactive, select the folder
-                                 onSelectFolder(folder.id);
-                                 onGoToFolders?.();
+                                 // If inactive, show only this profile (as if it had been searched)
+                                 showProfileOnly(profile.id);
                                }
                              }}
                             onContextMenu={(e) => {

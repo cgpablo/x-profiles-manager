@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.widget.LinearLayout
 import androidx.appcompat.widget.PopupMenu
@@ -36,6 +37,11 @@ class BrowserActivity : AppCompatActivity() {
     private lateinit var popupPanel: View
     private lateinit var popupTitle: TextView
     private lateinit var chips: LinearLayout
+    private lateinit var panelHost: android.widget.FrameLayout
+    private lateinit var divider: View
+    private lateinit var panel: ProfilePanel
+    private var panelWidthPx = 0
+    private val directoryListener = ProfileDirectory.Listener { runOnUiThread { panel.render() } }
 
     var currentProfileId: String? = null
         private set
@@ -45,12 +51,17 @@ class BrowserActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = androidx.activity.SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = androidx.activity.SystemBarStyle.dark(Color.TRANSPARENT)
+        )
         setContentView(R.layout.activity_browser)
         // La app se dibuja bajo las barras del sistema: se reserva su espacio para que los toques lleguen a la app
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.browserRoot)) { v, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            // Con el teclado (y su fila de sugerencias) abierto, el navegador se encoge para que no tape los campos
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
             insets
         }
 
@@ -60,6 +71,13 @@ class BrowserActivity : AppCompatActivity() {
         popupPanel = findViewById(R.id.popupPanel)
         popupTitle = findViewById(R.id.popupTitle)
         chips = findViewById(R.id.chips)
+        panelHost = findViewById(R.id.panelHost)
+        divider = findViewById(R.id.divider)
+        panel = ProfilePanel(this) { openProfile(it) }
+        panelHost.addView(panel.view, android.widget.FrameLayout.LayoutParams(-1, -1))
+        findViewById<View>(R.id.btnPanel).setOnClickListener { setPanelOpen(panelHost.visibility != View.VISIBLE) }
+        setUpDivider()
+        ProfileDirectory.addListener(directoryListener)
 
         popupOverlay.setOnClickListener { closePopup() }
         findViewById<View>(R.id.btnClosePopup).setOnClickListener { closePopup() }
@@ -79,6 +97,7 @@ class BrowserActivity : AppCompatActivity() {
         })
 
         BrowserHost.activity = this
+        if (savedWidth() > 0 && getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_OPEN, false)) setPanelOpen(true)
         SessionRegistry.addListener(registryListener)
         handleIntent(intent)
     }
@@ -117,6 +136,7 @@ class BrowserActivity : AppCompatActivity() {
 
     /** El registro cambió (se abrió o cerró un perfil): se refresca la barra y, si el activo ya no existe, se cambia. */
     private fun onSessionsChanged() {
+        panel.render()
         val ids = SessionRegistry.ids()
         if (ids.isEmpty()) {
             finish()
@@ -145,6 +165,59 @@ class BrowserActivity : AppCompatActivity() {
             geckoView.releaseSession()
             geckoView.setSession(ps.gecko)
         }
+    }
+
+    // ---- Panel lateral de perfiles (ancho ajustable arrastrando el divisor) ----
+
+    private fun savedWidth(): Int =
+        getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_WIDTH, (360 * resources.displayMetrics.density).toInt())
+
+    private fun setPanelOpen(open: Boolean) {
+        if (open) panelWidthPx = savedWidth().coerceIn(minPanel(), maxPanel())
+        panelHost.visibility = if (open) View.VISIBLE else View.GONE
+        divider.visibility = if (open) View.VISIBLE else View.GONE
+        if (open) {
+            panelHost.layoutParams = panelHost.layoutParams.apply { width = panelWidthPx }
+            panel.render()
+        }
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_OPEN, open).apply()
+    }
+
+    private fun minPanel() = (220 * resources.displayMetrics.density).toInt()
+    private fun maxPanel() = (resources.displayMetrics.widthPixels * 0.7f).toInt()
+
+    private fun setUpDivider() {
+        divider.setOnTouchListener { v, event ->
+            val container = v.parent as View
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> { v.parent.requestDisallowInterceptTouchEvent(true); true }
+                MotionEvent.ACTION_MOVE -> {
+                    val loc = IntArray(2)
+                    container.getLocationOnScreen(loc)
+                    val right = loc[0] + container.width
+                    val raw = right - event.rawX - v.width / 2f
+                    panelWidthPx = raw.toInt().coerceIn(minPanel() / 2, maxPanel())
+                    panelHost.layoutParams = panelHost.layoutParams.apply { width = panelWidthPx }
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (panelWidthPx < minPanel()) {
+                        setPanelOpen(false)
+                    } else {
+                        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_WIDTH, panelWidthPx).apply()
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    /** Abre un perfil desde el panel: cambia a él si ya está abierto; si no, lo abre aquí mismo. */
+    private fun openProfile(profileId: String) {
+        val entry = ProfileDirectory.entries.firstOrNull { it.id == profileId }
+        SessionRegistry.open(this, profileId, entry?.name, entry?.color, null)
+        show(profileId)
     }
 
     private fun renderChips() {
@@ -288,11 +361,15 @@ class BrowserActivity : AppCompatActivity() {
         closePopup()
         geckoView.releaseSession()
         SessionRegistry.removeListener(registryListener)
+        ProfileDirectory.removeListener(directoryListener)
         if (BrowserHost.activity === this) BrowserHost.activity = null
         super.onDestroy()
     }
 
     companion object {
         const val EXTRA_PROFILE_ID = "profileId"
+        private const val PREFS = "browser_panel"
+        private const val KEY_WIDTH = "width"
+        private const val KEY_OPEN = "open"
     }
 }

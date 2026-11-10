@@ -22,6 +22,11 @@
     min-height: 44px;
   }
 
+  /* El buscador de la cabecera es una píldora compacta, como los botones que tiene al lado */
+  .nav-search input[type='text'] {
+    min-height: 0;
+  }
+
   input[type='checkbox'],
   input[type='radio'] {
     width: 24px;
@@ -39,6 +44,11 @@
     align-items: center;
     min-height: 44px;
     padding: 6px 0;
+  }
+
+  .btn-toggle-sidebar {
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .btn-add-folder,

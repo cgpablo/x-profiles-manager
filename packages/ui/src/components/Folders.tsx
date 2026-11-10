@@ -32,6 +32,7 @@ interface FoldersProps {
   onGoToFolders?: () => void;
   activeStatuses?: Map<string, boolean>;
   searchQuery?: string;
+  onlyProfileId?: string | null;
   showAddCard?: boolean;
   onToggleAllFolders?: (expand: boolean) => void;
   showPasswordManager?: boolean;
@@ -46,7 +47,7 @@ interface FoldersProps {
   onGoToMailManager?: () => void;
 }
 
-export default function Folders({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, activeStatuses = new Map(), searchQuery = '', showAddCard = true, onToggleAllFolders, showPasswordManager = false, showMailManager = false, showCharacterHub = false, showFreedcamp = false, showDashboard = true, showDirectory = false, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, onGoToMailManager }: FoldersProps) {  const platformAPI = usePlatformAPI();
+export default function Folders({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, activeStatuses = new Map(), searchQuery = '', onlyProfileId = null, showAddCard = true, onToggleAllFolders, showPasswordManager = false, showMailManager = false, showCharacterHub = false, showFreedcamp = false, showDashboard = true, showDirectory = false, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, onGoToMailManager }: FoldersProps) {  const platformAPI = usePlatformAPI();
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalFolderId, setCreateModalFolderId] = useState<string | undefined>(undefined);
@@ -305,6 +306,7 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
                onMoveProfileToFolder={handleMoveProfileToFolder}
                  onSelectProfile={setBrowserPreviewProfile}
                  searchQuery={searchQuery}
+                 onlyProfileId={onlyProfileId}
                   showAddCard={showAddCard}
                       showDirectory={showDirectory}
                       headerActions={

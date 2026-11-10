@@ -18,6 +18,10 @@ export interface ProfileBrowserPlugin {
   close(options: { profileId: string }): Promise<{ closed: boolean }>;
   closeAll(): Promise<{ count: number }>;
   getActive(): Promise<{ profileIds: string[] }>;
+  syncProfiles(options: {
+    profiles: Array<{ id: string; name: string; color?: string; starred?: boolean; account?: string; folderId?: string }>;
+    folders: Array<{ id: string; name: string; color?: string }>;
+  }): Promise<void>;
   updateProfile(options: ProfileInfo): Promise<void>;
   isLoggedIn(options: { profileId: string }): Promise<{ value: boolean }>;
   isOnHomeUrl(options: { profileId: string }): Promise<{ value: boolean }>;

@@ -4,9 +4,10 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { getPlatformAPI } from './platform';
-import { Star, SearchNormal, X, Undo, Floppy, Check } from 'reicon-react';
+import { Star, SearchNormal, X, Undo, Floppy, Check, Eye } from 'reicon-react';
 import type { BrowserProfile, ProfileFolder } from '@xpm/core';
-import { usePlatformAPI } from './hooks/usePlatformAPI';
+import { usePlatformAPI, useCapabilities } from './hooks/usePlatformAPI';
+import { onShowProfileOnly } from './profileFocus';
 import Dashboard from './components/Dashboard';
 import Folders from './components/Folders';
 import Settings from './components/Settings';
@@ -29,9 +30,16 @@ function App() {
   const [expandedOthers, setExpandedOthers] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null | 'ungrouped' | '__online__' | '__search__' | '__starred__'>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [onlyProfileId, setOnlyProfileId] = useState<string | null>(null);
   const [searchActive, setSearchActive] = useState(false);
   const [symbolCopied, setSymbolCopied] = useState(false);
   const [symbolCount, setSymbolCount] = useState(1);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === '1');
+  const toggleSidebar = () =>
+    setSidebarCollapsed((collapsed) => {
+      localStorage.setItem('sidebarCollapsed', collapsed ? '0' : '1');
+      return !collapsed;
+    });
   const searchInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -305,12 +313,33 @@ function App() {
     return map;
   }, [profiles]);
 
+  // Clic en un perfil inactivo de la barra lateral: se muestra solo ese perfil, como si se hubiera buscado
+  useEffect(
+    () =>
+      onShowProfileOnly((profileId) => {
+        const profile = profiles.find((p) => p.id === profileId);
+        if (!profile) return;
+        setView('folders');
+        setSearchActive(true);
+        setSearchQuery(profile.name);
+        setOnlyProfileId(profileId);
+        setSelectedFolderId('__search__');
+      }),
+    [profiles]
+  );
+
   const activeProfilesCount = profiles.filter(p => p.isActive).length;
+  const capabilities = useCapabilities();
+  const handleViewActives = () => {
+    const first = profiles.find((p) => p.isActive);
+    if (first) getPlatformAPI().launcher.focusWindow(first.id).catch(console.error);
+  };
   const starredProfilesCount = profiles.filter(p => p.starred).length;
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setSearchQuery(val);
+    setOnlyProfileId(null);
     if (val.trim()) {
       setView('folders');
       setSelectedFolderId('__search__');
@@ -334,9 +363,21 @@ function App() {
   };
 
   return (
-     <div className="app">
+     <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
        <nav className="app-nav">
          <div className="nav-title">
+           <button
+             className="btn-toggle-sidebar"
+             onClick={toggleSidebar}
+             title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+             aria-label={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+           >
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+               <rect x="3" y="4" width="18" height="16" rx="2" />
+               <path d="M9 4v16" />
+               {!sidebarCollapsed && <rect x="3" y="4" width="6" height="16" fill="currentColor" stroke="none" />}
+             </svg>
+           </button>
            <h1>My X Profiles Manager</h1>
          </div>
          <div className="nav-center">
@@ -384,6 +425,7 @@ function App() {
                  onKeyDown={(e) => {
                    if (e.key === 'Escape') {
                      setSearchQuery('');
+                     setOnlyProfileId(null);
                      setSelectedFolderId(null);
                      searchInputRef.current?.blur();
                    }
@@ -395,6 +437,7 @@ function App() {
                   onMouseDown={(e) => {
                     e.preventDefault();
                     setSearchQuery('');
+                    setOnlyProfileId(null);
                     setSelectedFolderId(null);
                   }}
                    title="Clear search"
@@ -442,6 +485,15 @@ function App() {
             </div>
           )}
          <div className="nav-actions">
+            {activeProfilesCount > 0 && capabilities.browserView && (
+               <button
+                 className="btn-view-actives"
+                 onClick={handleViewActives}
+                 title={`View ${activeProfilesCount} active profile(s) in the browser`}
+               >
+                  <><Eye size={14} /> View actives</>
+               </button>
+             )}
             {activeProfilesCount > 0 && (
                <button
                  className="btn-close-all"
@@ -535,6 +587,7 @@ function App() {
                     onGoToFolders={() => { setView('folders'); setSearchActive(false); }}
                  activeStatuses={activeStatuses}
                  searchQuery={searchQuery}
+                 onlyProfileId={onlyProfileId}
                  showAddCard={!searchActive}
                  onToggleAllFolders={handleToggleAllFolders}
                     showPasswordManager={showPasswordManager}

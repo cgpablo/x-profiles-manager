@@ -7,6 +7,7 @@ import './safe-area.css';
 import './touch.css';
 import { createBackend, createDataServices } from '@xpm/core';
 import type { CoreDeps } from '@xpm/core';
+import { disableKeyboardSuggestions } from './platform/noSuggestions';
 import { installBackButton } from './platform/backButton';
 import { FflateArchive } from './platform/archive';
 import { CapacitorAssetStore } from './platform/assetStore';
@@ -44,7 +45,8 @@ async function boot(): Promise<void> {
         ...(account && password ? { username: account.replace(/^@/, ''), password } : {}),
         ...(pin ? { pin } : {}),
       };
-    }
+    },
+    () => ({ profiles: data.profiles.getAll(), folders: data.folders.getAll() })
   );
   launcher.loadProfiles(data.profiles.getAll());
   const backend = createBackend(data, launcher, deps);
@@ -54,6 +56,7 @@ async function boot(): Promise<void> {
 }
 
 installBackButton();
+disableKeyboardSuggestions();
 
 boot().catch((error) => {
   console.error('Boot failed', error);

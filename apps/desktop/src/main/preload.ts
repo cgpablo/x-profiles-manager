@@ -26,6 +26,7 @@ const capabilities: PlatformCapabilities = {
   openDirectory: true,
   perProfileExtensions: true,
   autoLaunchOnStartup: true,
+  browserView: false,
 };
 
 const platformAPI: PlatformAPI = {

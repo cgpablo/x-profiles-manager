@@ -34,6 +34,8 @@ export interface PlatformCapabilities {
   perProfileExtensions: boolean;
   /** La app puede arrancar sola al iniciar el sistema. */
   autoLaunchOnStartup: boolean;
+  /** El navegador es una pantalla propia de la app a la que se puede volver (Android). */
+  browserView: boolean;
 }
 
 export interface PasswordSummary {

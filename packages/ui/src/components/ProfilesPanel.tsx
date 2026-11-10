@@ -28,6 +28,8 @@ interface ProfilesPanelProps {
   onToggleLock?: (profileId: string) => void;
   headerActions?: React.ReactNode;
   searchQuery?: string;
+  /** En la búsqueda, mostrar solo este perfil (clic en un perfil de la barra lateral). */
+  onlyProfileId?: string | null;
   showAddCard?: boolean;
   showDirectory?: boolean;
 }
@@ -51,6 +53,7 @@ export default function ProfilesPanel({
   onToggleLock,
   headerActions,
   searchQuery = '',
+  onlyProfileId = null,
   showAddCard = true,
   showDirectory = false,
 }: ProfilesPanelProps) {
@@ -76,6 +79,7 @@ export default function ProfilesPanel({
       return profiles.filter(p => p.starred === true);
     }
     if (selectedFolderId === '__search__') {
+      if (onlyProfileId) return profiles.filter(p => p.id === onlyProfileId);
       const q = searchQuery.trim().toLowerCase();
       if (!q) return [];
       return profiles.filter(p =>
