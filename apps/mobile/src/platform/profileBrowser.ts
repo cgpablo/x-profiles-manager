@@ -19,7 +19,18 @@ export interface ProfileBrowserPlugin {
   closeAll(): Promise<{ count: number }>;
   getActive(): Promise<{ profileIds: string[] }>;
   syncProfiles(options: {
-    profiles: Array<{ id: string; name: string; color?: string; starred?: boolean; account?: string; folderId?: string }>;
+    profiles: Array<{
+      id: string;
+      name: string;
+      color?: string;
+      starred?: boolean;
+      account?: string;
+      folderId?: string;
+      /** Solo en memoria nativa */
+      username?: string;
+      password?: string;
+      pin?: string;
+    }>;
     folders: Array<{ id: string; name: string; color?: string }>;
   }): Promise<void>;
   updateProfile(options: ProfileInfo): Promise<void>;

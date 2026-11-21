@@ -11,6 +11,7 @@ object XFlows {
 
     /** Va a la pantalla de login y deja la tarea pendiente; `onDone` recibe si se llegó a escribir la contraseña. */
     fun startLogin(ps: ProfileSession, username: String, password: String, onDone: (Boolean) -> Unit) {
+        SessionRegistry.focusMain(ps)
         ps.loginTask?.finish(false)
         val task = LoginTask(username, password, onDone)
         ps.loginTask = task
@@ -28,6 +29,7 @@ object XFlows {
      * Sin PIN, solo abre el chat.
      */
     fun openChat(ps: ProfileSession, pin: String?, navigate: Boolean = true) {
+        SessionRegistry.focusMain(ps)
         val value = pin?.takeIf { it.isNotEmpty() }
         ps.pin = value
         if (value != null) {

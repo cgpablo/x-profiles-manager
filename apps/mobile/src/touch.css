@@ -51,9 +51,15 @@
     min-height: 44px;
   }
 
+  /* Estos botones miden lo mismo que el contador de la carpeta (28px): se agranda solo la zona pulsable */
   .btn-add-folder,
   .btn-folder-menu {
-    min-width: 44px;
-    min-height: 44px;
+    position: relative;
+  }
+  .btn-add-folder::after,
+  .btn-folder-menu::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
   }
 }

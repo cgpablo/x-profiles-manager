@@ -1,6 +1,6 @@
 package com.xprofilesmanager.app.browser
 
-import android.app.AlertDialog
+import androidx.appcompat.app.AlertDialog
 import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSession.PromptDelegate
@@ -25,7 +25,7 @@ object PromptHandler {
             }
             collect(prompt.choices)
             val labels = flat.map { it.label ?: "" }.toTypedArray()
-            val builder = AlertDialog.Builder(activity)
+            val builder = AlertDialog.Builder(activity.themedContext())
             prompt.message?.takeIf { it.isNotEmpty() }?.let { builder.setTitle(it) }
             if (prompt.type == ChoicePrompt.Type.MULTIPLE) {
                 val checked = BooleanArray(flat.size) { flat[it].selected }
@@ -45,7 +45,7 @@ object PromptHandler {
         override fun onAlertPrompt(session: GeckoSession, prompt: PromptDelegate.AlertPrompt): GeckoResult<PromptResponse>? {
             val activity = BrowserHost.activity ?: return GeckoResult.fromValue(prompt.dismiss())
             val result = GeckoResult<PromptResponse>()
-            AlertDialog.Builder(activity)
+            AlertDialog.Builder(activity.themedContext())
                 .setMessage(prompt.message)
                 .setPositiveButton(android.R.string.ok) { _, _ -> result.complete(prompt.dismiss()) }
                 .setOnCancelListener { result.complete(prompt.dismiss()) }
@@ -56,7 +56,7 @@ object PromptHandler {
         override fun onButtonPrompt(session: GeckoSession, prompt: PromptDelegate.ButtonPrompt): GeckoResult<PromptResponse>? {
             val activity = BrowserHost.activity ?: return GeckoResult.fromValue(prompt.dismiss())
             val result = GeckoResult<PromptResponse>()
-            AlertDialog.Builder(activity)
+            AlertDialog.Builder(activity.themedContext())
                 .setMessage(prompt.message)
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     result.complete(prompt.confirm(PromptDelegate.ButtonPrompt.Type.POSITIVE))

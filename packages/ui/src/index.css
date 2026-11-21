@@ -6,12 +6,12 @@
   --primary: #3b82f6;
   --primary-dark: #1e40af;
   --secondary: #8b5cf6;
-  --bg-dark: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --border: #475569;
+  --bg-dark: #15202b;
+  --bg-secondary: #1e2732;
+  --bg-tertiary: #28323d;
+  --text-primary: #f7f9f9;
+  --text-secondary: #8b98a5;
+  --border: #38444d;
   --success: #10b981;
   --danger: #ef4444;
 }

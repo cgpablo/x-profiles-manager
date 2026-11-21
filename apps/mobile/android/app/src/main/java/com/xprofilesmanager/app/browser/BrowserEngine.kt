@@ -2,6 +2,7 @@ package com.xprofilesmanager.app.browser
 
 import android.content.Context
 import android.util.Log
+import org.mozilla.geckoview.AllowOrDeny
 import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.WebExtension
@@ -16,7 +17,36 @@ object BrowserEngine {
     private const val CONTROL_PANEL_XPI =
         "https://addons.mozilla.org/firefox/downloads/latest/control-panel-for-twitter/latest.xpi"
 
+    private const val PREFS = "extension_updates"
+    private const val KEY_LAST_CHECK = "last_check"
+    private const val UPDATE_INTERVAL_MS = 12 * 60 * 60 * 1000L
+
     private var runtime: GeckoRuntime? = null
+    private var appContext: Context? = null
+
+    /**
+     * GeckoView no actualiza las extensiones por su cuenta: hay que pedirlo. Se hace al arrancar el motor, como
+     * mucho cada 12 h, o cuando el usuario lo pide (`force`). `onDone` recibe la versión resultante.
+     */
+    fun checkForUpdate(force: Boolean, onDone: ((String?) -> Unit)? = null) {
+        val controller = runtime?.webExtensionController
+        val ext = ExtensionBridge.extension
+        val prefs = appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (controller == null || ext == null || prefs == null) { onDone?.invoke(null); return }
+        val now = System.currentTimeMillis()
+        if (!force && now - prefs.getLong(KEY_LAST_CHECK, 0) < UPDATE_INTERVAL_MS) { onDone?.invoke(null); return }
+        prefs.edit().putLong(KEY_LAST_CHECK, now).apply()
+        controller.update(ext).accept(
+            { updated ->
+                // Sin actualización disponible, Gecko devuelve null
+                val target = updated ?: ext
+                if (updated != null) ExtensionBridge.bind(updated)
+                Log.i(TAG, "Control Panel update check: ${target.metaData.version}, updated=${updated != null}")
+                onDone?.invoke(target.metaData.version)
+            },
+            { err -> Log.e(TAG, "Control Panel update failed", err); onDone?.invoke(null) }
+        )
+    }
 
     var helper: WebExtension? = null
         private set
@@ -27,6 +57,7 @@ object BrowserEngine {
     @Synchronized
     fun runtime(context: Context): GeckoRuntime {
         runtime?.let { return it }
+        appContext = context.applicationContext
         val created = GeckoRuntime.create(context.applicationContext)
         runtime = created
         setUpExtensions(created.webExtensionController)
@@ -44,6 +75,16 @@ object BrowserEngine {
             ): GeckoResult<WebExtension.PermissionPromptResponse>? {
                 Log.i(TAG, "installing ${extension.metaData.name} perms=${permissions.toList()} origins=${origins.toList()}")
                 return GeckoResult.fromValue(WebExtension.PermissionPromptResponse(true, false, false))
+            }
+
+            override fun onUpdatePrompt(
+                extension: WebExtension,
+                newPermissions: Array<String>,
+                newOrigins: Array<String>,
+                newDataCollectionPermissions: Array<String>
+            ): GeckoResult<AllowOrDeny>? {
+                Log.i(TAG, "updating ${extension.metaData.name} newPerms=${newPermissions.toList()} newOrigins=${newOrigins.toList()}")
+                return GeckoResult.fromValue(AllowOrDeny.ALLOW)
             }
         }
 
@@ -63,6 +104,7 @@ object BrowserEngine {
                 val installed = list?.firstOrNull { it.id == CONTROL_PANEL_ID }
                 if (installed != null) {
                     ExtensionBridge.bind(installed)
+                    checkForUpdate(force = false)
                 } else {
                     Log.i(TAG, "installing Control Panel for Twitter")
                     controller.install(CONTROL_PANEL_XPI).accept(

@@ -8,7 +8,10 @@ object ProfileDirectory {
         val color: String?,
         val starred: Boolean,
         val account: String?,
-        val folderId: String?
+        val folderId: String?,
+        val username: String? = null,
+        val password: String? = null,
+        val pin: String? = null
     )
 
     class Folder(val id: String, val name: String, val color: String?)

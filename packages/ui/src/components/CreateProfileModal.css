@@ -501,8 +501,8 @@
 }
 
 .color-swatch.active {
-  border-color: white;
-  box-shadow: 0 0 0 2px white;
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--text-primary);
 }
 
 /* Directory input with Browse button */

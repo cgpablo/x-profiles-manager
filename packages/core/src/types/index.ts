@@ -72,6 +72,8 @@ export interface BrowserProfile {
 
 export type BrowserEngine = 'chromium' | 'gecko';
 
+export type ThemePreference = 'system' | 'light' | 'dark' | 'dim';
+
 export interface AppSettings {
   browserEngine: BrowserEngine;
   chromePath: string;
@@ -81,6 +83,7 @@ export interface AppSettings {
   windowLayout?: 'floating' | 'tiled';
   autoLaunchOnStartup?: boolean;
   backupIcons?: boolean;
+  theme?: ThemePreference; // default 'dim'
   platformPreferences?: {
     enableFocusWindows?: boolean; // Enable/disable focus window feature
     developerMode?: boolean; // Show developer options (focus method selector, debug mode)

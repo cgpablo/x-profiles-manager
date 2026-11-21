@@ -42,7 +42,7 @@ object ExtensionBridge {
                 BrowserHost.activity?.runOnUiThread { BrowserHost.activity?.showOptionsPage() }
             }
         }
-        SessionRegistry.all().forEach { it.gecko.webExtensionController.setActionDelegate(ext, actionDelegate) }
+        SessionRegistry.all().forEach { ps -> ps.allGeckos().forEach { it.webExtensionController.setActionDelegate(ext, actionDelegate) } }
         Log.i(TAG, "extension ready: ${ext.metaData.name} id=${ext.id} options=${ext.metaData.optionsPageUrl} enabled=${ext.metaData.enabled}")
     }
 

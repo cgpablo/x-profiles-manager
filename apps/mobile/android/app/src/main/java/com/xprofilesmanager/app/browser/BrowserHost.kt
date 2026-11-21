@@ -7,7 +7,7 @@ object BrowserHost {
     @Volatile
     var activity: BrowserActivity? = null
 
-    /** La vista de Gecko solo si esa sesión se está mostrando en primer plano: es donde se puede escribir. */
+    /** La vista de Gecko solo si la pestaña principal de esa sesión se está mostrando en primer plano: es donde se puede escribir. */
     fun viewShowing(session: ProfileSession): GeckoView? =
-        activity?.takeIf { it.isShowing(session.profileId) }?.geckoView
+        activity?.takeIf { it.isShowing(session.profileId) && session.activeTab == null }?.geckoView
 }

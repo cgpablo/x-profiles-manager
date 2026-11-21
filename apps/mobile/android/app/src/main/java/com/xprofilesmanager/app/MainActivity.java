@@ -7,11 +7,15 @@ import androidx.activity.OnBackPressedCallback;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    /** Tema claro de la app: las barras del sistema llevan iconos oscuros. Lo fija NativeThemePlugin desde el tema elegido. */
+    static boolean lightBars = false;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         // Los plugins propios de la app se registran antes de super.onCreate
         registerPlugin(FileSaverPlugin.class);
         registerPlugin(ProfileBrowserPlugin.class);
+        registerPlugin(NativeThemePlugin.class);
         super.onCreate(savedInstanceState);
         useLightSystemBarIcons();
 
@@ -35,11 +39,11 @@ public class MainActivity extends BridgeActivity {
         useLightSystemBarIcons();
     }
 
-    /** La app es oscura: iconos claros en las barras de estado y de navegación (si no, salen negros sobre negro). */
-    private void useLightSystemBarIcons() {
+    /** Iconos claros en las barras con el tema oscuro (si no, salen negros sobre negro) y oscuros con el claro. */
+    void useLightSystemBarIcons() {
         WindowInsetsControllerCompat controller =
             WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
-        controller.setAppearanceLightStatusBars(false);
-        controller.setAppearanceLightNavigationBars(false);
+        controller.setAppearanceLightStatusBars(lightBars);
+        controller.setAppearanceLightNavigationBars(lightBars);
     }
 }

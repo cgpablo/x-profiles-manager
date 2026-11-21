@@ -228,12 +228,12 @@
 }
 
 .btn-star:hover {
-  color: #f59e0b;
+  color: var(--warning-text);
   transform: scale(1.2);
 }
 
 .btn-star.starred {
-  color: #f59e0b;
+  color: var(--warning-text);
 }
 
 .btn-star.locked-star {

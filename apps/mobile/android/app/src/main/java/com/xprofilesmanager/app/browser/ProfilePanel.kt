@@ -14,6 +14,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import com.xprofilesmanager.app.NativeTheme
 
 /**
  * Panel lateral del navegador: los mismos controles que la cabecera del gestor (favoritos, buscador, cerrar
@@ -37,28 +38,46 @@ class ProfilePanel(private val context: Context, private val onOpen: (String) ->
 
     private fun px(value: Int) = (value * dp).toInt()
 
-    private fun pill(fill: String, stroke: String? = null) = GradientDrawable().apply {
+    private val palette get() = NativeTheme.palette
+
+    private fun pill(fill: Int, stroke: Int? = null) = GradientDrawable().apply {
         cornerRadius = 20 * dp
-        setColor(Color.parseColor(fill))
-        stroke?.let { setStroke((1 * dp).toInt(), Color.parseColor(it)) }
+        setColor(fill)
+        stroke?.let { setStroke((1 * dp).toInt(), it) }
     }
+
+    private val buttons = mutableListOf<TextView>()
+    private lateinit var searchField: EditText
+    private lateinit var countLabel: TextView
 
     private fun button(label: String, width: Int? = null) = TextView(context).apply {
         text = label
-        setTextColor(Color.parseColor("#E5E7EB"))
         textSize = 14f
         gravity = Gravity.CENTER
         minHeight = px(44)
         minWidth = px(44)
         setPadding(px(14), 0, px(14), 0)
-        background = pill("#1F2937", "#374151")
         width?.let { layoutParams = LinearLayout.LayoutParams(px(it), LinearLayout.LayoutParams.WRAP_CONTENT) }
+        buttons.add(this)
+    }
+
+    /** Colores de los controles fijos del panel; se repite al cambiar el tema. */
+    private fun restyle() {
+        val c = palette
+        view.setBackgroundColor(c.bg)
+        buttons.forEach {
+            it.setTextColor(c.text)
+            it.background = pill(c.surface, c.border)
+        }
+        searchField.setHintTextColor(c.muted)
+        searchField.setTextColor(c.text)
+        searchField.background = pill(c.bar, c.border)
+        countLabel.setTextColor(c.primary)
     }
 
     init {
         view = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#0B1220"))
             setPadding(px(12), px(12), px(12), px(12))
         }
 
@@ -74,14 +93,11 @@ class ProfilePanel(private val context: Context, private val onOpen: (String) ->
         val searchRow = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
         val search = EditText(context).apply {
             hint = "Search profiles..."
-            setHintTextColor(Color.parseColor("#6B7280"))
-            setTextColor(Color.WHITE)
             textSize = 15f
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             setSingleLine()
             minHeight = px(44)
             setPadding(px(16), 0, px(16), 0)
-            background = pill("#111A2B", "#374151")
             addTextChangedListener(object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
                     query = s?.toString().orEmpty().trim()
@@ -91,6 +107,7 @@ class ProfilePanel(private val context: Context, private val onOpen: (String) ->
                 override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) {}
             })
         }
+        searchField = search
         searchRow.addView(search, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = px(8) })
         favoritesChip = button("★ Favorites").apply {
             setOnClickListener {
@@ -112,11 +129,11 @@ class ProfilePanel(private val context: Context, private val onOpen: (String) ->
 
         val minus = button("−").apply { setOnClickListener { setCount(dashCount - 1) } }
         countValue = TextView(context).apply {
-            setTextColor(Color.parseColor("#60A5FA"))
             textSize = 15f
             gravity = Gravity.CENTER
             minWidth = px(24)
         }
+        countLabel = countValue
         val plus = button("+").apply { setOnClickListener { setCount(dashCount + 1) } }
         copyButton = button("—").apply { setOnClickListener { copyDash() } }
         listOf(minus, countValue, plus).forEach { actions.addView(it) }
@@ -153,13 +170,16 @@ class ProfilePanel(private val context: Context, private val onOpen: (String) ->
     }
 
     private fun tabStyle(tab: TextView, selected: Boolean) {
-        tab.background = if (selected) pill("#1D4ED8", "#3B82F6") else pill("#1F2937", "#374151")
-        tab.setTextColor(if (selected) Color.WHITE else Color.parseColor("#9CA3AF"))
+        val c = palette
+        tab.background = if (selected) pill(c.primary, c.primary) else pill(c.surface, c.border)
+        tab.setTextColor(if (selected) Color.WHITE else c.muted)
     }
 
     /** Repinta la lista según la pestaña, el buscador y el filtro de favoritos. */
     fun render() {
-        favoritesChip.background = if (onlyFavorites) pill("#78350F", "#F59E0B") else pill("#1F2937", "#374151")
+        restyle()
+        val c = palette
+        favoritesChip.background = if (onlyFavorites) pill(c.favoriteFill, c.favoriteStroke) else pill(c.surface, c.border)
         tabStyle(foldersTab, showFolders)
         tabStyle(profilesTab, !showFolders)
         list.removeAllViews()
@@ -196,7 +216,7 @@ class ProfilePanel(private val context: Context, private val onOpen: (String) ->
     private fun addEmpty() {
         list.addView(TextView(context).apply {
             text = "No profiles"
-            setTextColor(Color.parseColor("#6B7280"))
+            setTextColor(palette.muted)
             setPadding(px(8), px(16), px(8), px(16))
         })
     }
@@ -207,7 +227,7 @@ class ProfilePanel(private val context: Context, private val onOpen: (String) ->
             gravity = Gravity.CENTER_VERTICAL
             minimumHeight = px(48)
             setPadding(px(10), px(6), px(10), px(6))
-            background = pill("#111A2B", "#1F2937")
+            background = pill(palette.bar, palette.border)
             setOnClickListener {
                 if (!expanded.add(id)) expanded.remove(id)
                 render()
@@ -215,25 +235,25 @@ class ProfilePanel(private val context: Context, private val onOpen: (String) ->
         }
         row.addView(TextView(context).apply {
             text = if (open) "▾" else "▸"
-            setTextColor(Color.parseColor("#9CA3AF"))
+            setTextColor(palette.muted)
             textSize = 16f
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(px(22), -2))
         row.addView(View(context).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(runCatching { Color.parseColor(color) }.getOrDefault(Color.parseColor("#6B7280")))
+                setColor(runCatching { Color.parseColor(color) }.getOrDefault(palette.muted))
             }
         }, LinearLayout.LayoutParams(px(12), px(12)).apply { marginEnd = px(10) })
         row.addView(TextView(context).apply {
             text = name
-            setTextColor(Color.WHITE)
+            setTextColor(palette.text)
             textSize = 15f
             maxLines = 1
         }, LinearLayout.LayoutParams(0, -2, 1f))
         row.addView(TextView(context).apply {
             text = count.toString()
-            setTextColor(Color.parseColor("#9CA3AF"))
+            setTextColor(palette.muted)
             textSize = 13f
         })
         list.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = px(6) })
@@ -245,7 +265,7 @@ class ProfilePanel(private val context: Context, private val onOpen: (String) ->
             gravity = Gravity.CENTER_VERTICAL
             minimumHeight = px(52)
             setPadding(px(10), px(6), px(10), px(6))
-            background = pill(if (entry.id in active) "#16233B" else "#0F172A")
+            background = pill(if (entry.id in active) palette.rowActive else palette.bar)
             setOnClickListener { onOpen(entry.id) }
         }
         val dot = View(context).apply {
@@ -258,14 +278,14 @@ class ProfilePanel(private val context: Context, private val onOpen: (String) ->
         val texts = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         texts.addView(TextView(context).apply {
             text = (if (entry.starred) "★ " else "") + entry.name
-            setTextColor(Color.WHITE)
+            setTextColor(palette.text)
             textSize = 15f
             maxLines = 1
         })
         entry.account?.takeIf { it.isNotEmpty() }?.let {
             texts.addView(TextView(context).apply {
                 text = "@" + it.removePrefix("@")
-                setTextColor(Color.parseColor("#9CA3AF"))
+                setTextColor(palette.muted)
                 textSize = 12f
                 maxLines = 1
             })
@@ -274,7 +294,7 @@ class ProfilePanel(private val context: Context, private val onOpen: (String) ->
         if (entry.id in active) {
             row.addView(TextView(context).apply {
                 text = "●"
-                setTextColor(Color.parseColor("#22C55E"))
+                setTextColor(palette.success)
             })
         }
         list.addView(row, LinearLayout.LayoutParams(-1, -2).apply {

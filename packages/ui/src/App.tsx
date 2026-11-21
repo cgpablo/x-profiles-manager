@@ -15,6 +15,7 @@ import CharacterHub from './components/CharacterHub';
 import PasswordManagerView from './components/PasswordManagerView';
 import MailManagerView from './components/MailManagerView';
 import Tooltip from './components/Tooltip';
+import { applyTheme } from './theme';
 import './App.css';
 
 type View = 'dashboard' | 'folders' | 'settings' | 'character-hub' | 'password-manager' | 'mail-manager';
@@ -145,6 +146,7 @@ function App() {
   const loadSidebarSettings = async (isInitialLoad = false) => {
     try {
       const result = await platformAPI.settings.get();
+      applyTheme(result.theme);
       setShowPasswordManager(result.platformPreferences?.showPasswordManager ?? false);
       setShowMailManager(result.platformPreferences?.showMailManager ?? false);
       setShowCharacterHub(result.platformPreferences?.showCharacterHub ?? false);

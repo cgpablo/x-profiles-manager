@@ -19,7 +19,9 @@ object HelperMessages : WebExtension.MessageDelegate {
     override fun onMessage(nativeApp: String, message: Any, sender: WebExtension.MessageSender): GeckoResult<Any>? {
         val msg = message as? JSONObject ?: return null
         val gecko = sender.session ?: return null
-        val ps = SessionRegistry.forGecko(gecko) ?: return null
+        val ps = SessionRegistry.forGecko(gecko)
+            // Pestaña secundaria: los flujos automáticos solo existen en la principal
+            ?: return reply(JSONObject().put("task", "none").put("userDone", false).put("ok", false))
         val task = ps.loginTask
         return when (msg.optString("type")) {
             "hello" -> reply(

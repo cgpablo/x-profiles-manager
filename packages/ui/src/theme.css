@@ -1,0 +1,56 @@
+/**
+ * Temas de la app. La paleta por defecto (:root en index.css y App.css) es "dim": los colores del tema
+ * "Noche clara" de X, tal y como los usa Control Panel for Twitter. El resto solo redefine las variables.
+ * `data-theme` lo pone theme.ts en <html> con el tema ya resuelto (light | dark | dim).
+ */
+
+:root,
+:root[data-theme='dim'] {
+  color-scheme: dark;
+  /* Colores de estado usados como texto: en Light se oscurecen para mantener el contraste */
+  --success-text: #10b981;
+  --warning-text: #f59e0b;
+  --online-text: #22c55e;
+  --danger-text: #fca5a5;
+  --info-text: #60a5fa;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --primary: #3b82f6;
+  --primary-dark: #1e40af;
+  --secondary: #8b5cf6;
+  --bg-dark: #000000;
+  --bg-secondary: #111111;
+  --bg-tertiary: #1f1f1f;
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --border: #2e2e2e;
+  --success: #10b981;
+  --danger: #ef4444;
+  --success-text: #10b981;
+  --warning-text: #f59e0b;
+  --online-text: #22c55e;
+  --danger-text: #fca5a5;
+  --info-text: #60a5fa;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --secondary: #7c3aed;
+  --bg-dark: #f3f4f6;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e5e7eb;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --border: #d1d5db;
+  --success: #059669;
+  --danger: #dc2626;
+  --success-text: #047857;
+  --warning-text: #b45309;
+  --online-text: #15803d;
+  --danger-text: #b91c1c;
+  --info-text: #1d4ed8;
+}

@@ -7,27 +7,27 @@
     android:orientation="vertical">
 
     <LinearLayout
+        android:id="@+id/topBar"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="40dp"
         android:background="#111A2B"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp">
+        android:paddingStart="2dp"
+        android:paddingEnd="2dp">
 
         <TextView
             android:id="@+id/btnManager"
             android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackground"
+            android:layout_height="28dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="8dp"
             android:gravity="center"
-            android:minWidth="48dp"
-            android:paddingStart="14dp"
+            android:paddingStart="12dp"
             android:paddingEnd="14dp"
             android:text="‹ Gestor"
             android:textColor="#E5E7EB"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:textSize="12sp" />
 
         <HorizontalScrollView
             android:layout_width="0dp"
@@ -45,34 +45,68 @@
 
         <ImageView
             android:id="@+id/btnPanel"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:background="?attr/selectableItemBackground"
             android:contentDescription="Panel de perfiles"
-            android:padding="12dp"
+            android:padding="9dp"
             android:src="@drawable/ic_panel" />
 
         <TextView
             android:id="@+id/btnReload"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:text="↻"
             android:textColor="#E5E7EB"
-            android:textSize="22sp" />
+            android:textSize="18sp" />
 
         <TextView
             android:id="@+id/btnMenu"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:text="⋮"
             android:textColor="#E5E7EB"
-            android:textSize="22sp"
+            android:textSize="18sp"
             android:textStyle="bold" />
     </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/tabsBar"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:background="#0F1626"
+        android:gravity="bottom"
+        android:orientation="horizontal">
+
+        <HorizontalScrollView
+            android:id="@+id/tabsScroll"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:overScrollMode="never"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/tabsRow"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="bottom"
+                android:orientation="horizontal"
+                android:paddingStart="8dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="4dp" />
+        </HorizontalScrollView>
+    </LinearLayout>
+
+    <View
+        android:id="@+id/tabsDivider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#1F2937" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -112,6 +146,7 @@
                 android:orientation="vertical">
 
                 <LinearLayout
+                    android:id="@+id/popupHeader"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="#EEEEEE"
@@ -127,6 +162,18 @@
                         android:text="Extensión"
                         android:textColor="#000000"
                         android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/btnUpdateExt"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:gravity="center"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="Actualizar"
+                        android:textColor="#1D4ED8"
+                        android:visibility="gone" />
 
                     <TextView
                         android:id="@+id/btnClosePopup"

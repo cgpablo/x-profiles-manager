@@ -18,6 +18,7 @@ import { MobileFiles } from './platform/files';
 import { AndroidLauncher } from './platform/androidLauncher';
 import { createMobilePlatformApi } from './platform/platformApi';
 import { NoProfileData } from './platform/profileData';
+import { syncNativeTheme } from './platform/nativeTheme';
 
 async function boot(): Promise<void> {
   const documents = await CapacitorDocumentStore.open();
@@ -56,6 +57,7 @@ async function boot(): Promise<void> {
 }
 
 installBackButton();
+syncNativeTheme();
 disableKeyboardSuggestions();
 
 boot().catch((error) => {

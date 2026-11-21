@@ -6,12 +6,12 @@
   --primary: #3b82f6;
   --primary-dark: #1e40af;
   --secondary: #8b5cf6;
-  --bg-dark: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --border: #475569;
+  --bg-dark: #15202b;
+  --bg-secondary: #1e2732;
+  --bg-tertiary: #28323d;
+  --text-primary: #f7f9f9;
+  --text-secondary: #8b98a5;
+  --border: #38444d;
   --success: #10b981;
   --danger: #ef4444;
 }
@@ -113,13 +113,13 @@ body,
 
 .btn-show-active:hover {
   border-color: rgba(16, 185, 129, 0.5);
-  color: #10b981;
+  color: var(--success-text);
   background: rgba(16, 185, 129, 0.08);
 }
 
 .btn-show-active.has-active {
   border-color: rgba(16, 185, 129, 0.5);
-  color: #10b981;
+  color: var(--success-text);
 }
 
 .btn-show-active-dot {
@@ -139,7 +139,7 @@ body,
 
 .btn-show-active-count {
   background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
+  color: var(--success-text);
   border-radius: 10px;
   padding: 1px 7px;
   font-size: 0.7rem;
@@ -154,7 +154,7 @@ body,
   border-radius: 20px;
   border: 1px solid rgba(245, 158, 11, 0.5);
   background: transparent;
-  color: #f59e0b;
+  color: var(--warning-text);
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -176,7 +176,7 @@ body,
 
 .btn-show-starred-count {
   background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
+  color: var(--warning-text);
   border-radius: 10px;
   padding: 1px 7px;
   font-size: 0.7rem;
@@ -287,7 +287,7 @@ body,
 }
 
 .btn-copy-symbol.copied {
-  color: #22c55e;
+  color: var(--online-text);
 }
 
 .symbol-counter {
@@ -344,7 +344,7 @@ body,
 .nav-saved-banner {
   padding: 4px 14px;
   background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
+  color: var(--success-text);
   border: 1px solid rgba(16, 185, 129, 0.3);
   border-radius: 6px;
   font-size: 0.8rem;
@@ -354,7 +354,7 @@ body,
 
 .nav-success-banner {
   background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
+  color: var(--success-text);
   border-color: rgba(16, 185, 129, 0.3);
 }
 
@@ -400,7 +400,7 @@ body,
  .btn-save-order:hover {
    background: rgba(59, 130, 246, 0.1);
    border-color: #3b82f6;
-   color: #3b82f6;
+   color: var(--primary);
  }
 
 .btn-close-all {
@@ -429,7 +429,7 @@ body,
   border-radius: 20px;
   border: 1px solid rgba(96, 165, 250, 0.5);
   background: transparent;
-  color: #60a5fa;
+  color: var(--info-text);
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -545,7 +545,7 @@ body,
   border-radius: 6px;
   padding: 1rem;
   margin-bottom: 1rem;
-  color: #fca5a5;
+  color: var(--danger-text);
   font-size: 0.875rem;
 }
 

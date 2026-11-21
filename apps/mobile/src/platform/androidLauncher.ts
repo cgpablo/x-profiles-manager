@@ -59,6 +59,7 @@ export class AndroidLauncher implements BrowserLauncher {
           starred: !!p.starred,
           account: p.xAccount || undefined,
           folderId: p.folderId || undefined,
+          ...this.credentialsFor(p.id),
         })),
         folders: folders.map((f) => ({ id: f.id, name: f.name, color: f.color })),
       }).catch((error) => console.error('syncProfiles failed', error));

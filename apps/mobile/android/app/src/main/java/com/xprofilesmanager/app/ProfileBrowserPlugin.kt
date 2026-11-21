@@ -76,7 +76,10 @@ class ProfileBrowserPlugin : Plugin() {
                 o.optString("color").takeIf { it.isNotEmpty() },
                 o.optBoolean("starred"),
                 o.optString("account").takeIf { it.isNotEmpty() },
-                o.optString("folderId").takeIf { it.isNotEmpty() }
+                o.optString("folderId").takeIf { it.isNotEmpty() },
+                o.optString("username").takeIf { it.isNotEmpty() },
+                o.optString("password").takeIf { it.isNotEmpty() },
+                o.optString("pin").takeIf { it.isNotEmpty() }
             )
         }
         val folderArray = call.getArray("folders") ?: JSArray()

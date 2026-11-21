@@ -5,7 +5,7 @@
  * Aquí se queda lo que es propio de Electron: diálogos, shell y acceso a ficheros del backup.
  */
 
-import { ipcMain, dialog, shell } from 'electron';
+import { ipcMain, dialog, shell, nativeTheme, BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { chromeLauncher } from './launcher';
@@ -16,6 +16,18 @@ import { BackupExportOptions, IpcResponse } from '@xpm/core';
 
 const errorMessage = (error: unknown): string =>
   error instanceof UserFacingError ? error.message : String(error);
+
+/** Hace que la barra de título y los menús nativos sigan el tema de la app (dim y dark son oscuros). */
+function applyNativeTheme(theme: string | undefined): void {
+  nativeTheme.themeSource = theme === 'light' ? 'light' : theme === 'system' ? 'system' : 'dark';
+  // Fondo de la ventana (se ve al redimensionar y al arrancar) igual que el de la paleta elegida
+  const background =
+    theme === 'light' ? '#f3f4f6'
+    : theme === 'dark' ? '#000000'
+    : theme === 'system' ? (nativeTheme.shouldUseDarkColors ? '#000000' : '#f3f4f6')
+    : '#15202b';
+  BrowserWindow.getAllWindows().forEach((window) => window.setBackgroundColor(background));
+}
 
 /** Registra un canal: devuelve `{ success, data }` o `{ success: false, error }`. */
 function handle(channel: string, fn: (...args: any[]) => Promise<unknown> | unknown): void {
@@ -117,7 +129,15 @@ export function setupIpcHandlers(): void {
   // ====== SETTINGS HANDLERS ======
 
   handle('settings:get', () => backend.settings.get());
-  handle('settings:update', (updates) => backend.settings.update(updates));
+  handle('settings:update', async (updates) => {
+    const result = await backend.settings.update(updates);
+    if (updates && 'theme' in updates) applyNativeTheme(updates.theme);
+    return result;
+  });
+  // El tema guardado se aplica a lo nativo desde el arranque
+  Promise.resolve(backend.settings.get())
+    .then((settings) => applyNativeTheme(settings.theme))
+    .catch(() => {});
 
   // ====== FOLDER HANDLERS ======
 

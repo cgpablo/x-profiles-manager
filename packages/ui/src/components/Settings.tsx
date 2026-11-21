@@ -5,7 +5,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getPlatformAPI } from '../platform';
 import { Floppy, Archive, FolderOpen, X } from 'reicon-react';
-import type { AppSettings, BackupInspection, BrowserProfile, ProfileFolder } from '@xpm/core';
+import type { AppSettings, BackupInspection, BrowserProfile, ProfileFolder, ThemePreference } from '@xpm/core';
+import { applyTheme, DEFAULT_THEME, THEME_OPTIONS } from '../theme';
 import { usePlatformAPI, useCapabilities } from '../hooks/usePlatformAPI';
 import Sidebar from './Sidebar';
 import ProfileModal from './ProfileModal';
@@ -96,6 +97,19 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
       onSettingsSaved?.();
     } catch (error) {
       showStatus('Error saving settings', 'error');
+      console.error(error);
+    }
+  };
+
+  // El tema se aplica y guarda al momento (no espera al botón Save)
+  const handleThemeChange = async (theme: ThemePreference) => {
+    applyTheme(theme);
+    setSettings((prev) => (prev ? { ...prev, theme } : prev));
+    setOriginalSettings((prev) => (prev ? { ...prev, theme } : prev));
+    try {
+      await platformAPI.settings.update({ theme });
+    } catch (error) {
+      showStatus('Error saving theme', 'error');
       console.error(error);
     }
   };
@@ -409,7 +423,7 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
             <h3>About</h3>
             <div className="info-item">
               <strong>App Version</strong>
-              <span>1.3.0</span>
+              <span>2.0.0</span>
             </div>
             {caps.profilesDir && (
               <div className="info-item">
@@ -417,6 +431,31 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
                 <span className="mono">{settings.profilesDir}</span>
               </div>
             )}
+          </div>
+
+          <div className="settings-section">
+            <h3>Theme</h3>
+            <div className="setting-item">
+              <label>Appearance</label>
+              <p className="section-description">
+                System follows your device (Light or Dark). Dim uses the same colors as X's "Dim" theme.
+              </p>
+              <div className="theme-options" role="radiogroup" aria-label="Theme">
+                {THEME_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={(settings.theme ?? DEFAULT_THEME) === option.value}
+                    className={`theme-option theme-option-${option.value}${(settings.theme ?? DEFAULT_THEME) === option.value ? ' active' : ''}`}
+                    onClick={() => handleThemeChange(option.value)}
+                  >
+                    <span className="theme-swatch" aria-hidden="true" />
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
 {!caps.browserPaths && (
