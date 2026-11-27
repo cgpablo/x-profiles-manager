@@ -491,3 +491,17 @@
 .profiles-list::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
 }
+
+.folder-drag-handle {
+  flex-shrink: 0;
+  margin-right: -0.5rem;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: grab;
+  user-select: none;
+}
+
+.folder-card:hover .folder-drag-handle {
+  color: var(--text-primary);
+}

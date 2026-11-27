@@ -5,9 +5,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getPlatformAPI } from '../platform';
 import { createPortal } from 'react-dom';
-import { Pin, Folder, FolderBookmark, FolderConnect, Globe, X, Star, Bookmarks, Pen, Trash, Plus, ChatRound } from 'reicon-react';
+import { Tag, ChevronDown, Pin, Folder, FolderBookmark, FolderConnect, Globe, X, Star, Bookmarks, Pen, Trash, Plus, ChatRound } from 'reicon-react';
 import type { ProfileFolder, BrowserProfile } from '@xpm/core';
 import Tooltip from './Tooltip';
+import { LABEL_FACE, PROFILE_LABELS } from '../profileLabels';
 import ProfileAvatarIcon from './ProfileAvatarIcon';
 import DeleteConfirmModal from './DeleteProfileConfirmModal';
 import CharacterInfoModal from './CharacterInfoModal';
@@ -44,6 +45,10 @@ interface SidebarFoldersProps {
 import { showProfileOnly } from '../profileFocus';
 import { useCapabilities } from '../hooks/usePlatformAPI';
 
+/** Anchos aproximados del menú de perfil y de su submenú de etiquetas: el submenú se abre a la derecha, salvo que no quepa en pantalla */
+const PROFILE_MENU_WIDTH = 160;
+const LABEL_SUBMENU_WIDTH = 150;
+
 export default function SidebarFolders({
   folders,
   profiles,
@@ -76,6 +81,7 @@ export default function SidebarFolders({
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
   const [profileContextMenu, setProfileContextMenu] = useState<string | null>(null);
   const [profileContextMenuPos, setProfileContextMenuPos] = useState({ x: 0, y: 0 });
+  const [labelSubmenuOpen, setLabelSubmenuOpen] = useState(false);
   const contextMenuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const profileContextMenuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -119,6 +125,7 @@ export default function SidebarFolders({
   // Reset "Move to" section to collapsed whenever a profile context menu opens/closes
   useEffect(() => {
     setMoveSectionExpanded(false);
+    setLabelSubmenuOpen(false);
   }, [profileContextMenu]);
 
   // Close context menu on click outside
@@ -274,7 +281,7 @@ export default function SidebarFolders({
                      title={expandedOthers ? 'Collapse' : 'Expand'}
                      style={{ visibility: ungroupedCount === 0 ? 'hidden' : 'visible' }}
                    >
-                     ▶
+                     <ChevronDown size={14} weight="Outline" />
                    </button>
                      <span className="folder-icon"><FolderBookmark size={14} weight="Outline" /></span>
                    <button
@@ -415,7 +422,7 @@ export default function SidebarFolders({
                            {/* Profile Context Menu - Rendered via Portal */}
                            {isProfileContextOpen && createPortal(
                              <div
-                               className="profile-context-menu"
+                               className="profile-context-menu profile-context-menu-has-submenu"
                                style={{
                                  left: `${profileContextMenuPos.x}px`,
                                  top: `${profileContextMenuPos.y}px`,
@@ -468,6 +475,37 @@ export default function SidebarFolders({
                                         {profile.starred ? <><Star size={12} weight="Filled" /> Remove favorite</> : <><Star size={12} weight="Outline" /> Add favorite</>}
                                       </button>
                                     )}
+                                    <div
+                                      className="context-menu-submenu-wrap"
+                                      onMouseEnter={() => setLabelSubmenuOpen(true)}
+                                      onMouseLeave={() => setLabelSubmenuOpen(false)}
+                                    >
+                                      <button
+                                        className="context-menu-item context-menu-submenu-trigger"
+                                        onClick={(e) => { e.stopPropagation(); setLabelSubmenuOpen((open) => !open); }}
+                                      >
+                                        <Tag size={12} weight="Outline" /> Label
+                                        <span className="context-menu-submenu-arrow"><ChevronDown size={12} weight="Outline" /></span>
+                                      </button>
+                                      {labelSubmenuOpen && (
+                                        <div className={`context-menu-submenu ${profileContextMenuPos.x + PROFILE_MENU_WIDTH + LABEL_SUBMENU_WIDTH > window.innerWidth ? 'context-menu-submenu-left' : 'context-menu-submenu-right'}`}>
+                                          {PROFILE_LABELS.map(({ id, name }) => (
+                                            <button
+                                              key={id}
+                                              className={`context-menu-item${(profile.label ?? 'active') === id ? ' context-menu-item-current' : ''}`}
+                                              onClick={() => {
+                                                if ((profile.label ?? 'active') !== id) {
+                                                  getPlatformAPI().profiles.update(profile.id, { label: id }).catch(console.error);
+                                                }
+                                                setProfileContextMenu(null);
+                                              }}
+                                            >
+                                              <span className="context-menu-face">{LABEL_FACE[id]}</span> {name}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
                                      {profile.directoryPath && caps.openDirectory && (
                                        <button
                                          className="context-menu-item"
@@ -510,7 +548,7 @@ export default function SidebarFolders({
                                           className="context-menu-section"
                                           onClick={(e) => { e.stopPropagation(); setMoveSectionExpanded(p => !p); }}
                                        >
-                                         <span className={`context-menu-section-arrow${moveSectionExpanded ? ' expanded' : ''}`}>▶</span>
+                                         <span className={`context-menu-section-arrow${moveSectionExpanded ? ' expanded' : ''}`}><ChevronDown size={12} weight="Outline" /></span>
                                          Move to
                                        </button>
                                        {moveSectionExpanded && (
@@ -524,7 +562,7 @@ export default function SidebarFolders({
                                                 setProfileContextMenu(null);
                                               }}
                                             >
-                                              {f.icon} {f.name}
+                                              <Folder size={12} weight="Outline" /> {f.name}
                                             </button>
                                           ))}
                                         </div>
@@ -577,7 +615,7 @@ export default function SidebarFolders({
                     disabled={allProfileCount === 0}
                     style={{ visibility: allProfileCount === 0 ? 'hidden' : 'visible' }}
                   >
-                    ▶
+                    <ChevronDown size={14} weight="Outline" />
                   </button>
 
                   <button
@@ -725,7 +763,7 @@ export default function SidebarFolders({
                                {/* Profile Context Menu - Rendered via Portal */}
                                {isProfileContextOpen && createPortal(
                                 <div
-                                  className="profile-context-menu"
+                                  className="profile-context-menu profile-context-menu-has-submenu"
                                   style={{
                                     left: `${profileContextMenuPos.x}px`,
                                     top: `${profileContextMenuPos.y}px`,
@@ -769,6 +807,37 @@ export default function SidebarFolders({
                                         {profile.starred ? <><Star size={12} weight="Filled" /> Remove favorite</> : <><Star size={12} weight="Outline" /> Add favorite</>}
                                       </button>
                                     )}
+                                    <div
+                                      className="context-menu-submenu-wrap"
+                                      onMouseEnter={() => setLabelSubmenuOpen(true)}
+                                      onMouseLeave={() => setLabelSubmenuOpen(false)}
+                                    >
+                                      <button
+                                        className="context-menu-item context-menu-submenu-trigger"
+                                        onClick={(e) => { e.stopPropagation(); setLabelSubmenuOpen((open) => !open); }}
+                                      >
+                                        <Tag size={12} weight="Outline" /> Label
+                                        <span className="context-menu-submenu-arrow"><ChevronDown size={12} weight="Outline" /></span>
+                                      </button>
+                                      {labelSubmenuOpen && (
+                                        <div className={`context-menu-submenu ${profileContextMenuPos.x + PROFILE_MENU_WIDTH + LABEL_SUBMENU_WIDTH > window.innerWidth ? 'context-menu-submenu-left' : 'context-menu-submenu-right'}`}>
+                                          {PROFILE_LABELS.map(({ id, name }) => (
+                                            <button
+                                              key={id}
+                                              className={`context-menu-item${(profile.label ?? 'active') === id ? ' context-menu-item-current' : ''}`}
+                                              onClick={() => {
+                                                if ((profile.label ?? 'active') !== id) {
+                                                  getPlatformAPI().profiles.update(profile.id, { label: id }).catch(console.error);
+                                                }
+                                                setProfileContextMenu(null);
+                                              }}
+                                            >
+                                              <span className="context-menu-face">{LABEL_FACE[id]}</span> {name}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
                                      {profile.directoryPath && caps.openDirectory && (
                                        <button
                                          className="context-menu-item"
@@ -811,7 +880,7 @@ export default function SidebarFolders({
                                       className="context-menu-section"
                                       onClick={(e) => { e.stopPropagation(); setMoveSectionExpanded(p => !p); }}
                                     >
-                                      <span className={`context-menu-section-arrow${moveSectionExpanded ? ' expanded' : ''}`}>▶</span>
+                                      <span className={`context-menu-section-arrow${moveSectionExpanded ? ' expanded' : ''}`}><ChevronDown size={12} weight="Outline" /></span>
                                       Move to
                                     </button>
                                     {moveSectionExpanded && (
@@ -835,7 +904,7 @@ export default function SidebarFolders({
                                                   setProfileContextMenu(null);
                                                 }}
                                               >
-                                                {f.icon} {f.name}
+                                                <Folder size={12} weight="Outline" /> {f.name}
                                               </button>
                                             ))}
                                          </div>

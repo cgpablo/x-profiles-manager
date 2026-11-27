@@ -27,6 +27,9 @@ const capabilities: PlatformCapabilities = {
   perProfileExtensions: true,
   autoLaunchOnStartup: true,
   browserView: false,
+  postThread: true,
+  postQuote: true,
+  postImages: true,
 };
 
 const platformAPI: PlatformAPI = {
@@ -65,6 +68,14 @@ const platformAPI: PlatformAPI = {
         unwrapResponse(ipcRenderer.invoke('launcher:fillPinRecovery', profileId)),
       openChat: (profileId: string) =>
         unwrapResponse(ipcRenderer.invoke('launcher:openChat', profileId)),
+      openUrl: (profileId: string, url: string) =>
+        unwrapResponse(ipcRenderer.invoke('launcher:openUrl', profileId, url)),
+      openThread: (profileId: string, texts: string[], images?: any[]) =>
+        unwrapResponse(ipcRenderer.invoke('launcher:openThread', profileId, texts, images)),
+      openQuote: (profileId: string, tweetId: string, text: string, images?: any[]) =>
+        unwrapResponse(ipcRenderer.invoke('launcher:openQuote', profileId, tweetId, text, images)),
+      openReply: (profileId: string, tweetId: string, text: string, images?: any[]) =>
+        unwrapResponse(ipcRenderer.invoke('launcher:openReply', profileId, tweetId, text, images)),
     },
    folders: {
      getAll: () => unwrapResponse(ipcRenderer.invoke('folders:getAll')),

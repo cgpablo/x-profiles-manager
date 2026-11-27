@@ -218,18 +218,20 @@
 }
 
 .folder-toggle {
-  width: 20px;
-  height: 20px;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  border: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 0.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s;
+  transform: rotate(-90deg);
+  transition: transform 0.2s, color 0.15s, border-color 0.15s;
   flex-shrink: 0;
 }
 
@@ -241,6 +243,7 @@
 
 .folder-toggle:hover:not(:disabled) {
   color: var(--text-primary);
+  border-color: var(--primary);
 }
 
 .folder-toggle:disabled {
@@ -249,7 +252,7 @@
 }
 
 .folder-toggle.expanded {
-  transform: rotate(90deg);
+  transform: rotate(0deg);
 }
 
 .folder-name-btn {
@@ -489,7 +492,7 @@
   z-index: 1000;
   min-width: 140px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
+  overflow: visible; /* el submenú de etiquetas se sale del menú */
   white-space: nowrap;
 }
 
@@ -526,14 +529,15 @@
 }
 
 .context-menu-section-arrow {
-  font-size: 0.55rem;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  transform: rotate(-90deg);
   transition: transform 0.2s;
   flex-shrink: 0;
 }
 
 .context-menu-section-arrow.expanded {
-  transform: rotate(90deg);
+  transform: rotate(0deg);
 }
 
 .context-menu-others-sticky {
@@ -694,4 +698,65 @@
 
 .delete-confirm-btn-danger:hover {
   background: #dc2626;
+}
+
+.context-menu-face {
+  display: inline-block;
+  min-width: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.context-menu-item-current {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* Submenú "Label": se abre a un lado del menú, no debajo */
+.context-menu-submenu-wrap {
+  position: relative;
+}
+
+.context-menu-submenu-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.context-menu-submenu-arrow {
+  display: inline-flex;
+  margin-left: auto;
+  padding-left: 0.75rem;
+  opacity: 0.7;
+  transform: rotate(-90deg); /* apunta a la derecha, hacia donde se abre el submenú */
+}
+
+.context-menu-submenu {
+  position: absolute;
+  top: -1px;
+  min-width: 130px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+}
+
+.context-menu-submenu-left {
+  right: 100%;
+}
+
+.context-menu-submenu-right {
+  left: 100%;
+}
+
+/* ProfileTab.css también define .profile-context-menu con overflow: hidden y gana por orden: este selector pesa más.
+   El menú de la barra lateral necesita dejar salir su submenú de etiquetas. */
+.profile-context-menu.profile-context-menu-has-submenu {
+  overflow: visible;
+}
+
+/* Si el submenú se abre a la izquierda (poco sitio a la derecha), la flecha apunta a la izquierda */
+.context-menu-submenu-wrap:has(.context-menu-submenu-left) .context-menu-submenu-arrow {
+  transform: rotate(90deg);
 }

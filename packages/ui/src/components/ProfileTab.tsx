@@ -4,12 +4,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { getPlatformAPI } from '../platform';
-import type { BrowserProfile } from '@xpm/core';
+import type { BrowserProfile, ProfileLabel } from '@xpm/core';
 import { usePlatformAPI, useCapabilities } from '../hooks/usePlatformAPI';
 import Tooltip from './Tooltip';
 import CharacterInfoModal from './CharacterInfoModal';
 import { Star, Lock, LockOpen, Check, Key, Envelope, Globe, Eye, X, Pen, Trash, Gear, Pin, FolderConnect, Bookmarks, Login, ChatRound } from 'reicon-react';
 import './ProfileTab.css';
+import './ProfileLabel.css';
+import { LABEL_FACE, PROFILE_LABELS, labelOf } from '../profileLabels';
 
 interface ProfileTabProps {
   profile: BrowserProfile;
@@ -21,6 +23,8 @@ interface ProfileTabProps {
   onEdit: () => void;
   onToggleStar?: () => void;
   onToggleLock?: () => void;
+  /** Si se indica, la tarjeta muestra las dos etiquetas y un clic en la otra la asigna (acción rápida) */
+  onChangeLabel?: (label: ProfileLabel) => void;
   onMoveToFolder?: (folderId: string | undefined) => void;
   folders?: Array<{ id: string; name: string; icon: string }>;
   onSelect?: () => void;
@@ -45,6 +49,7 @@ export default function ProfileTab({
   onEdit,
   onToggleStar,
   onToggleLock,
+  onChangeLabel,
   onMoveToFolder,
   folders = [],
   onSelect,
@@ -301,6 +306,7 @@ export default function ProfileTab({
           setShowContextMenu(true);
         }}
      >
+       {onDragStart && <span className="profile-drag-handle" title="Drag to reorder" aria-hidden="true">⠿</span>}
        {/* Left section: Profile icon and info + buttons */}
        <div className="profile-content">
             <div className="profile-icon-badge">
@@ -313,7 +319,6 @@ export default function ProfileTab({
               ) : (
                 <div className="profile-icon-placeholder">{profile.name.charAt(0).toUpperCase()}</div>
               )}
-              {isActive && <div className="active-indicator" />}
             </div>
 
             <div className="profile-header">
@@ -392,9 +397,41 @@ export default function ProfileTab({
                     </button>
                   )}
                 </div>
-                <span className={`status-badge ${isActive ? 'online' : 'offline'}`}>
-                  {isActive ? 'Online' : 'Offline'}
-                </span>
+                <div className="profile-badges">
+                  <span className={`status-badge ${isActive ? 'online' : 'offline'}`}>
+                    {isActive ? 'Online' : 'Offline'}
+                  </span>
+                  {onChangeLabel ? (
+                    <div className="label-switch" role="radiogroup" aria-label="Profile label">
+                      {PROFILE_LABELS.map(({ id, name }) => {
+                        const selected = labelOf(profile) === id;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            className={`label-badge label-badge-${id}${selected ? '' : ' label-badge-off'}`}
+                            title={selected ? `${name} profile` : `Set as ${name.toLowerCase()}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!selected) onChangeLabel(id);
+                            }}
+                          >
+                            {LABEL_FACE[id]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span
+                      className={`label-badge label-badge-${labelOf(profile)}`}
+                      title={labelOf(profile) === 'inactive' ? 'Inactive profile' : 'Active profile'}
+                    >
+                      {LABEL_FACE[labelOf(profile)]}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Action buttons */}

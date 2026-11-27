@@ -15,7 +15,7 @@
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
-            android:screenOrientation="sensorLandscape"
+            android:screenOrientation="fullUser"
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
@@ -30,7 +30,7 @@
 
         <activity
             android:name=".browser.BrowserActivity"
-            android:screenOrientation="sensorLandscape"
+            android:screenOrientation="fullUser"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density|fontScale|layoutDirection"
             android:exported="false"
             android:launchMode="singleTop"

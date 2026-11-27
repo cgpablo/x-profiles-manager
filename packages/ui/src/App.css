@@ -570,3 +570,235 @@ body,
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
 }
+
+/* ====== Modo compacto (móvil: vertical, o apaisado con poca altura) ====== */
+/* La cabecera nunca se sale de su ancho: lo que no cabe pasa a otra fila */
+.app-nav {
+  flex-wrap: wrap;
+}
+
+.nav-center {
+  flex-wrap: wrap;
+}
+
+.app-narrow .nav-title,
+.app-narrow.sidebar-collapsed .nav-title {
+  flex: 1 1 100%; /* ocupa su fila: la flecha de plegar queda en el extremo derecho */
+  width: auto;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+}
+
+.app-narrow .nav-title h1 {
+  font-size: 0.95rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-narrow .nav-center {
+  padding: 0.4rem 0.75rem;
+  gap: 0.5rem;
+}
+
+.app-narrow .nav-actions {
+  flex: 1 1 100%; /* en su propia fila, debajo de Show actives / Show favorites */
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin-left: 0;
+  gap: 0.5rem;
+  padding: 0 0.75rem 0.5rem;
+}
+
+.app-narrow .nav-actions button {
+  padding: 4px 10px;
+  font-size: 0.7rem;
+}
+
+/* Flecha para plegar las acciones rápidas, a la derecha del título */
+.nav-quick-toggle {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transform: rotate(-90deg);
+  transition: transform 0.2s, color 0.15s, border-color 0.15s;
+}
+
+.nav-quick-toggle-open {
+  transform: rotate(0deg);
+}
+
+.nav-quick-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--primary);
+}
+
+/* Plegado: solo queda el título */
+.app-nav.quick-collapsed .nav-center,
+.app-nav.quick-collapsed .nav-actions {
+  display: none;
+}
+
+/* La barra lateral pasa a ser un cajón sobre el contenido */
+.app-narrow .sidebar {
+  position: fixed;
+  z-index: 900; /* por debajo de los modales (1000) para que no se queden detrás del cajón */
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(72vw, 280px); /* más estrecho: deja ver parte de la pantalla detrás */
+  min-width: 0;
+  height: auto;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--bg-dark); /* en escritorio es transparente; como cajón tiene que tapar lo de detrás */
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition: transform 0.2s ease, visibility 0.2s;
+  box-shadow: none;
+}
+
+.app-narrow.drawer-open .sidebar {
+  transform: translateX(0);
+  visibility: visible;
+  box-shadow: 6px 0 24px rgba(0, 0, 0, 0.5);
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 890;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* Con poca altura (móvil apaisado) el cajón entero se desplaza: carpetas y perfiles ya no quedan aplastados por las
+   secciones de abajo, y todo es alcanzable */
+@media (max-height: 600px) {
+  .app-narrow .sidebar {
+    overflow-y: auto;
+  }
+
+  .app-narrow .sidebar .sidebar-folders,
+  .app-narrow .sidebar .folder-list,
+  .app-narrow .sidebar .sidebar-section-content {
+    flex: 0 0 auto;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .app-narrow .sidebar .sidebar-bottom-group {
+    margin-top: 0;
+  }
+
+  .app-narrow .sidebar .sidebar-section-header-btn {
+    height: 48px;
+    padding-block: 0.5rem;
+  }
+}
+
+/* Móvil: título arriba y, debajo, los accesos en este orden: Show actives, Show favorites, View actives, buscador,
+   contador de la raya y Close actives. En vertical van en dos filas; en horizontal, en una sola. */
+@media (max-width: 760px), (pointer: coarse) and (max-height: 600px) {
+  .app-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.75rem 0.6rem;
+  }
+
+  .app-narrow .nav-title {
+    flex: 1 1 100%;
+    padding: 0.5rem 0;
+  }
+
+  /* Los hijos de estas zonas pasan a ser elementos directos de la barra para poder ordenarlos */
+  .app-narrow .nav-center,
+  .app-narrow .nav-actions {
+    display: contents;
+  }
+
+  .app-narrow .app-nav.quick-collapsed .nav-center,
+  .app-narrow .app-nav.quick-collapsed .nav-actions {
+    display: none;
+  }
+
+  .btn-show-active,
+  .btn-show-starred,
+  .btn-view-actives {
+    order: 1;
+    flex: 0 0 auto;
+  }
+
+  /* Buscador (ocupa lo que queda), contador de la raya y Close actives */
+  .nav-search {
+    order: 3;
+    flex: 1 1 0;
+    min-width: 110px;
+    width: auto;
+  }
+
+  /* El campo ocupa todo el hueco del buscador (en escritorio mide 200 px fijos) */
+  .nav-search-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .symbol-copy-group,
+  .btn-close-all {
+    order: 3;
+    flex: 0 0 auto;
+  }
+
+  /* Cualquier otro botón de la zona de acciones (deshacer/guardar orden) va detrás */
+  .nav-actions button:not(.btn-view-actives):not(.btn-close-all),
+  .nav-actions > div {
+    order: 4;
+    flex: 0 0 auto;
+  }
+
+  .nav-saved-banner,
+  .nav-backing-up-banner {
+    order: 5;
+    flex: 1 1 100%;
+  }
+}
+
+/* Solo en vertical: los tres accesos se reparten el ancho de su fila y hay un salto de línea antes del buscador */
+@media (max-width: 760px) {
+  .btn-show-active,
+  .btn-show-starred,
+  .btn-view-actives {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  /* Sin perfiles activos solo queda Show favorites: no hace falta fila aparte, todo fluye junto con el buscador */
+  .app-nav:not(:has(.btn-show-active)) .btn-show-starred {
+    flex: 0 0 auto;
+  }
+
+  .app-nav:not(:has(.btn-show-active))::after {
+    display: none;
+  }
+
+  .app-nav::after {
+    content: '';
+    order: 2;
+    flex: 1 1 100%;
+    height: 0;
+    margin-top: -0.5rem; /* compensa el hueco extra que deja esta fila vacía */
+  }
+}

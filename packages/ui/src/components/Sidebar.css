@@ -21,11 +21,28 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* Bottom group (PM, CH, Freedcamp, Settings) sticks to the bottom */
+/* Items above the folder tree */
+.sidebar-top-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Items below the folder tree stick to the bottom */
 .sidebar-bottom-group {
   margin-top: auto;
   display: flex;
   flex-direction: column;
+}
+
+/* A single line between neighbours, whatever the order is */
+.sidebar .sidebar-top-group > * {
+  border-top: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar .sidebar-bottom-group > * {
+  border-bottom: 0;
+  border-top: 1px solid var(--border);
 }
 
 /* Common styles for all sections */
@@ -38,6 +55,7 @@
   flex-direction: column;
 }
 
+.sidebar-post-helper,
 .sidebar-password-manager,
 .sidebar-mail-manager,
 .sidebar-character-hub,

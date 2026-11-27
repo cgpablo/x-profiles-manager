@@ -39,6 +39,9 @@ export interface ProfileFolder {
   order: number; // For sorting
 }
 
+/** Etiqueta de un perfil: los inactivos se ocultan por defecto de la barra lateral y de la vista de carpetas */
+export type ProfileLabel = 'active' | 'inactive';
+
 export interface BrowserProfile {
   id: string;
   name: string;
@@ -53,6 +56,7 @@ export interface BrowserProfile {
   isActive?: boolean;
   orderIndex?: number; // For sorting profiles
   starred?: boolean; // Starred/favourited profile
+  label?: ProfileLabel; // Active (default) / inactive
   locked?: boolean; // Locked: hide edit/delete options. undefined or true = locked (default)
   fcInfo?: FCCharacterInfo; // Fan Character info
   directoryPath?: string;  // Optional: filesystem path to open in Finder/Explorer
@@ -98,6 +102,8 @@ export interface AppSettings {
     showCharacterHub?: boolean; // Show Character Hub in sidebar
     showFreedcamp?: boolean; // Show Freedcamp in sidebar
     showDashboard?: boolean; // Show Dashboard button in sidebar (default true)
+    showPostHelper?: boolean; // Show Post Helper in sidebar (default true)
+    sidebarOrder?: string[]; // Order of the sidebar items (see ui/src/sidebarLayout.ts)
     showDirectory?: boolean; // Show "open directory" button on profile cards (requires developerMode)
   };
 }

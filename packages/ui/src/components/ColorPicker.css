@@ -8,7 +8,7 @@
 
 .preset-colors {
   display: grid;
-  grid-template-columns: repeat(9, 40px);
+  grid-template-columns: repeat(auto-fill, 40px); /* los colores pasan a otra fila si no caben (móvil) */
   gap: 0.5rem;
   align-items: center;
 }

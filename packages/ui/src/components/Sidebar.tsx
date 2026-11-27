@@ -2,7 +2,7 @@
  * Sidebar Component - Container principal con 3 sub-componentes
  */
 
-import React from 'react';
+import React, { useContext } from 'react';
 import type { BrowserProfile, ProfileFolder } from '@xpm/core';
 import SidebarDashboard from './SidebarDashboard';
 import SidebarFolders from './SidebarFolders';
@@ -11,6 +11,10 @@ import SidebarMailManager from './SidebarMailManager';
 import SidebarCharacterHub from './SidebarCharacterHub';
 import SidebarFreedcamp from './SidebarFreedcamp';
 import SidebarSettings from './SidebarSettings';
+import SidebarPostHelper from './SidebarPostHelper';
+import { NavigationContext, SidebarLayoutContext } from '../navigation';
+import { ProfileLabelFilterContext, isProfileVisible } from '../profileLabels';
+import type { SidebarItemId } from '../sidebarLayout';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -90,15 +94,51 @@ export default function Sidebar({
   onDeleteProfile,
   onToggleStar,
 }: SidebarProps) {
+  const { goToPostHelper } = useContext(NavigationContext);
+  const { order, showPostHelper } = useContext(SidebarLayoutContext);
+  const { visibleLabels } = useContext(ProfileLabelFilterContext);
+
+  // Los perfiles con una etiqueta oculta no aparecen en la barra lateral; los contadores se recalculan sin ellos
+  const visibleProfiles = profiles.filter((p) => isProfileVisible(p, visibleLabels));
+  const visibleCountByFolder = new Map<string | undefined, number>();
+  for (const p of visibleProfiles) visibleCountByFolder.set(p.folderId, (visibleCountByFolder.get(p.folderId) || 0) + 1);
+  const visibleOrdered = orderedProfiles
+    ? new Map(Array.from(orderedProfiles, ([key, list]) => [key, list.filter((p) => isProfileVisible(p, visibleLabels))] as const))
+    : undefined;
+  const renderItem = (id: SidebarItemId): React.ReactNode => {
+    switch (id) {
+      case 'dashboard':
+        return showDashboard !== false ? <SidebarDashboard key={id} onGoToDashboard={onGoToDashboard} /> : null;
+      case 'post-helper':
+        return showPostHelper ? <SidebarPostHelper key={id} onNavigate={goToPostHelper} /> : null;
+      case 'password-manager':
+        return showPasswordManager ? <SidebarPasswordManager key={id} onNavigate={onGoToPasswordManager} /> : null;
+      case 'mail-manager':
+        return showMailManager ? <SidebarMailManager key={id} onNavigate={onGoToMailManager} /> : null;
+      case 'character-hub':
+        return showCharacterHub ? <SidebarCharacterHub key={id} onNavigate={onGoToCharacterHub} /> : null;
+      case 'freedcamp':
+        return showFreedcamp ? <SidebarFreedcamp key={id} onNavigate={onGoToFreedcamp} /> : null;
+      case 'settings':
+        return <SidebarSettings key={id} onOpenSettings={onOpenSettings} />;
+      default:
+        return null;
+    }
+  };
+
+  // Lo que va antes de 'folders' queda encima del árbol de carpetas; lo que va después, abajo
+  const foldersIndex = order.indexOf('folders');
+  const topItems = order.slice(0, foldersIndex);
+  const bottomItems = order.slice(foldersIndex + 1);
+
   return (
     <aside className="sidebar">
-      {/* Dashboard Section */}
-      {showDashboard !== false && <SidebarDashboard onGoToDashboard={onGoToDashboard} />}
+      <div className="sidebar-top-group">{topItems.map(renderItem)}</div>
 
       {/* Folders Section */}
        <SidebarFolders
            folders={folders}
-           profiles={profiles}
+           profiles={visibleProfiles}
            selectedFolderId={selectedFolderId}
            expandedFolders={expandedFolders}
            expandedOthers={expandedOthers}
@@ -109,7 +149,7 @@ export default function Sidebar({
            onCreateProfile={onCreateProfile}
            onEditFolder={onEditFolder}
            onDeleteFolder={onDeleteFolder}
-           profileCountByFolder={profileCountByFolder}
+           profileCountByFolder={visibleCountByFolder}
             onLaunchProfile={onLaunchProfile}
             onCloseProfile={onCloseProfile}
              onOpenAllInBrowser={onOpenAllInBrowser}
@@ -117,21 +157,14 @@ export default function Sidebar({
             activeStatuses={activeStatuses}
              onMoveProfileToFolder={onMoveProfileToFolder}
              onGoToFolders={onGoToFolders}
-             orderedProfiles={orderedProfiles}
+             orderedProfiles={visibleOrdered}
              onToggleAllFolders={onToggleAllFolders}
              onEditProfile={onEditProfile}
              onDeleteProfile={onDeleteProfile}
              onToggleStar={onToggleStar}
            />
 
-       {/* Settings Section */}
-       <div className="sidebar-bottom-group">
-         {showPasswordManager && <SidebarPasswordManager onNavigate={onGoToPasswordManager} />}
-         {showMailManager && <SidebarMailManager onNavigate={onGoToMailManager} />}
-         {showCharacterHub && <SidebarCharacterHub onNavigate={onGoToCharacterHub} />}
-         {showFreedcamp && <SidebarFreedcamp onNavigate={onGoToFreedcamp} />}
-         <SidebarSettings onOpenSettings={onOpenSettings} />
-       </div>
+       <div className="sidebar-bottom-group">{bottomItems.map(renderItem)}</div>
      </aside>
    );
  }

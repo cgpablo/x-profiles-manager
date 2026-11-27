@@ -7,12 +7,14 @@
 import React, { useState, useEffect } from 'react';
 import { getPlatformAPI } from '../platform';
 import { X, Folder } from 'reicon-react';
-import type { BrowserProfile } from '@xpm/core';
+import type { BrowserProfile, ProfileLabel } from '@xpm/core';
+import { LABEL_FACE, PROFILE_LABELS } from '../profileLabels';
 import { usePlatformAPI, useCapabilities } from '../hooks/usePlatformAPI';
 import { useModalClose } from '../hooks/useModalClose';
 import ColorPicker from './ColorPicker';
 import './CreateProfileModal.css';
 import './CreatePasswordModal.css';
+import './ProfileLabel.css';
 
 interface PasswordEntry {
   id: string;
@@ -60,6 +62,7 @@ export default function ProfileModal({
       : (selectedFolderId && selectedFolderId !== 'ungrouped' ? selectedFolderId : undefined)
   );
   const [directoryPath, setDirectoryPath] = useState(isEdit ? (profile.directoryPath || '') : '');
+  const [label, setLabel] = useState<ProfileLabel>(isEdit ? (profile.label ?? 'active') : 'active');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -230,6 +233,7 @@ export default function ProfileModal({
           imagePath: imagePath || undefined,
           directoryPath: directoryPath || undefined,
           pinPasswordId: selectedPinPasswordId || undefined,
+          label,
         });
         await linkPasswordMail(profile.id);
       } else {
@@ -239,6 +243,9 @@ export default function ProfileModal({
         if (newProfile?.id) {
           if (selectedPinPasswordId) {
             await platformAPI.profiles.update(newProfile.id, { pinPasswordId: selectedPinPasswordId });
+          }
+          if (label !== 'active') {
+            await platformAPI.profiles.update(newProfile.id, { label });
           }
           await linkPasswordMail(newProfile.id);
         }
@@ -282,7 +289,7 @@ export default function ProfileModal({
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
-          {/* Name + X Account in the same row */}
+          {/* Name + X Account + Label in the same row */}
           <div className="form-row">
             <div className="form-group">
               <label>Profile Name *</label>
@@ -305,6 +312,25 @@ export default function ProfileModal({
                 placeholder="e.g., @yourhandle"
                 disabled={loading}
               />
+            </div>
+
+            <div className="form-group pl-field">
+              <label>Label</label>
+              <div className="pl-segmented" role="radiogroup" aria-label="Profile label">
+                {PROFILE_LABELS.map(({ id, name }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="radio"
+                    aria-checked={label === id}
+                    className={`pl-segment pl-label-${id}${label === id ? ' pl-segment-selected' : ''}`}
+                    onClick={() => setLabel(id)}
+                    disabled={loading}
+                  >
+                    {LABEL_FACE[id]} {name}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

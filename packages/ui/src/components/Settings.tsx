@@ -9,6 +9,9 @@ import type { AppSettings, BackupInspection, BrowserProfile, ProfileFolder, Them
 import { applyTheme, DEFAULT_THEME, THEME_OPTIONS } from '../theme';
 import { usePlatformAPI, useCapabilities } from '../hooks/usePlatformAPI';
 import Sidebar from './Sidebar';
+import InterfaceSizeSetting from './InterfaceSizeSetting';
+import SidebarOrderEditor, { SIDEBAR_VISIBILITY_KEYS } from './SidebarOrderEditor';
+import { normalizeSidebarOrder } from '../sidebarLayout';
 import ProfileModal from './ProfileModal';
 import CreateFolderModal from './CreateFolderModal';
 import DeleteConfirmModal from './DeleteProfileConfirmModal';
@@ -458,6 +461,8 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
             </div>
           </div>
 
+{caps.browserView && <InterfaceSizeSetting />}
+
 {!caps.browserPaths && (
             <div className="settings-section">
               <h3>Browser</h3>
@@ -814,131 +819,29 @@ export default function Settings({ folders, profiles, selectedFolderId, onSelect
 
           <div className="settings-section">
              <h3>Sidebar Configuration</h3>
-
-             <div className="setting-item">
-               <label>Show Dashboard</label>
-               <div className="checkbox-group">
-                 <input
-                   type="checkbox"
-                   id="showDashboard"
-                   checked={settings.platformPreferences?.showDashboard ?? true}
-                   onChange={(e) => {
-                     const prefs = settings.platformPreferences || {};
-                     setSettings({
-                       ...settings,
-                       platformPreferences: {
-                         ...prefs,
-                         showDashboard: e.target.checked,
-                       },
-                     });
-                   }}
-                 />
-                 <label htmlFor="showDashboard" style={{ marginLeft: '8px' }}>
-                   Show Dashboard button in sidebar
-                 </label>
-               </div>
-               <small>When disabled, the Dashboard button is hidden from the sidebar</small>
-             </div>
-
-             <div className="setting-item">
-               <label>Show Password Manager</label>
-               <div className="checkbox-group">
-                 <input
-                   type="checkbox"
-                   id="showPasswordManager"
-                   checked={settings.platformPreferences?.showPasswordManager ?? false}
-                   onChange={(e) => {
-                     const prefs = settings.platformPreferences || {};
-                     setSettings({
-                       ...settings,
-                       platformPreferences: {
-                         ...prefs,
-                         showPasswordManager: e.target.checked,
-                       },
-                     });
-                   }}
-                 />
-                 <label htmlFor="showPasswordManager" style={{ marginLeft: '8px' }}>
-                   Show Password Manager section in sidebar
-                 </label>
-               </div>
-               <small>When enabled, a Password Manager shortcut appears above Settings</small>
-             </div>
-
-             <div className="setting-item">
-               <label>Show Mail Manager</label>
-               <div className="checkbox-group">
-                 <input
-                   type="checkbox"
-                   id="showMailManager"
-                   checked={settings.platformPreferences?.showMailManager ?? false}
-                   onChange={(e) => {
-                     const prefs = settings.platformPreferences || {};
-                     setSettings({
-                       ...settings,
-                       platformPreferences: {
-                         ...prefs,
-                         showMailManager: e.target.checked,
-                       },
-                     });
-                   }}
-                 />
-                 <label htmlFor="showMailManager" style={{ marginLeft: '8px' }}>
-                   Show Mail Manager section in sidebar
-                 </label>
-               </div>
-               <small>When enabled, a Mail Manager shortcut appears above Settings</small>
-             </div>
-
-             <div className="setting-item">
-               <label>Show Character Hub</label>
-               <div className="checkbox-group">
-                 <input
-                   type="checkbox"
-                   id="showCharacterHub"
-                   checked={settings.platformPreferences?.showCharacterHub ?? false}
-                   onChange={(e) => {
-                     const prefs = settings.platformPreferences || {};
-                     setSettings({
-                       ...settings,
-                       platformPreferences: {
-                         ...prefs,
-                         showCharacterHub: e.target.checked,
-                       },
-                     });
-                   }}
-                 />
-                 <label htmlFor="showCharacterHub" style={{ marginLeft: '8px' }}>
-                   Show Character Hub section in sidebar
-                 </label>
-               </div>
-               <small>When enabled, a Character Hub shortcut appears above Settings</small>
-             </div>
-
-             <div className="setting-item">
-               <label>Show Freedcamp</label>
-               <div className="checkbox-group">
-                 <input
-                   type="checkbox"
-                   id="showFreedcamp"
-                   checked={settings.platformPreferences?.showFreedcamp ?? false}
-                   onChange={(e) => {
-                     const prefs = settings.platformPreferences || {};
-                     setSettings({
-                       ...settings,
-                       platformPreferences: {
-                         ...prefs,
-                         showFreedcamp: e.target.checked,
-                       },
-                     });
-                   }}
-                 />
-                 <label htmlFor="showFreedcamp" style={{ marginLeft: '8px' }}>
-                   Show Freedcamp section in sidebar
-                 </label>
-               </div>
-               <small>When enabled, a Freedcamp shortcut appears above Settings</small>
-             </div>
+             <p className="section-description">
+               Drag the items to reorder them and tick the ones you want to show.
+               Items above Folders appear at the top of the sidebar, the rest at the bottom. Changes apply when you save.
+             </p>
+             <SidebarOrderEditor
+               order={normalizeSidebarOrder(settings.platformPreferences?.sidebarOrder)}
+               visibility={{
+                 dashboard: settings.platformPreferences?.showDashboard ?? true,
+                 'post-helper': settings.platformPreferences?.showPostHelper ?? true,
+                 'password-manager': settings.platformPreferences?.showPasswordManager ?? false,
+                 'mail-manager': settings.platformPreferences?.showMailManager ?? false,
+                 'character-hub': settings.platformPreferences?.showCharacterHub ?? false,
+                 freedcamp: settings.platformPreferences?.showFreedcamp ?? false,
+               }}
+               onOrderChange={(sidebarOrder) =>
+                 setSettings({ ...settings, platformPreferences: { ...settings.platformPreferences, sidebarOrder } })
+               }
+               onVisibilityChange={(id, visible) => {
+                 const key = SIDEBAR_VISIBILITY_KEYS[id];
+                 if (!key) return;
+                 setSettings({ ...settings, platformPreferences: { ...settings.platformPreferences, [key]: visible } });
+               }}
+             />
            </div>
 
            {/* Extensions Section - DISABLED */}

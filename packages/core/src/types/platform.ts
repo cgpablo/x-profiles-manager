@@ -36,6 +36,19 @@ export interface PlatformCapabilities {
   autoLaunchOnStartup: boolean;
   /** El navegador es una pantalla propia de la app a la que se puede volver (Android). */
   browserView: boolean;
+  /** Se puede rellenar un hilo en el compositor de X (Post Helper). */
+  postThread: boolean;
+  /** Se puede citar un tweet rellenando el compositor de X (Post Helper). */
+  postQuote: boolean;
+  /** Se pueden adjuntar imágenes al primer post de Post Helper. */
+  postImages: boolean;
+}
+
+/** Imagen adjunta de Post Helper: el contenido va en base64 para poder cruzar el IPC. */
+export interface PostImage {
+  name: string;
+  mime: string;
+  data: string;
 }
 
 export interface PasswordSummary {
@@ -85,6 +98,10 @@ export interface PlatformAPI {
     isOnHomeUrl: (profileId: string) => Promise<boolean>;
     fillPinRecovery: (profileId: string) => Promise<boolean>;
     openChat: (profileId: string) => Promise<boolean>;
+    openUrl: (profileId: string, url: string) => Promise<boolean>;
+    openThread: (profileId: string, texts: string[], images?: PostImage[]) => Promise<boolean>;
+    openQuote: (profileId: string, tweetId: string, text: string, images?: PostImage[]) => Promise<boolean>;
+    openReply: (profileId: string, tweetId: string, text: string, images?: PostImage[]) => Promise<boolean>;
   };
 
   folders: {

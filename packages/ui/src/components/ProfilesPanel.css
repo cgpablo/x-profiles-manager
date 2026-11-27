@@ -11,6 +11,8 @@
 }
 
 .panel-header {
+   box-sizing: border-box;
+   min-height: 65px; /* mismo alto que los botones de la barra lateral (p. ej. DASHBOARD), aunque no haya botones */
    display: flex;
    justify-content: space-between;
    align-items: center;
@@ -19,7 +21,6 @@
    flex-shrink: 0;
    background: var(--bg-secondary);
    height: auto;
-   min-height: 0;
  }
 
 .panel-header-content {
@@ -110,7 +111,8 @@
 
 .profiles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  /* min(300px, 100%): en pantallas estrechas la columna se ajusta al ancho disponible en vez de forzar 300 px */
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
   gap: 1.5rem;
   padding: 2rem;
 }
@@ -209,4 +211,29 @@
 
 .panels-content::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
+}
+
+/* El contenido de cada tarjeta puede encogerse: si no, una tarjeta con texto largo ensancha la columna y se sale por la derecha */
+.profiles-grid > * {
+  min-width: 0;
+}
+
+/* Móvil: menos margen y tarjetas alineadas con la cabecera de su carpeta (antes iban sangradas y pegadas al borde derecho) */
+@media (max-width: 760px) {
+  .profiles-grid {
+    gap: 1rem;
+    padding: 0.75rem;
+  }
+
+  .folder-section {
+    padding: 0.75rem 0.75rem 0 0.75rem;
+  }
+
+  .folder-section .profiles-grid {
+    padding: 0 0 0.5rem;
+  }
+
+  .folder-section-header {
+    margin-bottom: 1rem;
+  }
 }

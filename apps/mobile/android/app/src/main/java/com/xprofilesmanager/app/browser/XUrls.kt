@@ -5,6 +5,8 @@ object XUrls {
     const val HOME = "https://x.com"
     const val LOGIN_FLOW = "https://x.com/i/flow/login"
     const val CHAT = "https://x.com/i/chat"
+    const val COMPOSE = "https://x.com/compose/post"
+    fun status(tweetId: String) = "https://x.com/i/status/$tweetId"
     const val PIN_RECOVERY_PATH = "/i/chat/pin/recovery"
 
     private val LOGGED_IN_PATHS = listOf("/home", "/notifications", "/messages", "/i/bookmarks", "/i/premium", "/compose/")

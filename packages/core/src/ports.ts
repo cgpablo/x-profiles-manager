@@ -6,6 +6,7 @@
  */
 
 import { AppSettings, BrowserProfile, ProcessInfo } from './types';
+import { PostImage } from './types/platform';
 
 /**
  * Persistencia de documentos JSON pequeños (perfiles, carpetas, ajustes, contraseñas, correos).
@@ -82,6 +83,14 @@ export interface BrowserLauncher {
   isOnHomeUrl(profileId: string): Promise<boolean>;
   fillPinRecovery(profileId: string, pin: string | null): Promise<boolean>;
   openChat(profileId: string): Promise<boolean>;
+  /** Abre la URL en el perfil: lo lanza si no estaba abierto, o navega su pestaña activa si ya lo estaba. */
+  openUrl(profileId: string, url: string): Promise<boolean>;
+  /** Abre el compositor de X y lo rellena como hilo (un post por texto) sin publicarlo. false si no se pudo. */
+  openThread(profileId: string, texts: string[], images?: PostImage[]): Promise<boolean>;
+  /** Abre el tweet, cita con el menú de repostear y escribe el texto en el compositor sin publicar. false si no se pudo. */
+  openQuote(profileId: string, tweetId: string, text: string, images?: PostImage[]): Promise<boolean>;
+  /** Abre el tweet, escribe la respuesta en su cuadro de respuesta y adjunta las imágenes sin publicar. false si no se pudo. */
+  openReply(profileId: string, tweetId: string, text: string, images?: PostImage[]): Promise<boolean>;
 
   /** Ganchos opcionales para que el lanzador mantenga su propia copia de los perfiles. */
   profileSaved?(profile: BrowserProfile): void;

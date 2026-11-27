@@ -2,9 +2,10 @@
  * Dashboard Component - Vista con 2 columnas: folders y profiles
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
+import { ProfileLabelFilterContext, isProfileVisible } from '../profileLabels';
 import { FolderBookmark, Folder, Pen, Trash } from 'reicon-react';
-import type { BrowserProfile, ProfileFolder } from '@xpm/core';
+import type { BrowserProfile, ProfileFolder, ProfileLabel } from '@xpm/core';
 import { usePlatformAPI } from '../hooks/usePlatformAPI';
 import Sidebar from './Sidebar';
 import ProfileTab from './ProfileTab';
@@ -44,8 +45,14 @@ interface DashboardProps {
   onGoToMailManager?: () => void;
 }
 
-export default function Dashboard({ folders, profiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, onOrderChange, activeStatuses = new Map(), onToggleAllFolders, showPasswordManager = false, showMailManager = false, showCharacterHub = false, showFreedcamp = false, showDashboard = true, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, onGoToMailManager }: DashboardProps) {
+export default function Dashboard({ folders, profiles: allProfiles, selectedFolderId, onSelectFolder, onProfilesChange, onFoldersChange, expandedFolders, onToggleFolder, expandedOthers, onToggleOthers, onGoToDashboard, onGoToSettings, onGoToFolders, onOrderChange, activeStatuses = new Map(), onToggleAllFolders, showPasswordManager = false, showMailManager = false, showCharacterHub = false, showFreedcamp = false, showDashboard = true, onGoToCharacterHub, onGoToFreedcamp, onGoToPasswordManager, onGoToMailManager }: DashboardProps) {
   const platformAPI = usePlatformAPI();
+  // Los perfiles con una etiqueta oculta no aparecen (el filtro se elige en el botón de etiquetas de la vista de carpetas)
+  const { visibleLabels } = useContext(ProfileLabelFilterContext);
+  const profiles = useMemo(
+    () => allProfiles.filter((p) => isProfileVisible(p, visibleLabels)),
+    [allProfiles, visibleLabels]
+  );
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedFolderForCreate, setSelectedFolderForCreate] = useState<string | undefined>(undefined);
   const [editingProfile, setEditingProfile] = useState<BrowserProfile | null>(null);
@@ -167,6 +174,16 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
       onProfilesChange();
     } catch (error) {
       console.error('Error toggling lock:', error);
+    }
+  };
+
+  // Acción rápida desde la tarjeta: asigna la etiqueta igual que en el modal de editar
+  const handleChangeLabel = async (profileId: string, label: ProfileLabel) => {
+    try {
+      await platformAPI.profiles.update(profileId, { label });
+      onProfilesChange();
+    } catch (error) {
+      console.error('Error changing label:', error);
     }
   };
 
@@ -514,6 +531,7 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                       >
                        <div className="folder-card-header">
                           <div className="folder-info">
+                             <span className="folder-drag-handle" title="Drag to reorder" aria-hidden="true">⠿</span>
                              <span className="folder-icon"><Folder size={14} weight="Outline" /></span>
                             <h4>{folder.name}</h4>
                             <span className="profile-count">{profileCountByFolder.get(folder.id) || 0}</span>
@@ -600,6 +618,7 @@ export default function Dashboard({ folders, profiles, selectedFolderId, onSelec
                               onEdit={() => handleEditProfile(profile)}
                               onToggleStar={() => handleToggleStar(profile.id)}
                               onToggleLock={() => handleToggleLock(profile.id)}
+                              onChangeLabel={(label) => handleChangeLabel(profile.id, label)}
                              onMoveToFolder={(folderId) => handleMoveProfileToFolder(profile.id, folderId)}
                              folders={folders}
                              onDragStart={(e) => handleProfileDragStart(e, profile.id)}

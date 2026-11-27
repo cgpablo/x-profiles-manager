@@ -539,3 +539,27 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Móvil en vertical: los campos de una misma fila pasan a una columna */
+@media (max-width: 560px) {
+  .modal-content {
+    width: 94%;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .form-row .form-group.pl-field {
+    flex: 1 1 auto;
+  }
+
+  .pl-segmented {
+    width: 100%;
+  }
+
+  .pl-segment {
+    flex: 1;
+  }
+}

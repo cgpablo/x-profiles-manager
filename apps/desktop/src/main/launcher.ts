@@ -7,7 +7,8 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
 import { data as appData } from './storageServices';
-import { ProcessInfo, BrowserProfile, BrowserEngine } from '@xpm/core';
+import { fillQuote, fillReply, fillThread, waitForComposerTab } from './threadComposer';
+import { ProcessInfo, BrowserProfile, BrowserEngine, PostImage } from '@xpm/core';
 
 export class ChromeLauncher {
   /** Routes considered "already browsing logged-in" — shared by isOnHomeUrl and the PIN flow. */
@@ -1133,11 +1134,11 @@ end tell`;
    * otherwise navigates its currently active tab there (opening a new tab if none is open).
    * Used by the profile context menu's "Chat" action.
    */
-  async openChat(profileId: string): Promise<boolean> {
+  async openUrl(profileId: string, url: string): Promise<boolean> {
     const debugPort = this.debugPorts.get(profileId);
 
     if (!debugPort || !this.runningProcesses.has(profileId)) {
-      const result = await this.launchProfile(profileId, 'https://x.com/i/chat');
+      const result = await this.launchProfile(profileId, url);
       return !!result;
     }
 
@@ -1155,18 +1156,127 @@ end tell`;
       } catch {}
 
       if (candidates.length === 0) {
-        await this.makeHttpCdpRequest(debugPort, 'https://x.com/i/chat');
+        await this.makeHttpCdpRequest(debugPort, url);
         return true;
       }
 
       const activeTab = await this.findActiveTab(candidates);
       if (!activeTab) return false;
 
-      return await this.navigateTab(activeTab.webSocketDebuggerUrl, 'https://x.com/i/chat');
+      return await this.navigateTab(activeTab.webSocketDebuggerUrl, url);
     } catch (error: any) {
-      console.error(`[OpenChat] Error: ${error.message}`);
+      console.error(`[OpenUrl] Error: ${error.message}`);
       return false;
     }
+  }
+
+  async openChat(profileId: string): Promise<boolean> {
+    return this.openUrl(profileId, 'https://x.com/i/chat');
+  }
+
+  /**
+   * Open the X composer and fill it as a thread (see threadComposer.ts). Stops before publishing.
+   * Needs CDP (Chromium). Returns false if the composer can't be reached or filled.
+   */
+  async openThread(profileId: string, texts: string[], images: PostImage[] = []): Promise<boolean> {
+    const posts = texts.filter((t) => t.trim().length > 0);
+    if (posts.length === 0) return false;
+    if ((appData.settings.get().browserEngine || 'chromium') !== 'chromium') {
+      throw new Error('Threads need a Chromium-based browser (Chrome/Edge)');
+    }
+
+    console.log(`[Thread] Opening composer for ${profileId} (${posts.length} posts)`);
+    if (!(await this.openUrl(profileId, 'https://x.com/compose/post'))) {
+      throw new Error('Could not open the composer URL in the profile');
+    }
+
+    const debugPort = this.debugPorts.get(profileId);
+    if (!debugPort) throw new Error('The profile has no debugging port (was it opened by this app?)');
+
+    const wsUrl = await waitForComposerTab(async () =>
+      JSON.parse(await this.makeHttpRequest(`http://localhost:${debugPort}/json`))
+    );
+
+    try { await this.focusWindow(profileId); } catch {}
+
+    await this.withTempImages(images, (paths) => fillThread(wsUrl, posts, paths));
+    return true;
+  }
+
+  /** Guarda las imágenes en archivos temporales (el navegador las adjunta por ruta) y los borra al terminar. */
+  private async withTempImages<T>(images: PostImage[], task: (paths: string[]) => Promise<T>): Promise<T> {
+    if (images.length === 0) return task([]);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xpm-post-images-'));
+    try {
+      const paths = images.map((image, i) => {
+        const safeName = image.name.replace(/[^\w.\-]+/g, '_') || `image-${i}`;
+        const file = path.join(dir, `${i + 1}-${safeName}`);
+        fs.writeFileSync(file, Buffer.from(image.data, 'base64'));
+        return file;
+      });
+      return await task(paths);
+    } finally {
+      // X lee los archivos al adjuntarlos: se dejan unos segundos por si aún los está procesando
+      setTimeout(() => fs.rmSync(dir, { recursive: true, force: true }), 60000);
+    }
+  }
+
+  /**
+   * Open the tweet, click repost -> Quote (real mouse) and type the text in the composer (see threadComposer.ts).
+   * Stops before publishing. Needs CDP (Chromium). Throws with the reason if it can't.
+   */
+  async openQuote(profileId: string, tweetId: string, text: string, images: PostImage[] = []): Promise<boolean> {
+    if (!text.trim()) return false;
+    if ((appData.settings.get().browserEngine || 'chromium') !== 'chromium') {
+      throw new Error('Quoting needs a Chromium-based browser (Chrome/Edge)');
+    }
+
+    console.log(`[Quote] Opening tweet ${tweetId} for ${profileId}`);
+    if (!(await this.openUrl(profileId, `https://x.com/i/status/${tweetId}`))) {
+      throw new Error('Could not open the tweet in the profile');
+    }
+
+    const debugPort = this.debugPorts.get(profileId);
+    if (!debugPort) throw new Error('The profile has no debugging port (was it opened by this app?)');
+
+    const wsUrl = await waitForComposerTab(
+      async () => JSON.parse(await this.makeHttpRequest(`http://localhost:${debugPort}/json`)),
+      25000,
+      `/status/${tweetId}`,
+      'The tweet page did not open (not logged in?)'
+    );
+
+    await this.withTempImages(images, (paths) => fillQuote(wsUrl, tweetId, text, paths));
+    return true;
+  }
+
+  /**
+   * Open the tweet and write the reply in its inline reply box, attaching the images (see threadComposer.ts).
+   * Stops before publishing. Needs CDP (Chromium). Throws with the reason if it can't.
+   */
+  async openReply(profileId: string, tweetId: string, text: string, images: PostImage[] = []): Promise<boolean> {
+    if (!text.trim()) return false;
+    if ((appData.settings.get().browserEngine || 'chromium') !== 'chromium') {
+      throw new Error('Replying with images needs a Chromium-based browser (Chrome/Edge)');
+    }
+
+    console.log(`[Reply] Opening tweet ${tweetId} for ${profileId}`);
+    if (!(await this.openUrl(profileId, `https://x.com/i/status/${tweetId}`))) {
+      throw new Error('Could not open the tweet in the profile');
+    }
+
+    const debugPort = this.debugPorts.get(profileId);
+    if (!debugPort) throw new Error('The profile has no debugging port (was it opened by this app?)');
+
+    const wsUrl = await waitForComposerTab(
+      async () => JSON.parse(await this.makeHttpRequest(`http://localhost:${debugPort}/json`)),
+      25000,
+      `/status/${tweetId}`,
+      'The tweet page did not open (not logged in?)'
+    );
+
+    await this.withTempImages(images, (paths) => fillReply(wsUrl, text, paths));
+    return true;
   }
 
   /**

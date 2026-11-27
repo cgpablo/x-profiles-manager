@@ -125,6 +125,10 @@ export function setupIpcHandlers(): void {
   handle('launcher:isOnHomeUrl', (profileId) => backend.launcher.isOnHomeUrl(profileId));
   handle('launcher:fillPinRecovery', (profileId) => backend.launcher.fillPinRecovery(profileId));
   handle('launcher:openChat', (profileId) => backend.launcher.openChat(profileId));
+  handle('launcher:openUrl', (profileId, url) => backend.launcher.openUrl(profileId, url));
+  handle('launcher:openThread', (profileId, texts, images) => backend.launcher.openThread(profileId, texts, images));
+  handle('launcher:openQuote', (profileId, tweetId, text, images) => backend.launcher.openQuote(profileId, tweetId, text, images));
+  handle('launcher:openReply', (profileId, tweetId, text, images) => backend.launcher.openReply(profileId, tweetId, text, images));
 
   // ====== SETTINGS HANDLERS ======
 

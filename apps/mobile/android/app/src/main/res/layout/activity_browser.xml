@@ -196,12 +196,11 @@
         </FrameLayout>
     </FrameLayout>
 
-        <View
+        <com.xprofilesmanager.app.browser.GripView
             android:id="@+id/divider"
             android:layout_width="20dp"
             android:layout_height="match_parent"
-            android:background="#111A2B"
-            android:visibility="gone" />
+            android:background="#111A2B" />
 
         <FrameLayout
             android:id="@+id/panelHost"

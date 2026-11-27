@@ -1,5 +1,6 @@
 import { registerPlugin } from '@capacitor/core';
 import type { PluginListenerHandle } from '@capacitor/core';
+import type { PostImage } from '@xpm/core';
 
 interface ProfileInfo {
   profileId: string;
@@ -37,6 +38,11 @@ export interface ProfileBrowserPlugin {
   isLoggedIn(options: { profileId: string }): Promise<{ value: boolean }>;
   isOnHomeUrl(options: { profileId: string }): Promise<{ value: boolean }>;
   openChat(options: ProfileInfo): Promise<{ value: boolean }>;
+  openUrl(options: ProfileInfo & { url: string }): Promise<{ value: boolean }>;
+  /** Post Helper: la promesa se resuelve al dejar el hilo escrito en el compositor y se rechaza con el motivo si falla. */
+  openThread(options: ProfileInfo & { texts: string[]; images?: PostImage[] }): Promise<{ value: boolean }>;
+  openQuote(options: ProfileInfo & { tweetId: string; text: string; images?: PostImage[] }): Promise<{ value: boolean }>;
+  openReply(options: ProfileInfo & { tweetId: string; text: string; images?: PostImage[] }): Promise<{ value: boolean }>;
   fillPinRecovery(options: ProfileInfo & { pin?: string }): Promise<{ value: boolean }>;
   autoLogin(options: ProfileInfo & { username: string; password: string }): Promise<{ value: boolean }>;
   addListener(

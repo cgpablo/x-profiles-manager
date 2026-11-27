@@ -540,3 +540,20 @@
 .theme-option-dim .theme-swatch {
   background: #15202b;
 }
+
+/* Móvil en vertical: una columna y menos margen (las tarjetas pedían 350 px de ancho mínimo) */
+@media (max-width: 760px) {
+  .settings {
+    padding: 0.75rem;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .settings-section {
+    padding: 1rem;
+  }
+}

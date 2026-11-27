@@ -1,0 +1,35 @@
+/**
+ * Contadores de la app: píldora azul, como el contador de Posts del Post Helper.
+ * Se importa al final de main.tsx para que gane a los estilos sueltos de cada componente.
+ */
+
+.profile-count,
+.column-header .profile-count,
+.character-hub-count,
+.mm-entry-count,
+.pw-entry-count,
+.ph-count-pill,
+.plf-option-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: auto;
+  height: auto;
+  min-width: 26px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+/* Carpeta seleccionada en la barra lateral: píldora sólida */
+.folder-item.active .profile-count,
+.plf-option-count-on {
+  background: var(--primary);
+  color: white;
+}

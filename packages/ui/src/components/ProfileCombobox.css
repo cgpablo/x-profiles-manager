@@ -1,0 +1,155 @@
+/**
+ * ProfileCombobox CSS
+ */
+
+.pc-root {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+}
+
+.pc-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pc-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.pc-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.pc-input-with-avatar {
+  padding-left: 2.4rem;
+}
+
+.pc-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.pc-selected-avatar {
+  position: absolute;
+  left: 0.5rem;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+}
+
+.pc-clear {
+  position: absolute;
+  right: 0.35rem;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pc-clear:hover {
+  color: var(--text-primary);
+}
+
+.pc-list {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.pc-group-label {
+  position: sticky;
+  top: 0;
+  padding: 0.35rem 0.75rem;
+  background: var(--bg-tertiary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.pc-group-label span {
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+.pc-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.pc-option-highlighted {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.pc-option-selected .pc-option-name {
+  font-weight: 600;
+}
+
+.pc-option-avatar {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.pc-option-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pc-option-account {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.pc-dot {
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--online-text);
+  flex-shrink: 0;
+}
+
+.pc-star {
+  color: var(--warning-text);
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.pc-empty {
+  padding: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}

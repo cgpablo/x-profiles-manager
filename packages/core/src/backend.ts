@@ -26,7 +26,7 @@ import { SettingsService } from './settingsService';
 import { ProfileService } from './profileService';
 import { FolderService } from './folderService';
 import { PasswordService } from './passwordService';
-import { PasswordSummary } from './types/platform';
+import { PasswordSummary, PostImage } from './types/platform';
 import { MailService } from './mailService';
 import { BackupService } from './backupService';
 
@@ -77,6 +77,10 @@ export interface Backend {
     isOnHomeUrl(profileId: string): Promise<boolean>;
     fillPinRecovery(profileId: string): Promise<boolean>;
     openChat(profileId: string): Promise<boolean>;
+    openUrl(profileId: string, url: string): Promise<boolean>;
+    openThread(profileId: string, texts: string[], images?: PostImage[]): Promise<boolean>;
+    openQuote(profileId: string, tweetId: string, text: string, images?: PostImage[]): Promise<boolean>;
+    openReply(profileId: string, tweetId: string, text: string, images?: PostImage[]): Promise<boolean>;
   };
   folders: {
     getAll(): Promise<ProfileFolder[]>;
@@ -290,6 +294,22 @@ export function createBackend(data: DataServices, launcher: BrowserLauncher, dep
 
       async openChat(profileId) {
         return launcher.openChat(profileId);
+      },
+
+      async openUrl(profileId, url) {
+        return launcher.openUrl(profileId, url);
+      },
+
+      async openThread(profileId, texts, images) {
+        return launcher.openThread(profileId, texts, images);
+      },
+
+      async openQuote(profileId, tweetId, text, images) {
+        return launcher.openQuote(profileId, tweetId, text, images);
+      },
+
+      async openReply(profileId, tweetId, text, images) {
+        return launcher.openReply(profileId, tweetId, text, images);
       },
     },
 

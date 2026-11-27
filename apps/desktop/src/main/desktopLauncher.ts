@@ -13,6 +13,10 @@ export const desktopLauncher: BrowserLauncher = {
   isOnHomeUrl: (profileId) => chromeLauncher.isOnHomeUrl(profileId),
   fillPinRecovery: (profileId, pin) => chromeLauncher.fillPinRecovery(profileId, pin),
   openChat: (profileId) => chromeLauncher.openChat(profileId),
+  openUrl: (profileId, url) => chromeLauncher.openUrl(profileId, url),
+  openThread: (profileId, texts, images) => chromeLauncher.openThread(profileId, texts, images),
+  openQuote: (profileId, tweetId, text, images) => chromeLauncher.openQuote(profileId, tweetId, text, images),
+  openReply: (profileId, tweetId, text, images) => chromeLauncher.openReply(profileId, tweetId, text, images),
 
   profileSaved: (profile) => chromeLauncher.updateProfileMetadata(profile.id, profile),
   profileDeleted: (profileId) => chromeLauncher.deleteProfileMetadata(profileId),

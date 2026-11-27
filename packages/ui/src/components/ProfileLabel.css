@@ -1,0 +1,217 @@
+/**
+ * Etiquetas de perfil: botón/menú de filtro de la cabecera y selector del modal
+ */
+
+.plf-root {
+  position: relative;
+  display: inline-flex;
+}
+
+.plf-menu {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 190px;
+  padding: 0.4rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.plf-title {
+  padding: 0.25rem 0.5rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.plf-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.plf-option:hover {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.plf-option-name {
+  flex: 1;
+}
+
+.plf-option-face {
+  min-width: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Mismo estilo que el contador de la barra lateral (.profile-count) */
+.plf-option-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 3px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.plf-option-count-on {
+  background: var(--primary);
+  color: white;
+}
+
+/* Selector del modal de perfil */
+/* Mismo alto que los inputs del modal: mismo padding vertical, fuente y borde */
+.pl-segmented {
+  display: flex;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.pl-segment {
+  padding: 0.75rem 0.9rem;
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.pl-segment:hover:not(.pl-segment-selected):not(:disabled) {
+  color: var(--text-primary);
+}
+
+/* Cada etiqueta usa su color, el mismo que su insignia en la tarjeta */
+.pl-label-active.pl-segment-selected {
+  background: rgba(34, 211, 238, 0.16);
+  color: #22d3ee;
+}
+
+.pl-label-inactive.pl-segment-selected {
+  background: rgba(245, 158, 11, 0.16);
+  color: var(--warning-text);
+}
+
+:root[data-theme='light'] .pl-label-active.pl-segment-selected {
+  color: #0e7490;
+}
+
+.pl-segment:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* En la fila del nombre: ocupa solo lo que necesita, el resto lo reparten los campos de texto */
+.form-row .form-group.pl-field {
+  flex: 0 0 auto;
+}
+
+/* Estado (Online/Offline) y etiqueta (carita) en la misma línea de la tarjeta */
+.profile-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.label-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.label-badge-active {
+  color: #22d3ee;
+  background: rgba(34, 211, 238, 0.14);
+}
+
+/* Más oscuro en el tema claro para que se lea */
+:root[data-theme='light'] .label-badge-active {
+  color: #0e7490;
+}
+
+.label-badge-inactive {
+  color: var(--warning-text);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+/* Dashboard: selector de dos opciones. La asignada con su color; la otra apagada (un clic la asigna) */
+.label-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border-radius: 0.25rem;
+  background: var(--bg-tertiary);
+}
+
+/* Borde del selector sin añadir alto: va por encima de las dos opciones */
+.label-switch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--border);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.label-switch button.label-badge {
+  margin: 0;
+  min-width: 34px;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+/* Separador entre las dos opciones */
+.label-switch button.label-badge + button.label-badge {
+  box-shadow: inset 1px 0 0 var(--border);
+}
+
+.label-switch button.label-badge.label-badge-off {
+  background: transparent;
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
+.label-switch button.label-badge-active.label-badge-off:hover {
+  background: rgba(34, 211, 238, 0.12);
+  color: #22d3ee;
+}
+
+.label-switch button.label-badge-inactive.label-badge-off:hover {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--warning-text);
+}
+
+/* En el tema claro la regla de color de la etiqueta activa pesa más: se refuerza la de "apagada" */
+:root[data-theme='light'] .label-switch button.label-badge.label-badge-off {
+  color: var(--text-secondary);
+}

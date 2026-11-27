@@ -4,9 +4,11 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { getPlatformAPI } from './platform';
-import { Star, SearchNormal, X, Undo, Floppy, Check, Eye } from 'reicon-react';
+import { Star, SearchNormal, X, Undo, Floppy, Check, Eye, ChevronDown } from 'reicon-react';
 import type { BrowserProfile, ProfileFolder } from '@xpm/core';
 import { usePlatformAPI, useCapabilities } from './hooks/usePlatformAPI';
+import { useMediaQuery } from './hooks/useMediaQuery';
+import KeyboardDismissButton from './components/KeyboardDismissButton';
 import { onShowProfileOnly } from './profileFocus';
 import Dashboard from './components/Dashboard';
 import Folders from './components/Folders';
@@ -14,11 +16,16 @@ import Settings from './components/Settings';
 import CharacterHub from './components/CharacterHub';
 import PasswordManagerView from './components/PasswordManagerView';
 import MailManagerView from './components/MailManagerView';
+import PostHelperView from './components/PostHelperView';
+import { NavigationContext, SidebarLayoutContext } from './navigation';
+import { DEFAULT_VISIBLE_LABELS, ProfileLabelFilterContext } from './profileLabels';
+import type { ProfileLabel } from '@xpm/core';
+import { DEFAULT_SIDEBAR_ORDER, normalizeSidebarOrder, type SidebarItemId } from './sidebarLayout';
 import Tooltip from './components/Tooltip';
 import { applyTheme } from './theme';
 import './App.css';
 
-type View = 'dashboard' | 'folders' | 'settings' | 'character-hub' | 'password-manager' | 'mail-manager';
+type View = 'dashboard' | 'folders' | 'settings' | 'character-hub' | 'password-manager' | 'mail-manager' | 'post-helper';
 
 function App() {
   const platformAPI = usePlatformAPI();
@@ -36,8 +43,62 @@ function App() {
   const [symbolCopied, setSymbolCopied] = useState(false);
   const [symbolCount, setSymbolCount] = useState(1);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === '1');
+  // Móvil (en vertical, o apaisado con poca altura): la barra lateral es un cajón que se abre sobre el contenido
+  const narrow = useMediaQuery('(max-width: 760px), (pointer: coarse) and (max-height: 600px)');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const sidebarHidden = narrow ? !drawerOpen : sidebarCollapsed;
+  // Móvil: las acciones rápidas (buscador y botones) se pueden plegar para ganar sitio; se recuerda la elección
+  const [quickOpen, setQuickOpen] = useState(() => localStorage.getItem('quickActionsOpen') !== '0');
+  const toggleQuick = () =>
+    setQuickOpen((open) => {
+      localStorage.setItem('quickActionsOpen', open ? '0' : '1');
+      return !open;
+    });
+  // Gestos en móvil: desliza a la izquierda para cerrar el cajón; a la derecha (desde la zona izquierda) para abrirlo
+  useEffect(() => {
+    if (!narrow) return;
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+    const onStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      startX = t.clientX;
+      startY = t.clientY;
+      tracking = e.touches.length === 1;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!tracking) return;
+      const t = e.touches[0];
+      const dx = t.clientX - startX;
+      const dy = Math.abs(t.clientY - startY);
+      // Solo cuenta un gesto claramente horizontal y largo: no interfiere con el scroll vertical
+      if (Math.abs(dx) < 60 || Math.abs(dx) < dy * 2) return;
+      tracking = false;
+      if (dx < 0 && drawerOpen) setDrawerOpen(false);
+      // Se abre deslizando a la derecha desde la parte izquierda de la pantalla (el borde exacto lo suele quitar el gesto "atrás" del sistema)
+      else if (dx > 0 && !drawerOpen && startX < window.innerWidth * 0.4) setDrawerOpen(true);
+    };
+    const onEnd = () => {
+      tracking = false;
+    };
+    document.addEventListener('touchstart', onStart, { passive: true });
+    document.addEventListener('touchmove', onMove, { passive: true });
+    document.addEventListener('touchend', onEnd, { passive: true });
+    document.addEventListener('touchcancel', onEnd, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', onStart);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+      document.removeEventListener('touchcancel', onEnd);
+    };
+  }, [narrow, drawerOpen]);
+
+  // Al elegir algo (vista, carpeta, búsqueda) el cajón se cierra para ver el resultado
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [view, selectedFolderId, searchActive]);
   const toggleSidebar = () =>
-    setSidebarCollapsed((collapsed) => {
+    narrow ? setDrawerOpen((open) => !open) : setSidebarCollapsed((collapsed) => {
       localStorage.setItem('sidebarCollapsed', collapsed ? '0' : '1');
       return !collapsed;
     });
@@ -64,6 +125,20 @@ function App() {
   const [showCharacterHub, setShowCharacterHub] = useState(false);
   const [showFreedcamp, setShowFreedcamp] = useState(false);
   const [showDashboard, setShowDashboard] = useState(true);
+  const [showPostHelper, setShowPostHelper] = useState(true);
+  // Etiquetas de perfil que se muestran (los inactivos se ocultan por defecto); se recuerda entre sesiones
+  const [visibleLabels, setVisibleLabelsState] = useState<ReadonlySet<ProfileLabel>>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('visibleProfileLabels') ?? 'null');
+      if (Array.isArray(saved)) return new Set(saved.filter((l): l is ProfileLabel => l === 'active' || l === 'inactive'));
+    } catch {}
+    return new Set(DEFAULT_VISIBLE_LABELS);
+  });
+  const setVisibleLabels = (labels: ReadonlySet<ProfileLabel>) => {
+    localStorage.setItem('visibleProfileLabels', JSON.stringify([...labels]));
+    setVisibleLabelsState(labels);
+  };
+  const [sidebarOrder, setSidebarOrder] = useState<SidebarItemId[]>(DEFAULT_SIDEBAR_ORDER);
   const [showDirectory, setShowDirectory] = useState(false);
   // Track which folders have been auto-expanded to avoid repeatedly expanding after manual collapse
   const autoExpandedFoldersRef = useRef<Set<string>>(new Set());
@@ -151,6 +226,8 @@ function App() {
       setShowMailManager(result.platformPreferences?.showMailManager ?? false);
       setShowCharacterHub(result.platformPreferences?.showCharacterHub ?? false);
       setShowFreedcamp(result.platformPreferences?.showFreedcamp ?? false);
+      setShowPostHelper(result.platformPreferences?.showPostHelper ?? true);
+      setSidebarOrder(normalizeSidebarOrder(result.platformPreferences?.sidebarOrder));
       const dashboardVisible = result.platformPreferences?.showDashboard ?? true;
       setShowDashboard(dashboardVisible);
       setShowDirectory(result.platformPreferences?.developerMode && result.platformPreferences?.showDirectory ? true : false);
@@ -326,6 +403,13 @@ function App() {
         setSearchQuery(profile.name);
         setOnlyProfileId(profileId);
         setSelectedFolderId('__search__');
+        // En escritorio el buscador queda listo para escribir encima; en móvil no se abre el teclado sin que se pida
+        if (!platformAPI.capabilities.browserView) {
+          requestAnimationFrame(() => {
+            searchInputRef.current?.focus();
+            searchInputRef.current?.select();
+          });
+        }
       }),
     [profiles]
   );
@@ -365,22 +449,39 @@ function App() {
   };
 
   return (
-     <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
-       <nav className="app-nav">
+    <NavigationContext.Provider value={{ goToPostHelper: () => setView('post-helper') }}>
+    <SidebarLayoutContext.Provider value={{ order: sidebarOrder, showPostHelper }}>
+    <ProfileLabelFilterContext.Provider value={{ visibleLabels, setVisibleLabels }}>
+     <div className={`app${narrow ? ' app-narrow' : ''}${!narrow && sidebarCollapsed ? ' sidebar-collapsed' : ''}${narrow && drawerOpen ? ' drawer-open' : ''}`}>
+       {platformAPI.capabilities.browserView && <KeyboardDismissButton />}
+       {narrow && drawerOpen && <div className="sidebar-backdrop" onClick={() => setDrawerOpen(false)} aria-hidden="true" />}
+       <nav className={`app-nav${narrow && !quickOpen ? ' quick-collapsed' : ''}`}>
          <div className="nav-title">
            <button
              className="btn-toggle-sidebar"
              onClick={toggleSidebar}
-             title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
-             aria-label={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+             title={sidebarHidden ? 'Show sidebar' : 'Hide sidebar'}
+             aria-label={sidebarHidden ? 'Show sidebar' : 'Hide sidebar'}
            >
              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
                <rect x="3" y="4" width="18" height="16" rx="2" />
                <path d="M9 4v16" />
-               {!sidebarCollapsed && <rect x="3" y="4" width="6" height="16" fill="currentColor" stroke="none" />}
+               {!sidebarHidden && <rect x="3" y="4" width="6" height="16" fill="currentColor" stroke="none" />}
              </svg>
            </button>
            <h1>My X Profiles Manager</h1>
+           {narrow && (
+             <button
+               type="button"
+               className={`nav-quick-toggle${quickOpen ? ' nav-quick-toggle-open' : ''}`}
+               onClick={toggleQuick}
+               title={quickOpen ? 'Hide quick actions' : 'Show quick actions'}
+               aria-label={quickOpen ? 'Hide quick actions' : 'Show quick actions'}
+               aria-expanded={quickOpen}
+             >
+               <ChevronDown size={16} weight="Outline" />
+             </button>
+           )}
          </div>
          <div className="nav-center">
               {activeProfilesCount > 0 && (
@@ -414,8 +515,12 @@ function App() {
                 placeholder="Search profiles..."
                 value={searchQuery}
                 onChange={handleSearchChange}
-                 onFocus={() => {
+                 onFocus={(e) => {
                    setSearchActive(true);
+                   // Al volver al buscador se selecciona lo que hubiera, para sustituirlo escribiendo.
+                   // En el siguiente frame: si no, el clic que enfoca coloca el cursor y anula la selección
+                   const input = e.currentTarget;
+                   requestAnimationFrame(() => input.select());
                    if (!searchQuery.trim()) {
                      setView('folders');
                      setSelectedFolderId(null);
@@ -427,7 +532,7 @@ function App() {
                  onKeyDown={(e) => {
                    if (e.key === 'Escape') {
                      setSearchQuery('');
-                     setOnlyProfileId(null);
+                                      setOnlyProfileId(null);
                      setSelectedFolderId(null);
                      searchInputRef.current?.blur();
                    }
@@ -439,7 +544,7 @@ function App() {
                   onMouseDown={(e) => {
                     e.preventDefault();
                     setSearchQuery('');
-                    setOnlyProfileId(null);
+                                    setOnlyProfileId(null);
                     setSelectedFolderId(null);
                   }}
                    title="Clear search"
@@ -729,10 +834,41 @@ function App() {
                      onToggleAllFolders={handleToggleAllFolders}
                    />
              </div>
+
+             {/* Post Helper - kept mounted to keep the draft text and avoid sidebar flicker */}
+             <div style={{ display: view === 'post-helper' ? 'flex' : 'none', flex: 1, overflow: 'hidden' }}>
+                  <PostHelperView
+                    folders={folders}
+                    profiles={profiles}
+                    selectedFolderId={selectedFolderId}
+                    onSelectFolder={setSelectedFolderId}
+                    expandedFolders={expandedFolders}
+                    onToggleFolder={handleToggleFolder}
+                    expandedOthers={expandedOthers}
+                    onToggleOthers={handleToggleOthers}
+                    onGoToDashboard={() => setView('dashboard')}
+                    onGoToSettings={() => setView('settings')}
+                    onGoToFolders={() => setView('folders')}
+                    onGoToCharacterHub={() => setView('character-hub')}
+                    onGoToPasswordManager={() => setView('password-manager')}
+                    onGoToMailManager={() => setView('mail-manager')}
+                    activeStatuses={activeStatuses}
+                    onFoldersChange={handleFoldersChange}
+                    showPasswordManager={showPasswordManager}
+                    showMailManager={showMailManager}
+                    showCharacterHub={showCharacterHub}
+                    showFreedcamp={showFreedcamp}
+                    showDashboard={showDashboard}
+                    onToggleAllFolders={handleToggleAllFolders}
+                  />
+             </div>
            </>
          )}
        </main>
      </div>
+    </ProfileLabelFilterContext.Provider>
+    </SidebarLayoutContext.Provider>
+    </NavigationContext.Provider>
    );
  }
 

@@ -44,6 +44,13 @@ class BrowserActivity : AppCompatActivity() {
     private var resumed = false
     private lateinit var panelHost: android.widget.FrameLayout
     private lateinit var divider: View
+
+    // Panel de perfiles: junto a la página (tablet / horizontal) o por encima de ella, como un cajón (móvil en vertical)
+    private lateinit var contentArea: android.widget.FrameLayout
+    private lateinit var contentRow: android.widget.LinearLayout
+    private lateinit var panelDock: android.widget.LinearLayout
+    private lateinit var panelScrim: View
+    private var panelOverlay: Boolean? = null
     private lateinit var panel: ProfilePanel
     private var panelWidthPx = 0
     private val palette get() = NativeTheme.palette
@@ -86,8 +93,12 @@ class BrowserActivity : AppCompatActivity() {
         panelHost = findViewById(R.id.panelHost)
         divider = findViewById(R.id.divider)
         panel = ProfilePanel(this) { openProfile(it) }
-        panelHost.addView(panel.view, android.widget.FrameLayout.LayoutParams(-1, -1))
+        // Desliza el panel hacia la derecha (de donde viene) para ocultarlo
+        val panelSwipe = SwipeLayout(this, 1) { setPanelOpen(false) }
+        panelSwipe.addView(panel.view, android.widget.FrameLayout.LayoutParams(-1, -1))
+        panelHost.addView(panelSwipe, android.widget.FrameLayout.LayoutParams(-1, -1))
         findViewById<View>(R.id.btnPanel).setOnClickListener { setPanelOpen(panelHost.visibility != View.VISIBLE) }
+        setUpPanelDock()
         setUpDivider()
         ProfileDirectory.addListener(directoryListener)
         NativeTheme.addListener(themeListener)
@@ -104,7 +115,10 @@ class BrowserActivity : AppCompatActivity() {
             override fun handleOnBackPressed() {
                 val session = currentSession()
                 val tab = session?.activeTab
+                val imeVisible = ViewCompat.getRootWindowInsets(window.decorView)?.isVisible(WindowInsetsCompat.Type.ime()) == true
                 when {
+                    // Con el teclado abierto, Atrás lo oculta antes de navegar o salir
+                    imeVisible -> androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).hide(WindowInsetsCompat.Type.ime())
                     popupOverlay.visibility == View.VISIBLE -> closePopup()
                     session != null && tab != null ->
                         if (tab.canGoBack) tab.gecko?.goBack() else SessionRegistry.closeTab(session, tab)
@@ -269,9 +283,104 @@ class BrowserActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
             contentDescription = "Nueva pestaña"
             setOnClickListener { SessionRegistry.openTab(ps, XUrls.HOME, activate = true) }
+            // Pulsación larga: pedir la dirección de la pestaña nueva
+            setOnLongClickListener {
+                performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                showNewTabDialog(ps)
+                true
+            }
         }, LinearLayout.LayoutParams((36 * dp).toInt(), -1))
         // La pestaña activa siempre a la vista
         selectedView?.let { v -> tabsScroll.post { tabsScroll.smoothScrollTo(maxOf(0, v.left - (24 * dp).toInt()), 0) } }
+    }
+
+    /** Dirección que escribe el usuario -> URL: con esquema tal cual, con pinta de dominio se completa y si no se busca en X. */
+    private fun urlFromInput(input: String): String? {
+        val text = input.trim()
+        if (text.isEmpty()) return null
+        if (Regex("^[a-zA-Z][a-zA-Z0-9+.-]*://").containsMatchIn(text)) return text
+        if (!text.contains(' ') && text.contains('.')) return "https://$text"
+        return "https://x.com/search?q=" + android.net.Uri.encode(text)
+    }
+
+    /** Pulsación larga en el +: tarjeta con un campo para escribir la dirección de la pestaña nueva. */
+    fun showNewTabDialog(ps: ProfileSession) {
+        runOnUiThread {
+            val c = palette
+            val dp = resources.displayMetrics.density
+            val dialog = android.app.Dialog(this)
+            dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+
+            fun pill(fill: Int, stroke: Int?, radius: Float = 12f) = GradientDrawable().apply {
+                cornerRadius = radius * dp
+                setColor(fill)
+                stroke?.let { setStroke((1 * dp).toInt(), it) }
+            }
+
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding((20 * dp).toInt(), (18 * dp).toInt(), (20 * dp).toInt(), (20 * dp).toInt())
+                background = pill(c.bar, c.border, 18f)
+            }
+            card.addView(TextView(this).apply {
+                text = "NUEVA PESTAÑA"
+                setTextColor(c.muted)
+                textSize = 11f
+                letterSpacing = 0.08f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            })
+
+            val field = android.widget.EditText(this).apply {
+                setText(XUrls.HOME)
+                setSelectAllOnFocus(true)
+                setTextColor(c.text)
+                setHintTextColor(c.muted)
+                hint = "Dirección o búsqueda"
+                textSize = 14f
+                isSingleLine = true
+                inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
+                imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_GO
+                setPadding((12 * dp).toInt(), (10 * dp).toInt(), (12 * dp).toInt(), (10 * dp).toInt())
+                background = pill(c.bg, c.border, 10f)
+            }
+            card.addView(field, LinearLayout.LayoutParams(-1, -2).apply { topMargin = (8 * dp).toInt(); bottomMargin = (14 * dp).toInt() })
+
+            fun open() {
+                val url = urlFromInput(field.text.toString()) ?: return
+                dialog.dismiss()
+                SessionRegistry.openTab(ps, url, activate = true)
+            }
+
+            val buttons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            fun button(label: String, primary: Boolean, onClick: () -> Unit) {
+                buttons.addView(TextView(this).apply {
+                    text = label
+                    gravity = Gravity.CENTER
+                    textSize = 14f
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    setTextColor(if (primary) Color.WHITE else c.text)
+                    background = if (primary) pill(c.primary, null, 12f) else pill(c.surface, c.border, 12f)
+                    minHeight = (44 * dp).toInt()
+                    setOnClickListener { onClick() }
+                }, LinearLayout.LayoutParams(0, -2, 1f).apply { if (!primary) marginEnd = (10 * dp).toInt() })
+            }
+            button("Cancelar", primary = false) { dialog.dismiss() }
+            button("Abrir", primary = true) { open() }
+            card.addView(buttons, LinearLayout.LayoutParams(-1, -2))
+
+            field.setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_GO) { open(); true } else false
+            }
+
+            dialog.setContentView(card)
+            dialog.show()
+            dialog.window?.apply {
+                setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+                setLayout(minOf((360 * dp).toInt(), resources.displayMetrics.widthPixels - (40 * dp).toInt()), android.view.WindowManager.LayoutParams.WRAP_CONTENT)
+                setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE or android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+            }
+            field.requestFocus()
+        }
     }
 
     /** Menú de un enlace (pulsación larga o clic derecho): una tarjeta con el estilo de la app. */
@@ -466,10 +575,64 @@ class BrowserActivity : AppCompatActivity() {
     private fun savedWidth(): Int =
         getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_WIDTH, (360 * resources.displayMetrics.density).toInt())
 
+    // ---- Abrir el panel deslizando de derecha a izquierda ----
+    // Se vigila el gesto en la actividad (antes de que lo reciba la página, sin vistas encima que tapen toques):
+    // si empieza en la zona derecha de la pantalla y es claramente horizontal hacia la izquierda, se abre el panel
+    // y la página recibe CANCEL.
+    private var openGestureTracking = false
+    private var openGestureConsuming = false
+    private var openGestureStartX = 0f
+    private var openGestureStartY = 0f
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        val dp = resources.displayMetrics.density
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                openGestureConsuming = false
+                openGestureStartX = ev.rawX
+                openGestureStartY = ev.rawY
+                // Solo con el panel cerrado, sin ventana emergente y empezando en el 35 % derecho de la pantalla
+                openGestureTracking = panelHost.visibility != View.VISIBLE &&
+                    popupOverlay.visibility != View.VISIBLE &&
+                    ev.rawX > resources.displayMetrics.widthPixels * 0.65f
+            }
+            MotionEvent.ACTION_MOVE -> if (openGestureTracking && !openGestureConsuming) {
+                // Si la barra del divisor ya abrió el panel en este gesto, no se vuelve a abrir
+                if (panelHost.visibility == View.VISIBLE) {
+                    openGestureTracking = false
+                    return super.dispatchTouchEvent(ev)
+                }
+                val dx = openGestureStartX - ev.rawX
+                val dy = Math.abs(ev.rawY - openGestureStartY)
+                if (dx > 64 * dp && dx > dy * 2) {
+                    openGestureConsuming = true
+                    openGestureTracking = false
+                    val cancel = MotionEvent.obtain(ev)
+                    cancel.action = MotionEvent.ACTION_CANCEL
+                    super.dispatchTouchEvent(cancel)
+                    cancel.recycle()
+                    setPanelOpen(true)
+                    return true
+                }
+                // Si ya va claramente en vertical es un scroll: se deja de vigilar
+                if (dy > 32 * dp && dy > Math.abs(dx)) openGestureTracking = false
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> openGestureTracking = false
+        }
+        if (openGestureConsuming) {
+            if (ev.actionMasked == MotionEvent.ACTION_UP || ev.actionMasked == MotionEvent.ACTION_CANCEL) openGestureConsuming = false
+            return true
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
     private fun setPanelOpen(open: Boolean) {
         if (open) panelWidthPx = savedWidth().coerceIn(minPanel(), maxPanel())
         panelHost.visibility = if (open) View.VISIBLE else View.GONE
-        divider.visibility = if (open) View.VISIBLE else View.GONE
+        // Junto a la página, la barra del divisor se ve siempre (indica que hay un panel escondido a la derecha). Si el panel va por
+        // encima (móvil en vertical) solo se ve con el panel abierto, para ajustar su ancho: abrirlo se hace deslizando.
+        divider.visibility = if (open || panelOverlay != true) View.VISIBLE else View.GONE
+        panelScrim.visibility = if (open && panelOverlay == true) View.VISIBLE else View.GONE
         if (open) {
             panelHost.layoutParams = panelHost.layoutParams.apply { width = panelWidthPx }
             panel.render()
@@ -478,14 +641,88 @@ class BrowserActivity : AppCompatActivity() {
     }
 
     private fun minPanel() = (220 * resources.displayMetrics.density).toInt()
-    private fun maxPanel() = (resources.displayMetrics.widthPixels * 0.7f).toInt()
+    private fun maxPanel() = maxOf(minPanel(), (resources.displayMetrics.widthPixels * (if (overlayMode()) 0.88f else 0.7f)).toInt())
+
+    private fun overlayMode() = resources.configuration.screenWidthDp < 600
+
+    /**
+     * Agrupa divisor y panel en `panelDock` y lo coloca según el ancho de la pantalla: en móvil en vertical va por encima de
+     * la página (que no se deforma) con un velo detrás; si hay sitio, a su lado como siempre.
+     */
+    private fun setUpPanelDock() {
+        val dp = resources.displayMetrics.density
+        val browserFrame = findViewById<View>(R.id.browserFrame)
+        val row = browserFrame.parent as android.widget.LinearLayout
+        val root = row.parent as android.widget.LinearLayout
+        val index = root.indexOfChild(row)
+        val rowParams = row.layoutParams
+        root.removeViewAt(index)
+        contentArea = android.widget.FrameLayout(this)
+        root.addView(contentArea, index, rowParams)
+        contentArea.addView(row, android.widget.FrameLayout.LayoutParams(-1, -1))
+        contentRow = row
+
+        row.removeView(divider)
+        row.removeView(panelHost)
+        panelDock = android.widget.LinearLayout(this).apply { orientation = android.widget.LinearLayout.HORIZONTAL }
+        panelDock.addView(divider, android.widget.LinearLayout.LayoutParams((20 * dp).toInt(), -1))
+        panelDock.addView(panelHost, android.widget.LinearLayout.LayoutParams(0, -1))
+
+        panelScrim = View(this).apply {
+            setBackgroundColor(0x66000000)
+            visibility = View.GONE
+            setOnClickListener { setPanelOpen(false) }
+        }
+        contentArea.addView(panelScrim, android.widget.FrameLayout.LayoutParams(-1, -1))
+        applyPanelMode()
+    }
+
+    private fun applyPanelMode() {
+        val overlay = overlayMode()
+        if (panelOverlay == overlay) return
+        panelOverlay = overlay
+        (panelDock.parent as? android.view.ViewGroup)?.removeView(panelDock)
+        if (overlay) {
+            contentArea.addView(panelDock, android.widget.FrameLayout.LayoutParams(-2, -1, Gravity.END))
+        } else {
+            contentRow.addView(panelDock, android.widget.LinearLayout.LayoutParams(-2, -1))
+        }
+        panelDock.elevation = if (overlay) 16 * resources.displayMetrics.density else 0f
+        panelScrim.visibility = if (overlay && panelHost.visibility == View.VISIBLE) View.VISIBLE else View.GONE
+        divider.visibility = if (panelHost.visibility == View.VISIBLE || !overlay) View.VISIBLE else View.GONE
+        if (panelHost.visibility == View.VISIBLE) {
+            panelWidthPx = panelWidthPx.coerceIn(minPanel(), maxPanel())
+            panelHost.layoutParams = panelHost.layoutParams.apply { width = panelWidthPx }
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        applyPanelMode()
+    }
 
     private fun setUpDivider() {
+        val dp = resources.displayMetrics.density
+        var downX = 0f
+        var moved = false
+        var wasClosed = false
         divider.setOnTouchListener { v, event ->
-            val container = v.parent as View
+            // Referencia para medir el ancho del panel: el contenedor que ocupa todo el ancho (fila o área superpuesta)
+            val container = panelDock.parent as View
             when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> { v.parent.requestDisallowInterceptTouchEvent(true); true }
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.rawX
+                    moved = false
+                    wasClosed = panelHost.visibility != View.VISIBLE
+                    v.parent.requestDisallowInterceptTouchEvent(true)
+                    true
+                }
                 MotionEvent.ACTION_MOVE -> {
+                    if (Math.abs(event.rawX - downX) > 8 * dp) moved = true
+                    if (panelHost.visibility != View.VISIBLE) {
+                        // Panel oculto: arrastrar la barra hacia la izquierda lo abre y sigue como ajuste de ancho
+                        if (downX - event.rawX > 12 * dp) setPanelOpen(true) else return@setOnTouchListener true
+                    }
                     val loc = IntArray(2)
                     container.getLocationOnScreen(loc)
                     val right = loc[0] + container.width
@@ -495,7 +732,10 @@ class BrowserActivity : AppCompatActivity() {
                     true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (panelWidthPx < minPanel()) {
+                    if (panelHost.visibility != View.VISIBLE) {
+                        // Un toque sin arrastrar sobre la barra de un panel oculto también lo abre
+                        if (wasClosed && !moved && event.actionMasked == MotionEvent.ACTION_UP) setPanelOpen(true)
+                    } else if (panelWidthPx < minPanel()) {
                         setPanelOpen(false)
                     } else {
                         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_WIDTH, panelWidthPx).apply()

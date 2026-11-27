@@ -2,11 +2,13 @@
  * Folders Component - Vista principal con sidebar y panel de perfiles (copia de Dashboard)
  */
 
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { X } from 'reicon-react';
 import type { BrowserProfile, ProfileFolder } from '@xpm/core';
 import { usePlatformAPI } from '../hooks/usePlatformAPI';
 import Sidebar from './Sidebar';
+import ProfileLabelFilterButton from './ProfileLabelFilterButton';
+import { ProfileLabelFilterContext, isProfileVisible } from '../profileLabels';
 import ProfilesPanel from './ProfilesPanel';
 import BrowserPreview from './BrowserPreview';
 import Tooltip from './Tooltip';
@@ -224,19 +226,23 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
 
   const cycleFolderSort = () => setSortOrderFolders(o => o === null ? 'asc' : o === 'asc' ? 'desc' : null);
 
+  // Los perfiles con una etiqueta oculta no aparecen en la vista (el botón de la cabecera elige cuáles se muestran)
+  const { visibleLabels } = useContext(ProfileLabelFilterContext);
+  const shownProfiles = profiles.filter((p) => isProfileVisible(p, visibleLabels));
+
   const profilesToDisplay = isVirtualView
-    ? [...profiles].sort((a, b) =>
+    ? [...shownProfiles].sort((a, b) =>
         currentSortOrder === 'asc'
           ? a.name.localeCompare(b.name)
           : b.name.localeCompare(a.name)
       )
     : isFolderView && sortOrderFolders !== null
-    ? [...profiles].sort((a, b) =>
+    ? [...shownProfiles].sort((a, b) =>
         sortOrderFolders === 'asc'
           ? a.name.localeCompare(b.name)
           : b.name.localeCompare(a.name)
       )
-    : profiles;
+    : shownProfiles;
 
   return (
     <div className="dashboard">
@@ -337,6 +343,7 @@ export default function Folders({ folders, profiles, selectedFolderId, onSelectF
                                  {sortOrderFolders === null ? 'AZ' : sortOrderFolders === 'asc' ? 'A↓' : 'Z↓'}
                                </button>
                              )}
+                           <ProfileLabelFilterButton profiles={profiles} />
                            {selectedFolderHasBrowserActive && selectedFolderId && (
                              <Tooltip text="Close all" position="left">
                                <button

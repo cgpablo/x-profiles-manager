@@ -10,6 +10,9 @@ const capabilities: PlatformCapabilities = {
   perProfileExtensions: false,
   autoLaunchOnStartup: false,
   browserView: true,
+  postThread: true,
+  postQuote: true,
+  postImages: true,
 };
 
 /**
@@ -83,6 +86,10 @@ export function createMobilePlatformApi(backend: Backend, files: MobileFiles): P
       isOnHomeUrl: (profileId) => call(() => backend.launcher.isOnHomeUrl(profileId)),
       fillPinRecovery: (profileId) => call(() => backend.launcher.fillPinRecovery(profileId)),
       openChat: (profileId) => call(() => backend.launcher.openChat(profileId)),
+      openUrl: (profileId, url) => call(() => backend.launcher.openUrl(profileId, url)),
+      openThread: (profileId, texts, images) => call(() => backend.launcher.openThread(profileId, texts, images)),
+      openQuote: (profileId, tweetId, text, images) => call(() => backend.launcher.openQuote(profileId, tweetId, text, images)),
+      openReply: (profileId, tweetId, text, images) => call(() => backend.launcher.openReply(profileId, tweetId, text, images)),
     },
 
     folders: {

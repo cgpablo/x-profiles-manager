@@ -1,7 +1,9 @@
 package com.xprofilesmanager.app;
 
 import android.os.Bundle;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.activity.OnBackPressedCallback;
 import com.getcapacitor.BridgeActivity;
@@ -23,6 +25,12 @@ public class MainActivity extends BridgeActivity {
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
+                // Con el teclado abierto, Atrás lo oculta (lo normal en Android) en vez de minimizar la app
+                WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(getWindow().getDecorView());
+                if (insets != null && insets.isVisible(WindowInsetsCompat.Type.ime())) {
+                    WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView()).hide(WindowInsetsCompat.Type.ime());
+                    return;
+                }
                 getBridge().getWebView().evaluateJavascript(
                     "(function(){return !!(window.__xpmBack && window.__xpmBack());})()",
                     value -> {

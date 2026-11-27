@@ -1,0 +1,710 @@
+/**
+ * PostHelperView CSS
+ */
+
+.ph-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: 100%;
+}
+
+.ph-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ph-content .panel-header {
+  padding-top: 1rem;
+  /* Mismo alto que las demás vistas (32px del botón + padding + borde), para alinear con la barra lateral */
+  height: 65px;
+}
+
+.ph-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.ph-body {
+  container: ph / inline-size; /* el diseño depende del ancho de esta zona, no de la ventana (hay barra lateral) */
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1rem 1.5rem 2rem;
+}
+
+.ph-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.ph-workspace {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+/* El ancho lo marca el textarea (redimensionable); si queda sitio, Posts pasa a su derecha */
+.ph-section-text {
+  flex: 0 0 auto;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.ph-section-posts {
+  flex: 1 1 320px;
+  min-width: min(320px, 100%);
+}
+
+.ph-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ph-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.ph-section-title h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.ph-section-title p {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.ph-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  color: var(--primary);
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.ph-count-pill {
+  min-width: 26px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.ph-muted {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.ph-textarea {
+  display: block;
+  width: 640px;
+  max-width: 100%;
+  min-width: 240px;
+  box-sizing: border-box;
+  resize: both;
+  min-height: 140px;
+  padding: 0.75rem;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.ph-textarea:focus {
+  outline: none;
+}
+
+.ph-options .ph-option-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Separator, Marker, Max length y Preview en una cuadrícula: etiqueta arriba y todos los controles con el mismo alto,
+   así quedan alineados aunque pasen a otra fila (móvil) */
+.ph-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.6rem 0.75rem;
+  align-items: end;
+}
+
+.ph-options label,
+.ph-options .ph-option {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Más específico que los min-height táctiles de la app móvil (input[type=text] { min-height: 44px }) */
+.ph-options .ph-option-input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 0.6rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.ph-posts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.ph-post {
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.ph-post-done {
+  border-color: var(--success);
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.ph-post-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.ph-post-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ph-count {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.ph-count-over {
+  color: var(--danger-text);
+}
+
+.ph-post-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.ph-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.ph-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+.ph-error {
+  padding: 0.4rem 0.4rem 0.4rem 0.75rem;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  color: var(--danger-text);
+  font-size: 0.8rem;
+}
+
+.ph-error-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ph-error-summary {
+  font-weight: 600;
+}
+
+.ph-error-details {
+  margin: 0.4rem 0.4rem 0.2rem 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+/* Misma flecha que el resto, algo más pequeña dentro del aviso */
+.ph-chevron.ph-chevron-error {
+  width: 26px;
+  height: 26px;
+  border-color: var(--danger);
+  color: var(--danger-text);
+}
+
+.ph-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ph-editor {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-dark);
+}
+
+.ph-editor:focus-within {
+  border-color: var(--primary);
+}
+
+.ph-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 0.3rem 0.4rem;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border);
+}
+
+.ph-toolbar-btn {
+  min-width: 30px;
+  height: 28px;
+  padding: 0 0.5rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.ph-toolbar-btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: var(--primary);
+}
+
+.ph-toolbar-btn-active,
+.ph-toolbar-btn-active:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: var(--primary);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+.ph-toolbar-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 0.3rem;
+  background: var(--border);
+}
+
+.ph-chevron {
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: transform 0.2s, color 0.15s, border-color 0.15s;
+  transform: rotate(-90deg);
+}
+
+.ph-chevron-open {
+  transform: rotate(0deg);
+}
+
+.ph-chevron:hover {
+  color: var(--text-primary);
+  border-color: var(--primary);
+}
+
+/* Todos los botones de icono (copy, post, hilo, flecha) comparten tamaño exacto.
+   Más específico que el .btn-primary global (Settings.css), que fuerza flex: 1 y min-width: 140px */
+.ph-btn.ph-btn-icon,
+.ph-chevron {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  min-width: 0;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  line-height: 1;
+}
+
+.ph-btn.ph-btn-icon.btn-primary {
+  border-color: transparent;
+}
+
+.ph-font-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.ph-font-size select {
+  /* La app móvil da 44 px de alto mínimo a los select: en la barra del editor se ve desproporcionado */
+  height: 28px;
+  min-height: 28px;
+  padding: 0 0.3rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.ph-top-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.ph-section-profile {
+  flex: 1 1 280px;
+  min-width: min(280px, 100%);
+}
+
+/* Action necesita más sitio: selector y campo del enlace van en la misma fila */
+.ph-section-action {
+  flex: 1.5 1 380px;
+  min-width: min(380px, 100%);
+}
+
+.ph-segmented {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 3px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.ph-segment {
+  min-width: 64px;
+  padding: 0.4rem 0.75rem;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ph-segment:hover:not(.ph-segment-active) {
+  color: var(--text-primary);
+}
+
+.ph-segment-active {
+  background: rgba(59, 130, 246, 0.25);
+  color: var(--text-primary);
+}
+
+.ph-reply-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.ph-reply-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.ph-reply-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.ph-reply-input-invalid {
+  border-color: var(--danger);
+}
+
+.ph-reply-hint {
+  font-size: 0.75rem;
+  color: var(--danger-text);
+}
+
+.ph-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.ph-action-row .ph-reply-field {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+.ph-preview-btn.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  box-sizing: border-box;
+  width: 100%;
+  height: 36px;
+  min-height: 36px;
+  min-width: 0;
+  padding: 0 0.75rem;
+  font-size: 0.8rem;
+}
+
+.ph-editor-drop {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+}
+
+.ph-images {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-tertiary);
+}
+
+.ph-image {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.ph-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 5px;
+  display: block;
+}
+
+.ph-image-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.ph-image-remove:hover {
+  border-color: var(--danger);
+  color: var(--danger-text);
+}
+
+.ph-images-hint {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.ph-image-note {
+  font-size: 0.75rem;
+  color: var(--danger-text);
+}
+
+/* Dos columnas: Action + Text (el ancho lo marca el editor, redimensionable) y Profile + Posts (el resto).
+   Si no cabe una al lado de la otra, la derecha baja debajo. */
+.ph-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.ph-col-left {
+  flex: 0 1 auto;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.ph-col-right {
+  flex: 1 1 320px;
+  min-width: min(320px, 100%);
+}
+
+/* Dentro de una columna las tarjetas ocupan todo el ancho y su alto lo marca el contenido
+   (anula los flex: 1 1 …px de cuando iban en fila) */
+.ph-col .ph-section {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+/* Zona estrecha (móvil en vertical): una sola columna en el orden Action, Profile, Text, Posts */
+@container ph (max-width: 760px) {
+  .ph-body {
+    padding: 0.75rem 0.75rem 2rem;
+  }
+
+  .ph-workspace {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .ph-col {
+    display: contents;
+  }
+
+  .ph-col .ph-section-action { order: 1; }
+  .ph-col .ph-section-profile { order: 2; }
+  .ph-col .ph-section-text { order: 3; }
+  .ph-col .ph-section-posts { order: 4; }
+
+  .ph-section {
+    padding: 0.85rem;
+  }
+
+  /* El editor ocupa todo el ancho; arrastrar su esquina no tiene sentido en pantallas táctiles */
+  .ph-textarea {
+    width: 100%;
+    resize: vertical;
+  }
+
+  .ph-section-text .ph-section-title p {
+    display: none;
+  }
+
+  .ph-action-row .ph-reply-field {
+    flex-basis: 100%;
+  }
+
+  .ph-pc-wide,
+  .pc-root {
+    max-width: none;
+  }
+}
+
+.ph-option-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Signo ? que muestra la ayuda al tocarlo (en el móvil no hay tooltip al pasar el ratón) */
+.ph-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ph-help-btn:hover,
+.ph-help-btn-on {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.ph-help-text {
+  /* No cuenta para el ancho de la tarjeta (que lo marca el editor): ocupa el ancho que haya, sin ensancharla */
+  width: 0;
+  min-width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-tertiary);
+  border-left: 3px solid var(--primary);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.ph-help-text code {
+  padding: 1px 5px;
+  background: var(--bg-dark);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+}

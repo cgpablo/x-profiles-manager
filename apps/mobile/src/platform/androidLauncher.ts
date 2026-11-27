@@ -1,4 +1,4 @@
-import type { BrowserLauncher, BrowserProfile, ProcessInfo } from '@xpm/core';
+import type { BrowserLauncher, BrowserProfile, PostImage, ProcessInfo } from '@xpm/core';
 import { ProfileBrowser } from './profileBrowser';
 
 /**
@@ -120,6 +120,42 @@ export class AndroidLauncher implements BrowserLauncher {
   async openChat(profileId: string): Promise<boolean> {
     if (!this.exists(profileId)) return false;
     return (await ProfileBrowser.openChat(this.info(profileId))).value;
+  }
+
+  async openUrl(profileId: string, url: string): Promise<boolean> {
+    if (!this.exists(profileId)) return false;
+    this.pushDirectory(0);
+    const ok = (await ProfileBrowser.openUrl({ ...this.info(profileId), url })).value;
+    if (ok) this.active.add(profileId);
+    return ok;
+  }
+
+  /**
+   * Post Helper: el content script de la extensión interna escribe en el compositor de X (sin publicar).
+   * Si falla, el plugin rechaza con el motivo y la interfaz lo muestra.
+   */
+  async openThread(profileId: string, texts: string[], images?: PostImage[]): Promise<boolean> {
+    if (!this.exists(profileId)) return false;
+    this.pushDirectory(0);
+    const ok = (await ProfileBrowser.openThread({ ...this.info(profileId), texts, images })).value;
+    if (ok) this.active.add(profileId);
+    return ok;
+  }
+
+  async openQuote(profileId: string, tweetId: string, text: string, images?: PostImage[]): Promise<boolean> {
+    if (!this.exists(profileId)) return false;
+    this.pushDirectory(0);
+    const ok = (await ProfileBrowser.openQuote({ ...this.info(profileId), tweetId, text, images })).value;
+    if (ok) this.active.add(profileId);
+    return ok;
+  }
+
+  async openReply(profileId: string, tweetId: string, text: string, images?: PostImage[]): Promise<boolean> {
+    if (!this.exists(profileId)) return false;
+    this.pushDirectory(0);
+    const ok = (await ProfileBrowser.openReply({ ...this.info(profileId), tweetId, text, images })).value;
+    if (ok) this.active.add(profileId);
+    return ok;
   }
 
   profileSaved(profile: BrowserProfile): void {

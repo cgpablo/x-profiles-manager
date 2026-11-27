@@ -24,11 +24,39 @@ object HelperMessages : WebExtension.MessageDelegate {
             ?: return reply(JSONObject().put("task", "none").put("userDone", false).put("ok", false))
         val task = ps.loginTask
         return when (msg.optString("type")) {
-            "hello" -> reply(
-                JSONObject()
-                    .put("task", if (task != null) "login" else "none")
-                    .put("userDone", task?.userDone ?: false)
-            )
+            "hello" -> {
+                val post = ps.postTask
+                if (post != null) {
+                    // Post Helper: la página recibe qué publicar (modo, textos, imágenes) y lo hace ella
+                    reply(JSONObject().put("task", "post").put("payload", post.payload))
+                } else {
+                    reply(
+                        JSONObject()
+                            .put("task", if (task != null) "login" else "none")
+                            .put("userDone", task?.userDone ?: false)
+                    )
+                }
+            }
+            "tap" -> {
+                // Plan B del clic: toque real en las coordenadas (px CSS) que indica la página
+                val view = BrowserHost.viewShowing(ps)
+                if (view == null) {
+                    reply(JSONObject().put("ok", false))
+                } else {
+                    val dpr = msg.optDouble("dpr", 1.0).toFloat()
+                    Tapper.tap(view, msg.optDouble("x").toFloat() * dpr, msg.optDouble("y").toFloat() * dpr)
+                    reply(JSONObject().put("ok", true))
+                }
+            }
+            "postDone" -> {
+                val post = ps.postTask
+                ps.postTask = null
+                val ok = msg.optBoolean("ok")
+                val reason = msg.optString("reason").takeIf { it.isNotEmpty() }
+                Log.i(TAG, "post ${if (ok) "done" else "failed: $reason"}")
+                post?.finish(ok, reason)
+                reply(JSONObject().put("ok", true))
+            }
             "typeUsername" -> typeStep(ps, task?.username) { task?.userDone = true }
             "typePassword" -> typeStep(ps, task?.password) {
                 ps.loginTask = null

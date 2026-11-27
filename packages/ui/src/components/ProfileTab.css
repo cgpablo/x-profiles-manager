@@ -512,3 +512,19 @@
   border-color: #10b981;
   color: white;
 }
+
+.profile-drag-handle {
+  position: absolute;
+  left: 0.45rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: grab;
+  user-select: none;
+}
+
+.profile-tab:hover .profile-drag-handle {
+  color: var(--text-primary);
+}
